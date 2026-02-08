@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+/packages/mcp-server/node_modules
+/packages/mcp-server/.pnp
+/packages/mcp-server/.pnp.*
+/packages/mcp-server/.yarn/*
+/packages/mcp-server/.yarn/patches
+/packages/mcp-server/.yarn/plugins
+/packages/mcp-server/.yarn/releases
+/packages/mcp-server/.yarn/versions
+
+**/dist

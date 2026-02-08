@@ -10,12 +10,15 @@
 
 import type * as activities from "../activities.js";
 import type * as agents from "../agents.js";
+import type * as apiKeys from "../apiKeys.js";
+import type * as apiKeys_internal from "../apiKeys_internal.js";
 import type * as auth from "../auth.js";
 import type * as broadcasts from "../broadcasts.js";
 import type * as chatActions from "../chatActions.js";
 import type * as chatMessages from "../chatMessages.js";
 import type * as documents from "../documents.js";
 import type * as http from "../http.js";
+import type * as lib_apiAuth from "../lib/apiAuth.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
@@ -31,12 +34,15 @@ import type {
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   agents: typeof agents;
+  apiKeys: typeof apiKeys;
+  apiKeys_internal: typeof apiKeys_internal;
   auth: typeof auth;
   broadcasts: typeof broadcasts;
   chatActions: typeof chatActions;
   chatMessages: typeof chatMessages;
   documents: typeof documents;
   http: typeof http;
+  "lib/apiAuth": typeof lib_apiAuth;
   "lib/permissions": typeof lib_permissions;
   messages: typeof messages;
   notifications: typeof notifications;

@@ -1,0 +1,28 @@
+{
+  "name": "@sutraha/mcp-server",
+  "version": "0.1.1",
+  "description": "MCP server for Sutraha HQ — connects AI agents to the orchestration dashboard",
+  "type": "module",
+  "bin": {
+    "sutraha-mcp": "dist/index.js",
+    "sutraha-cli": "dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "convex": "^1.31.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

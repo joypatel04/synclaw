@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   FileText,
+  Key,
   LogOut,
   MessageSquare,
   Plus,
@@ -189,6 +190,15 @@ export function Header() {
                 >
                   <Users className="h-4 w-4" />
                   Members
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/settings/api-keys"
+                  className="flex items-center gap-2 text-text-secondary"
+                >
+                  <Key className="h-4 w-4" />
+                  API Keys
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-border-default" />

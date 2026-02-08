@@ -20,11 +20,11 @@ export function ChatAgentSelector() {
   if (agents.length === 0) return <EmptyState icon={MessageSquare} title="No agents available" description="Configure agents first" />;
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       {agents.map((agent) => {
         const lastMsg = getLastMessage(agent.sessionKey);
         return (
-          <Link key={agent._id} href={`/chat/${agent._id}`}>
+          <Link key={agent._id} href={`/chat/${agent._id}`} className="block">
             <div className="group flex items-center gap-4 rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth hover:border-border-hover hover:bg-bg-tertiary">
               <AgentAvatar emoji={agent.emoji} name={agent.name} size="lg" status={agent.status} />
               <div className="flex-1 min-w-0">

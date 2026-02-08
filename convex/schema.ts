@@ -63,6 +63,23 @@ export default defineSchema({
     .index("byWorkspace", ["workspaceId"])
     .index("byEmail", ["email"]),
 
+  // ─── API Keys (server-to-server auth for OpenClaw etc.) ────────
+
+  workspaceApiKeys: defineTable({
+    workspaceId: v.id("workspaces"),
+    name: v.string(),
+    keyPrefix: v.string(),
+    keyHash: v.string(),
+    role: workspaceRole,
+    botUserId: v.id("users"),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byKeyHash", ["keyHash"]),
+
   // ─── Domain tables (all workspace-scoped) ───────────────────────
 
   agents: defineTable({
