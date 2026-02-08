@@ -241,6 +241,15 @@
   background: var(--cw-scrollbar-thumb-hover);
 }
 
+/* Hide scrollbar but keep scrolling */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Smooth transitions */
 .transition-smooth {
   transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);

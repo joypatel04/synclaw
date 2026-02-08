@@ -48,8 +48,8 @@ export function KanbanBoard() {
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between px-1 mb-4">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-1 mb-4 shrink-0">
         <h2 className="text-lg font-semibold text-text-primary">Tasks</h2>
         {canEdit && (
           <Button
@@ -64,7 +64,7 @@ export function KanbanBoard() {
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4">
+        <div className="flex gap-3 flex-1 min-h-0 overflow-x-auto scrollbar-none">
           {columns.map((col) => (
             <KanbanColumn
               key={col.id}
@@ -78,7 +78,7 @@ export function KanbanBoard() {
       </DragDropContext>
 
       {blockedTasks.length > 0 && (
-        <div className="mt-4 rounded-xl border border-status-blocked/30 bg-status-blocked/5 p-4">
+        <div className="mt-4 shrink-0 rounded-xl border border-status-blocked/30 bg-status-blocked/5 p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-status-blocked mb-3">
             Blocked ({blockedTasks.length})
           </h3>
