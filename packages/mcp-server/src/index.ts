@@ -313,6 +313,64 @@ server.tool(
   },
 );
 
+server.tool(
+  "sutraha_get_unseen_activities",
+  "Get activities that happened since this agent last acknowledged. Use at startup to catch up on what happened while offline.",
+  { agentId: z.string().describe("Your Agent ID") },
+  async ({ agentId }) => {
+    const activities = await client.query(api.activities.getUnseen, { agentId });
+    return {
+      content: [{
+        type: "text",
+        text: activities.length === 0
+          ? "No new activities since last acknowledgment."
+          : `${activities.length} unseen activities:\n${JSON.stringify(activities, null, 2)}`,
+      }],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_ack_activities",
+  "Acknowledge activities as seen. Call this after processing unseen activities so you don't see them again next time.",
+  { agentId: z.string().describe("Your Agent ID") },
+  async ({ agentId }) => {
+    await client.mutation(api.agents.ackActivities, { agentId });
+    return { content: [{ type: "text", text: "Activities acknowledged. Watermark updated." }] };
+  },
+);
+
+// ═══════════════════════════════════════════════════════════
+//  Notification Tools
+// ═══════════════════════════════════════════════════════════
+
+server.tool(
+  "sutraha_get_notifications",
+  "Get undelivered @mention notifications for this agent.",
+  { agentId: z.string().describe("Your Agent ID") },
+  async ({ agentId }) => {
+    const notifications = await client.query(api.notifications.getUndelivered, { agentId });
+    return {
+      content: [{
+        type: "text",
+        text: notifications.length === 0
+          ? "No pending notifications."
+          : `${notifications.length} notifications:\n${JSON.stringify(notifications, null, 2)}`,
+      }],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_ack_notifications",
+  "Mark all @mention notifications as delivered for this agent.",
+  { agentId: z.string().describe("Your Agent ID") },
+  async ({ agentId }) => {
+    await client.mutation(api.notifications.markAllDelivered, { agentId });
+    return { content: [{ type: "text", text: "All notifications marked as delivered." }] };
+  },
+);
+
 // ═══════════════════════════════════════════════════════════
 //  Start Server
 // ═══════════════════════════════════════════════════════════

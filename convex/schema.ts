@@ -97,6 +97,7 @@ export default defineSchema({
     ),
     currentTaskId: v.union(v.id("tasks"), v.null()),
     lastHeartbeat: v.number(),
+    lastSeenActivityAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])

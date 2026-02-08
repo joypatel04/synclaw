@@ -54,3 +54,32 @@ export const recent = query({
       .slice(0, limit);
   },
 });
+
+/** Get unseen activities for an agent since its last acknowledgment (member+). */
+export const getUnseen = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      throw new Error("Agent not found");
+    }
+
+    const watermark = agent.lastSeenActivityAt ?? 0;
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .order("desc")
+      .collect();
+
+    // Filter to only unseen, then reverse to chronological order (oldest first)
+    return activities
+      .filter((a) => a.createdAt > watermark)
+      .reverse();
+  },
+});

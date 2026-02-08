@@ -85,6 +85,24 @@ export const updateHeartbeat = mutation({
   },
 });
 
+/** Acknowledge activities up to a given timestamp (member+). */
+export const ackActivities = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    upTo: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      throw new Error("Agent not found");
+    }
+    const timestamp = args.upTo ?? Date.now();
+    await ctx.db.patch(args.agentId, { lastSeenActivityAt: timestamp });
+  },
+});
+
 /** Create a new agent (owner only). */
 export const create = mutation({
   args: {
