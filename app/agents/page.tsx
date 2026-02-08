@@ -1,0 +1,537 @@
+"use client";
+
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { AgentAvatar } from "@/components/shared/AgentAvatar";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Timestamp } from "@/components/shared/Timestamp";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Archive,
+  ArchiveRestore,
+  Bot,
+  ExternalLink,
+  Pencil,
+  Plus,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
+
+type AgentFormData = {
+  name: string;
+  role: string;
+  emoji: string;
+  sessionKey: string;
+  externalAgentId: string;
+};
+
+const emptyForm: AgentFormData = {
+  name: "",
+  role: "",
+  emoji: "🤖",
+  sessionKey: "",
+  externalAgentId: "",
+};
+
+function AgentsContent() {
+  const { workspaceId, canAdmin, canManage } = useWorkspace();
+  const agents =
+    useQuery(api.agents.list, { workspaceId, includeArchived: canAdmin }) ?? [];
+  const tasks = useQuery(api.tasks.list, { workspaceId }) ?? [];
+  const updateStatus = useMutation(api.agents.updateStatus);
+  const createAgent = useMutation(api.agents.create);
+  const updateAgent = useMutation(api.agents.update);
+  const toggleArchive = useMutation(api.agents.toggleArchive);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<Id<"agents"> | null>(null);
+  const [archivingAgent, setArchivingAgent] = useState<{
+    id: Id<"agents">;
+    name: string;
+    emoji: string;
+    isArchived: boolean;
+  } | null>(null);
+  const [form, setForm] = useState<AgentFormData>(emptyForm);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const activeAgents = agents.filter((a) => !a.isArchived);
+  const archivedAgents = agents.filter((a) => a.isArchived);
+
+  const handleStatusChange = async (
+    agentId: Id<"agents">,
+    status: "idle" | "active" | "blocked",
+  ) => {
+    await updateStatus({ workspaceId, id: agentId, status });
+  };
+
+  const openCreate = () => {
+    setForm(emptyForm);
+    setShowCreate(true);
+  };
+
+  const openEdit = (agent: (typeof agents)[number]) => {
+    setForm({
+      name: agent.name,
+      role: agent.role,
+      emoji: agent.emoji,
+      sessionKey: agent.sessionKey,
+      externalAgentId: agent.externalAgentId ?? "",
+    });
+    setEditingId(agent._id);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    await createAgent({
+      workspaceId,
+      name: form.name.trim(),
+      role: form.role.trim(),
+      emoji: form.emoji,
+      sessionKey:
+        form.sessionKey.trim() ||
+        `agent:${form.name.toLowerCase().replace(/\s+/g, "-")}:main`,
+      externalAgentId: form.externalAgentId.trim() || undefined,
+    });
+    setForm(emptyForm);
+    setShowCreate(false);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId || !form.name.trim()) return;
+    await updateAgent({
+      workspaceId,
+      id: editingId,
+      name: form.name.trim(),
+      role: form.role.trim(),
+      emoji: form.emoji,
+      sessionKey: form.sessionKey.trim(),
+      externalAgentId: form.externalAgentId.trim() || undefined,
+    });
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!archivingAgent) return;
+    await toggleArchive({ workspaceId, id: archivingAgent.id });
+    setArchivingAgent(null);
+  };
+
+  const renderAgentCard = (
+    agent: (typeof agents)[number],
+    isArchived: boolean,
+  ) => {
+    const agentTasks = tasks.filter((t) =>
+      t.assigneeIds.includes(agent._id),
+    );
+    return (
+      <div
+        key={agent._id}
+        className={cn(
+          "rounded-xl border border-border-default bg-bg-secondary p-5 transition-smooth hover:border-border-hover",
+          isArchived && "opacity-60",
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <AgentAvatar
+              emoji={agent.emoji}
+              name={agent.name}
+              size="lg"
+              status={isArchived ? "idle" : agent.status}
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-text-primary">
+                  {agent.name}
+                </h2>
+                {isArchived && (
+                  <span className="inline-flex items-center rounded-md bg-text-dim/10 px-1.5 py-0.5 text-[10px] font-medium text-text-dim">
+                    Archived
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-text-muted">{agent.role}</p>
+              <p className="mt-1 font-mono text-xs text-text-dim">
+                {agent.sessionKey}
+              </p>
+              {agent.externalAgentId && (
+                <div className="mt-1 flex items-center gap-1 text-xs text-teal">
+                  <ExternalLink className="h-3 w-3" />
+                  <span className="font-mono">
+                    {agent.externalAgentId}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Status dropdown — admin+ can change, but not for archived */}
+            {canManage && !isArchived && (
+              <Select
+                value={agent.status}
+                onValueChange={(v) =>
+                  handleStatusChange(
+                    agent._id,
+                    v as "idle" | "active" | "blocked",
+                  )
+                }
+              >
+                <SelectTrigger className="w-[120px] bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-bg-tertiary border-border-default">
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="idle">Idle</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Edit — owner only */}
+            {canAdmin && !isArchived && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openEdit(agent)}
+                className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                title="Edit agent"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+
+            {/* Archive / Unarchive — owner only */}
+            {canAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setArchivingAgent({
+                    id: agent._id,
+                    name: agent.name,
+                    emoji: agent.emoji,
+                    isArchived: !!agent.isArchived,
+                  })
+                }
+                className={cn(
+                  "h-8 w-8 p-0",
+                  isArchived
+                    ? "text-teal hover:text-teal hover:bg-teal/10"
+                    : "text-text-muted hover:text-status-review hover:bg-status-review/10",
+                )}
+                title={isArchived ? "Unarchive agent" : "Archive agent"}
+              >
+                {isArchived ? (
+                  <ArchiveRestore className="h-3.5 w-3.5" />
+                ) : (
+                  <Archive className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {!isArchived && (
+          <div className="mt-4 grid grid-cols-3 gap-4">
+            <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">
+                Status
+              </p>
+              <StatusBadge status={agent.status} className="mt-1" />
+            </div>
+            <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">
+                Tasks
+              </p>
+              <p className="mt-1 text-sm font-medium text-text-primary">
+                {agentTasks.length}
+              </p>
+            </div>
+            <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
+              <p className="text-[10px] text-text-dim uppercase tracking-wider">
+                Last Heartbeat
+              </p>
+              <Timestamp time={agent.lastHeartbeat} className="mt-1" />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/20">
+            <Bot className="h-4 w-4 text-teal" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-text-primary">Agents</h1>
+            <p className="text-xs text-text-muted">Manage your AI agents</p>
+          </div>
+        </div>
+        {canAdmin && (
+          <Button
+            onClick={openCreate}
+            size="sm"
+            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            Add Agent
+          </Button>
+        )}
+      </div>
+
+      {/* Active agents */}
+      <div className="space-y-4">
+        {activeAgents.map((agent) => renderAgentCard(agent, false))}
+
+        {activeAgents.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default bg-bg-secondary/50 py-16">
+            <Bot className="h-10 w-10 text-text-dim mb-3" />
+            <p className="text-sm text-text-muted">No active agents</p>
+            {canAdmin && (
+              <Button
+                onClick={openCreate}
+                variant="ghost"
+                size="sm"
+                className="mt-2 text-accent-orange"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add your first agent
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Archived section — owner only */}
+      {canAdmin && archivedAgents.length > 0 && (
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => setShowArchived(!showArchived)}
+            className="flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text-secondary transition-smooth mb-4"
+          >
+            <Archive className="h-4 w-4" />
+            Archived ({archivedAgents.length})
+            <span className="text-xs">
+              {showArchived ? "▾" : "▸"}
+            </span>
+          </button>
+          {showArchived && (
+            <div className="space-y-3">
+              {archivedAgents.map((agent) => renderAgentCard(agent, true))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Create / Edit Modal ── */}
+      {canAdmin && (
+        <Dialog
+          open={showCreate || editingId !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowCreate(false);
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
+          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle className="text-text-primary">
+                {editingId ? "Edit Agent" : "Add New Agent"}
+              </DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={editingId ? handleUpdate : handleCreate}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-[64px_1fr] gap-4">
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Emoji</Label>
+                  <Input
+                    value={form.emoji}
+                    onChange={(e) =>
+                      setForm({ ...form, emoji: e.target.value })
+                    }
+                    className="bg-bg-primary border-border-default text-text-primary text-center text-xl h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Name</Label>
+                  <Input
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm({ ...form, name: e.target.value })
+                    }
+                    placeholder="e.g., Jarvis"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim h-12"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Role</Label>
+                <Input
+                  value={form.role}
+                  onChange={(e) =>
+                    setForm({ ...form, role: e.target.value })
+                  }
+                  placeholder="e.g., Squad Lead"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Session Key</Label>
+                <Input
+                  value={form.sessionKey}
+                  onChange={(e) =>
+                    setForm({ ...form, sessionKey: e.target.value })
+                  }
+                  placeholder="Auto-generated from name"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                />
+                <p className="text-[11px] text-text-dim">
+                  Internal key for agent-to-system communication
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-text-secondary flex items-center gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  External Agent ID
+                </Label>
+                <Input
+                  value={form.externalAgentId}
+                  onChange={(e) =>
+                    setForm({ ...form, externalAgentId: e.target.value })
+                  }
+                  placeholder="e.g., openclaw_agent_abc123"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                />
+                <p className="text-[11px] text-text-dim">
+                  Connect to an external agent platform (OpenClaw, etc.)
+                </p>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setEditingId(null);
+                    setForm(emptyForm);
+                  }}
+                  className="border-border-default text-text-secondary"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
+                  {editingId ? "Save Changes" : "Add Agent"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Archive / Unarchive Confirmation ── */}
+      <Dialog
+        open={archivingAgent !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchivingAgent(null);
+        }}
+      >
+        <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-text-primary">
+              {archivingAgent?.isArchived ? "Unarchive" : "Archive"} Agent
+            </DialogTitle>
+            <DialogDescription className="text-text-muted">
+              {archivingAgent?.isArchived ? (
+                <>
+                  Restore{" "}
+                  <span className="font-semibold text-text-primary">
+                    {archivingAgent?.emoji} {archivingAgent?.name}
+                  </span>{" "}
+                  back to your active agents?
+                </>
+              ) : (
+                <>
+                  Archive{" "}
+                  <span className="font-semibold text-text-primary">
+                    {archivingAgent?.emoji} {archivingAgent?.name}
+                  </span>
+                  ? The agent will be hidden from the main list but can be
+                  restored anytime.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setArchivingAgent(null)}
+              className="border-border-default text-text-secondary"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleArchiveConfirm}
+              className={
+                archivingAgent?.isArchived
+                  ? "bg-teal hover:bg-teal/90 text-white"
+                  : "bg-status-review hover:bg-status-review/90 text-white"
+              }
+            >
+              {archivingAgent?.isArchived ? "Unarchive" : "Archive"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+export default function AgentsPage() {
+  return (
+    <AppLayout>
+      <AgentsContent />
+    </AppLayout>
+  );
+}
