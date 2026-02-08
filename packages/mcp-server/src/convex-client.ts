@@ -74,6 +74,16 @@ export class SutrahaClient {
       ...args,
     });
   }
+
+  /** Execute a Convex mutation WITHOUT auto-adding workspaceId.
+   *  Use for functions that don't take workspaceId (e.g., updateHeartbeat). */
+  async rawMutation(
+    functionRef: any,
+    args: Record<string, any> = {},
+  ): Promise<any> {
+    await this.ensureAuth();
+    return this.client.mutation(functionRef, args);
+  }
 }
 
 /** Create a client from environment variables. */

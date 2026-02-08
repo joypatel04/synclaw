@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember, getUserDisplayName } from "./lib/permissions";
+import { requireRole, requireMember, resolveActorName } from "./lib/permissions";
 
 /** Create a broadcast (member+). */
 export const create = mutation({
@@ -9,10 +9,15 @@ export const create = mutation({
     title: v.string(),
     content: v.string(),
     targetAgentIds: v.union(v.array(v.id("agents")), v.literal("all")),
+    actingAgentId: v.optional(v.id("agents")),
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "member");
-    const displayName = await getUserDisplayName(ctx, membership.userId);
+    const { displayName, agentId } = await resolveActorName(
+      ctx,
+      membership.userId,
+      args.actingAgentId,
+    );
     const now = Date.now();
 
     const broadcastId = await ctx.db.insert("broadcasts", {
@@ -32,7 +37,7 @@ export const create = mutation({
     await ctx.db.insert("activities", {
       workspaceId: args.workspaceId,
       type: "broadcast_sent",
-      agentId: null,
+      agentId,
       taskId: null,
       message: `${displayName} broadcast to ${targetLabel}: "${args.title}"`,
       metadata: { broadcastId },

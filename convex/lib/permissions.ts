@@ -101,3 +101,27 @@ export async function getUserDisplayName(
   // Auth tables store name and email
   return (user as any).name ?? (user as any).email ?? "User";
 }
+
+/**
+ * Resolve the display name for an actor.
+ * If actingAgentId is provided, returns the agent's emoji + name (e.g. "🤖 Shuri").
+ * Otherwise falls back to the user's display name.
+ * Also returns the agentId for the activity record.
+ */
+export async function resolveActorName(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  actingAgentId?: Id<"agents"> | null,
+): Promise<{ displayName: string; agentId: Id<"agents"> | null }> {
+  if (actingAgentId) {
+    const agent = await ctx.db.get(actingAgentId);
+    if (agent) {
+      return {
+        displayName: `${agent.emoji} ${agent.name}`,
+        agentId: agent._id,
+      };
+    }
+  }
+  const displayName = await getUserDisplayName(ctx, userId);
+  return { displayName, agentId: null };
+}

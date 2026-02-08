@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember, getUserDisplayName } from "./lib/permissions";
+import { requireRole, requireMember, resolveActorName } from "./lib/permissions";
 
 /** Post a comment (member+). */
 export const create = mutation({
@@ -13,7 +13,11 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "member");
-    const authorName = await getUserDisplayName(ctx, membership.userId);
+    const { displayName: authorName, agentId } = await resolveActorName(
+      ctx,
+      membership.userId,
+      args.agentId,
+    );
     const now = Date.now();
 
     const messageId = await ctx.db.insert("messages", {

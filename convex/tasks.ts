@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember, getUserDisplayName } from "./lib/permissions";
+import { requireRole, requireMember, getUserDisplayName, resolveActorName } from "./lib/permissions";
 
 const taskStatus = v.union(
   v.literal("inbox"),
@@ -28,10 +28,16 @@ export const create = mutation({
     assigneeIds: v.array(v.id("agents")),
     priority: taskPriority,
     dueAt: v.union(v.number(), v.null()),
+
+    actingAgentId: v.optional(v.id("agents")),
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "member");
-    const displayName = await getUserDisplayName(ctx, membership.userId);
+    const { displayName, agentId } = await resolveActorName(
+      ctx,
+      membership.userId,
+      args.actingAgentId,
+    );
     const now = Date.now();
 
     const taskId = await ctx.db.insert("tasks", {
@@ -50,7 +56,7 @@ export const create = mutation({
     await ctx.db.insert("activities", {
       workspaceId: args.workspaceId,
       type: "task_created",
-      agentId: null,
+      agentId,
       taskId,
       message: `${displayName} created task "${args.title}"`,
       metadata: { priority: args.priority, status: args.status },
@@ -72,10 +78,16 @@ export const update = mutation({
     assigneeIds: v.optional(v.array(v.id("agents"))),
     priority: v.optional(taskPriority),
     dueAt: v.optional(v.union(v.number(), v.null())),
+    actingAgentId: v.optional(v.id("agents")),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.workspaceId, "member");
-    const { id, workspaceId, ...fields } = args;
+    const membership = await requireRole(ctx, args.workspaceId, "member");
+    const { displayName, agentId } = await resolveActorName(
+      ctx,
+      membership.userId,
+      args.actingAgentId,
+    );
+    const { id, workspaceId, actingAgentId: _, ...fields } = args;
     const existing = await ctx.db.get(id);
     if (!existing || existing.workspaceId !== workspaceId)
       throw new Error("Task not found");
@@ -85,9 +97,9 @@ export const update = mutation({
     await ctx.db.insert("activities", {
       workspaceId,
       type: "task_updated",
-      agentId: null,
+      agentId,
       taskId: id,
-      message: `Task "${existing.title}" was updated`,
+      message: `${displayName} updated task "${existing.title}"`,
       metadata: { fields: Object.keys(fields) },
       createdAt: Date.now(),
     });
@@ -100,9 +112,15 @@ export const updateStatus = mutation({
     workspaceId: v.id("workspaces"),
     id: v.id("tasks"),
     status: taskStatus,
+    actingAgentId: v.optional(v.id("agents")),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.workspaceId, "member");
+    const membership = await requireRole(ctx, args.workspaceId, "member");
+    const { displayName, agentId } = await resolveActorName(
+      ctx,
+      membership.userId,
+      args.actingAgentId,
+    );
     const existing = await ctx.db.get(args.id);
     if (!existing || existing.workspaceId !== args.workspaceId)
       throw new Error("Task not found");
@@ -112,9 +130,9 @@ export const updateStatus = mutation({
     await ctx.db.insert("activities", {
       workspaceId: args.workspaceId,
       type: "task_updated",
-      agentId: null,
+      agentId,
       taskId: args.id,
-      message: `Task "${existing.title}" moved to ${args.status.replace("_", " ")}`,
+      message: `${displayName} moved "${existing.title}" to ${args.status.replace("_", " ")}`,
       metadata: { from: existing.status, to: args.status },
       createdAt: Date.now(),
     });

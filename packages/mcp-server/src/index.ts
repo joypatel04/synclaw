@@ -73,7 +73,7 @@ server.tool(
   "Send a heartbeat for an agent to indicate it's alive",
   { agentId: z.string().describe("Agent ID") },
   async ({ agentId }) => {
-    await client.mutation(api.agents.updateHeartbeat, { id: agentId });
+    await client.rawMutation(api.agents.updateHeartbeat, { id: agentId });
     return { content: [{ type: "text", text: "Heartbeat sent" }] };
   },
 );
@@ -114,21 +114,24 @@ server.tool(
 
 server.tool(
   "sutraha_create_task",
-  "Create a new task in the workspace",
+  "Create a new task in the workspace. Pass your agentId so the activity is attributed to you.",
   {
     title: z.string().describe("Task title"),
     description: z.string().optional().describe("Task description"),
     status: z.enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"]).optional().describe("Task status (default: inbox)"),
     priority: z.enum(["high", "medium", "low", "none"]).optional().describe("Priority level (default: medium)"),
     assigneeIds: z.array(z.string()).optional().describe("Agent IDs to assign"),
+    agentId: z.string().optional().describe("Your Agent ID — activity will be attributed to this agent"),
   },
-  async ({ title, description, status, priority, assigneeIds }) => {
+  async ({ title, description, status, priority, assigneeIds, agentId }) => {
     const id = await client.mutation(api.tasks.create, {
       title,
       description: description ?? "",
       status: status ?? "inbox",
       priority: priority ?? "medium",
       assigneeIds: assigneeIds ?? [],
+      dueAt: null,
+      ...(agentId ? { actingAgentId: agentId } : {}),
     });
     return { content: [{ type: "text", text: `Task created with ID: ${id}` }] };
   },
@@ -136,29 +139,39 @@ server.tool(
 
 server.tool(
   "sutraha_update_task",
-  "Update a task's fields",
+  "Update a task's fields. Pass your agentId so the activity is attributed to you.",
   {
     taskId: z.string().describe("Task ID"),
     title: z.string().optional().describe("New title"),
     description: z.string().optional().describe("New description"),
     priority: z.enum(["high", "medium", "low", "none"]).optional().describe("New priority"),
     assigneeIds: z.array(z.string()).optional().describe("New assignee IDs"),
+    agentId: z.string().optional().describe("Your Agent ID — activity will be attributed to this agent"),
   },
-  async ({ taskId, ...updates }) => {
-    await client.mutation(api.tasks.update, { id: taskId, ...updates });
+  async ({ taskId, agentId, ...updates }) => {
+    await client.mutation(api.tasks.update, {
+      id: taskId,
+      ...updates,
+      ...(agentId ? { actingAgentId: agentId } : {}),
+    });
     return { content: [{ type: "text", text: `Task ${taskId} updated` }] };
   },
 );
 
 server.tool(
   "sutraha_update_task_status",
-  "Change a task's status",
+  "Change a task's status. Pass your agentId so the activity is attributed to you.",
   {
     taskId: z.string().describe("Task ID"),
     status: z.enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"]).describe("New status"),
+    agentId: z.string().optional().describe("Your Agent ID — activity will be attributed to this agent"),
   },
-  async ({ taskId, status }) => {
-    await client.mutation(api.tasks.updateStatus, { id: taskId, status });
+  async ({ taskId, status, agentId }) => {
+    await client.mutation(api.tasks.updateStatus, {
+      id: taskId,
+      status,
+      ...(agentId ? { actingAgentId: agentId } : {}),
+    });
     return { content: [{ type: "text", text: `Task status updated to ${status}` }] };
   },
 );
@@ -226,17 +239,23 @@ server.tool(
 
 server.tool(
   "sutraha_respond_to_broadcast",
-  "Respond to a workspace broadcast",
+  "Respond to a workspace broadcast. Creates a message and links it as a broadcast response.",
   {
     broadcastId: z.string().describe("Broadcast ID"),
     agentId: z.string().describe("Agent ID responding"),
     content: z.string().describe("Response content"),
   },
   async ({ broadcastId, agentId, content }) => {
-    await client.mutation(api.broadcasts.addResponse, {
-      broadcastId,
+    // First create a message attributed to the agent
+    const messageId = await client.mutation(api.messages.create, {
+      taskId: null,
       agentId,
       content,
+    });
+    // Then link it to the broadcast
+    await client.mutation(api.broadcasts.addResponse, {
+      broadcastId,
+      messageId,
     });
     return { content: [{ type: "text", text: "Broadcast response sent" }] };
   },
