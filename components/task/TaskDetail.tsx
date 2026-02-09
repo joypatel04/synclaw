@@ -38,6 +38,13 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const handlePriorityChange = async (priority: string) => { await updateTask({ workspaceId, id: taskId, priority: priority as any }); };
   const handleDelete = async () => { await deleteTask({ workspaceId, id: taskId }); router.push("/"); };
 
+  const toggleAssignee = (agentId: Id<"agents">) => {
+    const next = task.assigneeIds.includes(agentId)
+      ? task.assigneeIds.filter((id) => id !== agentId)
+      : [...task.assigneeIds, agentId];
+    void updateTask({ workspaceId, id: taskId, assigneeIds: next });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)]">
       <div className="flex-1 overflow-y-auto p-6">
@@ -82,7 +89,34 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
 
           <div className="mt-6">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Assignees</h3>
-            {assignees.length === 0 ? <p className="text-xs text-text-dim">No agents assigned</p> : (
+            {canEdit ? (
+              <div className="flex flex-wrap gap-2">
+                {agents.map((agent) => {
+                  const isAssigned = task.assigneeIds.includes(agent._id as Id<"agents">);
+                  return (
+                    <button
+                      key={agent._id}
+                      type="button"
+                      onClick={() => toggleAssignee(agent._id as Id<"agents">)}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-smooth ${
+                        isAssigned
+                          ? "bg-accent-orange/20 border-accent-orange text-accent-orange"
+                          : "bg-bg-primary border-border-default text-text-secondary hover:border-border-hover"
+                      }`}
+                    >
+                      <AgentAvatar emoji={agent.emoji} name={agent.name} size="sm" status={agent.status} />
+                      <div>
+                        <p className="text-xs font-medium">{agent.name}</p>
+                        <p className="text-[10px] opacity-80">{agent.role}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {agents.length === 0 && <p className="text-xs text-text-dim">No agents in workspace. Add agents on the Agents page.</p>}
+              </div>
+            ) : assignees.length === 0 ? (
+              <p className="text-xs text-text-dim">No agents assigned</p>
+            ) : (
               <div className="flex flex-wrap gap-2">
                 {assignees.map((agent) => (
                   <div key={agent._id} className="flex items-center gap-2 rounded-lg bg-bg-secondary border border-border-default px-3 py-2">
