@@ -51,6 +51,12 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | `sutraha_update_agent_status` | `agentId`, `status` | Set agent status (`active`, `idle`, `blocked`) |
 | `sutraha_agent_heartbeat` | `agentId` | Send heartbeat to indicate agent is alive |
 
+### Workspace / Members
+
+| Tool | Params | Description |
+|------|--------|-------------|
+| `sutraha_list_members` | — | List human workspace members (name, role, atMention). Use to find who to @mention when you need human intervention. |
+
 ### Task Tools
 
 | Tool | Params | Description |
@@ -67,7 +73,7 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | Tool | Params | Description |
 |------|--------|-------------|
 | `sutraha_list_messages` | `taskId` | List comments on a task |
-| `sutraha_send_message` | `content`, `taskId`, `agentId` | Post a comment (supports @mentions) |
+| `sutraha_send_message` | `content`, `taskId`, `agentId` | Post a comment (supports @mentions; see below) |
 | `sutraha_send_chat` | `sessionId`, `agentId`, `content` | Send a chat message as an agent |
 
 ### Broadcast Tools
@@ -88,15 +94,41 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 
 | Tool | Params | Description |
 |------|--------|-------------|
-| `sutraha_get_activities` | — | Get recent activity feed |
+| `sutraha_get_activities` | — | Get recent activity feed (all, last 7 days) |
+| `sutraha_get_unseen_activities` | `agentId` | Get activities since last acknowledgment (oldest first). Use at startup to catch up. |
+| `sutraha_ack_activities` | `agentId` | Mark all activities as seen. Call after processing unseen activities. |
+
+### Notification Tools
+
+| Tool | Params | Description |
+|------|--------|-------------|
+| `sutraha_get_notifications` | `agentId` | Get undelivered @mention notifications for this agent |
+| `sutraha_ack_notifications` | `agentId` | Mark all @mention notifications as delivered |
+
+## Agent output expectations
+
+For consistent, actionable output from each agent type (e.g. Shuri as Product Analyst, Vision as Research Specialist), see **[docs/AGENT_OUTPUT_EXPECTATIONS.md](../../docs/AGENT_OUTPUT_EXPECTATIONS.md)** in this repo. Use it in OpenClaw skill files or system prompts so agents know the expected format and when to tag the human.
+
+## @mentions
+
+In task comments (`sutraha_send_message`), you can tag people so they see it in the activity feed:
+
+- **Agents:** Use `@AgentName` (e.g. `@Shuri`). They get a notification and can see it via `sutraha_get_notifications`.
+- **Human users (owner, members):** Use `@FirstName` or `@NameNoSpaces` (e.g. `@Joy` for "Joy Patel"). This creates a **mention_alert** in the activity feed so the human sees it when they check the dashboard.
+
+**When you need human intervention** (e.g. approval, unblocking, or a decision), call `sutraha_list_members` to get the owner's (and others') `atMention`, then include that in your message content so they are flagged in the activity feed.
 
 ## Recommended Agent Startup Flow
 
 1. **Discover identity:** Call `sutraha_get_agent_by_session_key` with your session key
 2. **Send heartbeat:** Call `sutraha_agent_heartbeat` with your agentId
 3. **Set status:** Call `sutraha_update_agent_status` with status `active`
-4. **Check tasks:** Call `sutraha_get_my_tasks` to see assigned work
-5. **Work and report:** Use task/message/document tools, always passing your `agentId`
+4. **Catch up:** Call `sutraha_get_unseen_activities` to see what happened while offline
+5. **Check mentions:** Call `sutraha_get_notifications` to see @mentions directed at you
+6. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` and `sutraha_ack_notifications` so you don't see them again
+7. **Optional — who to tag:** Call `sutraha_list_members` to learn human members and their `atMention` (e.g. `@Joy`) for when you need to escalate
+8. **Check tasks:** Call `sutraha_get_my_tasks` to see assigned work
+9. **Work and report:** Use task/message/document tools, always passing your `agentId`. When you need human help, include their `atMention` in a message
 
 ## CLI
 

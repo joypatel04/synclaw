@@ -44,7 +44,7 @@ export const create = mutation({
       createdAt: now,
     });
 
-    // @mention detection → create notifications
+    // @mention detection → create notifications for agents
     const mentionRegex = /@(\w+)/g;
     let match: RegExpExecArray | null;
     const agents = await ctx.db
@@ -64,6 +64,47 @@ export const create = mutation({
           taskId: args.taskId,
           message: `${authorName} mentioned you: "${args.content.substring(0, 100)}"`,
           delivered: false,
+          createdAt: now,
+        });
+      }
+    }
+
+    // @mention detection → mention_alert for human workspace members
+    const members = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+    // Build display name and alternate handles (first word, no spaces) so @Joy and @JoyPatel both match "Joy Patel"
+    const memberHandles: { displayName: string; handles: string[] }[] = [];
+    for (const m of members) {
+      const user = await ctx.db.get(m.userId);
+      const name = (user as { name?: string | null } | null)?.name ?? (user as { email?: string | null } | null)?.email;
+      if (name && typeof name === "string") {
+        const displayName = name.trim();
+        const firstWord = displayName.split(/\s+/)[0] ?? displayName;
+        const noSpaces = displayName.replace(/\s+/g, "");
+        const handles = [displayName.toLowerCase(), firstWord.toLowerCase(), noSpaces.toLowerCase()];
+        memberHandles.push({ displayName, handles: [...new Set(handles)] });
+      }
+    }
+    const userMentionRegex = /@(\w+)/g;
+    let userMatch: RegExpExecArray | null;
+    const mentionedUserNames = new Set<string>();
+    while (true) {
+      userMatch = userMentionRegex.exec(args.content);
+      if (!userMatch) break;
+      const token = userMatch[1].toLowerCase();
+      const entry = memberHandles.find((e) => e.handles.includes(token));
+      if (entry && !mentionedUserNames.has(entry.displayName)) {
+        mentionedUserNames.add(entry.displayName);
+        const snippet = args.content.length > 80 ? `${args.content.substring(0, 80)}…` : args.content;
+        await ctx.db.insert("activities", {
+          workspaceId: args.workspaceId,
+          type: "mention_alert",
+          agentId: args.agentId,
+          taskId: args.taskId,
+          message: `${authorName} mentioned @${entry.displayName}: "${snippet}"`,
+          metadata: { taskId: args.taskId },
           createdAt: now,
         });
       }

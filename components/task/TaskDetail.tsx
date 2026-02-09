@@ -7,6 +7,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { CommentThread } from "./CommentThread";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,11 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <h1 className="text-2xl font-bold text-text-primary">{task.title}</h1>
             <div className="flex items-center gap-2 shrink-0"><PriorityBadge priority={task.priority} /><StatusBadge status={task.status} /></div>
           </div>
-          {task.description && <p className="mt-4 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{task.description}</p>}
+          {task.description && (
+            <div className="mt-4 text-sm text-text-secondary leading-relaxed">
+              <MarkdownContent content={task.description} />
+            </div>
+          )}
 
           <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-border-default bg-bg-secondary p-4">
             <div>

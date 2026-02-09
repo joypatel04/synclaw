@@ -1,5 +1,6 @@
 "use client";
 
+import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { MessageSquare, Radio, Users } from "lucide-react";
@@ -30,9 +31,9 @@ export function BroadcastCard({ broadcast }: BroadcastCardProps) {
           <Timestamp time={broadcast.createdAt} />
         </div>
 
-        <p className="mt-3 text-xs text-text-secondary line-clamp-2 leading-relaxed">
-          {broadcast.content}
-        </p>
+        <div className="mt-3 text-xs text-text-secondary line-clamp-2 leading-relaxed">
+          <MarkdownContent content={broadcast.content} />
+        </div>
 
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-text-muted">

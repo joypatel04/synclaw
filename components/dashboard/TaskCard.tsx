@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
+import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { cn } from "@/lib/utils";
@@ -35,9 +36,9 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
         </div>
 
         {task.description && (
-          <p className="mt-1.5 text-xs text-text-muted line-clamp-2">
-            {task.description}
-          </p>
+          <div className="mt-1.5 text-xs text-text-muted line-clamp-2">
+            <MarkdownContent content={task.description} />
+          </div>
         )}
 
         <div className="mt-3 flex items-center justify-between">

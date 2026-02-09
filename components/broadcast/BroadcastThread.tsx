@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import type { Id } from "@/convex/_generated/dataModel";
+import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ArrowLeft, MessageSquare, Radio, Users } from "lucide-react";
@@ -30,7 +31,9 @@ export function BroadcastThread({ broadcastId }: BroadcastThreadProps) {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-status-review/20 shrink-0"><Radio className="h-5 w-5 text-status-review" /></div>
           <div className="flex-1"><h1 className="text-xl font-bold text-text-primary">{broadcast.title}</h1><div className="mt-1 flex items-center gap-3"><span className="text-sm text-text-muted">by {broadcast.createdBy}</span><Timestamp time={broadcast.createdAt} /></div></div>
         </div>
-        <p className="mt-4 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{broadcast.content}</p>
+        <div className="mt-4 text-sm text-text-secondary leading-relaxed">
+          <MarkdownContent content={broadcast.content} />
+        </div>
         <div className="mt-4 flex items-center gap-2"><Users className="h-4 w-4 text-text-muted" /><div className="flex flex-wrap gap-1.5">{targetAgents.map((a) => <span key={a._id} className="inline-flex items-center gap-1 rounded-md bg-bg-tertiary px-2 py-0.5 text-xs text-text-secondary">{a.emoji} {a.name}</span>)}</div></div>
       </div>
       <div className="mt-6">
@@ -40,7 +43,7 @@ export function BroadcastThread({ broadcastId }: BroadcastThreadProps) {
         ) : (
           <ScrollArea className="max-h-[400px]"><div className="space-y-3">{broadcast.responseMessages.map((msg: any) => {
             const agent = agents.find((a) => a._id === msg?.agentId); if (!msg) return null;
-            return (<div key={msg._id} className="rounded-lg border border-border-default bg-bg-secondary p-4"><div className="flex items-center gap-2"><span className="text-lg">{agent?.emoji ?? "🤖"}</span><span className="text-sm font-medium text-text-primary">{msg.authorName}</span><Timestamp time={msg.createdAt} /></div><p className="mt-2 text-sm text-text-secondary leading-relaxed">{msg.content}</p></div>);
+            return (<div key={msg._id} className="rounded-lg border border-border-default bg-bg-secondary p-4"><div className="flex items-center gap-2"><span className="text-lg">{agent?.emoji ?? "🤖"}</span><span className="text-sm font-medium text-text-primary">{msg.authorName}</span><Timestamp time={msg.createdAt} /></div><div className="mt-2 text-sm text-text-secondary leading-relaxed"><MarkdownContent content={msg.content} /></div></div>);
           })}</div></ScrollArea>
         )}
       </div>

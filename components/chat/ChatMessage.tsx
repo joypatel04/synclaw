@@ -1,5 +1,6 @@
 "use client";
 
+import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
@@ -43,9 +44,9 @@ export function ChatMessage({
         <p className="text-xs font-medium text-text-muted mb-0.5">
           {isUser ? "You" : agentName}
         </p>
-        <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">
-          {message.content}
-        </p>
+        <div className="text-sm text-text-primary leading-relaxed">
+          <MarkdownContent content={message.content} />
+        </div>
         <Timestamp time={message.createdAt} className="mt-1 block text-right" />
       </div>
     </div>

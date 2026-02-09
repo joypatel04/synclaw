@@ -79,6 +79,26 @@ server.tool(
 );
 
 // ═══════════════════════════════════════════════════════════
+//  Workspace / Members (human users you can @mention)
+// ═══════════════════════════════════════════════════════════
+
+server.tool(
+  "sutraha_list_members",
+  "List workspace members (human users). Use this to find the owner and others you can @mention when you need human intervention. Use atMention in message content, e.g. include '@Joy' to tag that member.",
+  {},
+  async () => {
+    const members = await client.query(api.workspaces.getMembers);
+    const withHandle = members.map((m: { name?: string; email?: string; role: string }) => {
+      const displayName = m.name || m.email || "User";
+      const firstWord = displayName.trim().split(/\s+/)[0] || displayName;
+      const atMention = `@${firstWord}`;
+      return { ...m, displayName, atMention, role: m.role };
+    });
+    return { content: [{ type: "text", text: JSON.stringify(withHandle, null, 2) }] };
+  },
+);
+
+// ═══════════════════════════════════════════════════════════
 //  Task Tools
 // ═══════════════════════════════════════════════════════════
 

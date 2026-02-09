@@ -7,6 +7,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { CommentForm } from "./CommentForm";
 import { MessageSquare } from "lucide-react";
+import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -38,7 +39,9 @@ export function CommentThread({ taskId }: CommentThreadProps) {
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">{getAgentEmoji(msg.agentId) ?? "👤"}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2"><span className="text-sm font-medium text-text-primary">{msg.authorName}</span><Timestamp time={msg.createdAt} /></div>
-                  <p className="mt-1 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <div className="mt-1 text-sm text-text-secondary leading-relaxed">
+                    <MarkdownContent content={msg.content} />
+                  </div>
                 </div>
               </div>
             ))}
