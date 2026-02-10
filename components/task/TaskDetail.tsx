@@ -48,7 +48,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-3xl">
+        <div className="max-w-7xl mx-auto">
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-smooth mb-6"><ArrowLeft className="h-4 w-4" />Back to dashboard</Link>
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-2xl font-bold text-text-primary">{task.title}</h1>
