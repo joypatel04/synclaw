@@ -1,44 +1,141 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { CommentForm } from "./CommentForm";
-import { MessageSquare } from "lucide-react";
+import { FileText, MessageSquare } from "lucide-react";
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
 
-interface CommentThreadProps { taskId: Id<"tasks">; }
+interface CommentThreadProps {
+  taskId: Id<"tasks">;
+}
+
+type DocType = "deliverable" | "research" | "protocol" | "note";
 
 export function CommentThread({ taskId }: CommentThreadProps) {
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, canEdit } = useWorkspace();
   const messages = useQuery(api.messages.list, { workspaceId, taskId }) ?? [];
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
+  const createDocument = useMutation(api.documents.create);
+
+  const [sourceMessage, setSourceMessage] = useState<Doc<"messages"> | null>(
+    null,
+  );
+  const [docTitle, setDocTitle] = useState("");
+  const [docType, setDocType] = useState<DocType>("note");
+  const [docAgentId, setDocAgentId] = useState<string>("");
+  const [docContent, setDocContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const getAgentEmoji = (agentId: string | null) => {
     if (!agentId) return null;
     return agents.find((a) => a._id === agentId)?.emoji;
   };
 
+  const openDocModalFor = (msg: Doc<"messages">) => {
+    setSourceMessage(msg);
+    const firstLine = msg.content.split("\n")[0] ?? "";
+    setDocTitle(firstLine.slice(0, 80) || "New document");
+    setDocContent(msg.content);
+    setDocType("note");
+    const defaultAgentId =
+      (msg.agentId as string | null) ??
+      (agents.length > 0 ? (agents[0]._id as string) : "");
+    setDocAgentId(defaultAgentId);
+  };
+
+  const closeDocModal = () => {
+    if (isSaving) return;
+    setSourceMessage(null);
+    setDocTitle("");
+    setDocContent("");
+    setDocAgentId("");
+  };
+
+  const handleSaveDocument = async () => {
+    if (!sourceMessage || !docAgentId) return;
+    setIsSaving(true);
+    try {
+      await createDocument({
+        workspaceId,
+        title: docTitle.trim() || "New document",
+        content: docContent,
+        type: docType,
+        taskId,
+        agentId: docAgentId as Id<"agents">,
+      });
+      closeDocModal();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border-default">
         <MessageSquare className="h-4 w-4 text-accent-orange" />
-        <h3 className="text-sm font-semibold text-text-primary">Comments ({messages.length})</h3>
+        <h3 className="text-sm font-semibold text-text-primary">
+          Comments ({messages.length})
+        </h3>
       </div>
       <ScrollArea className="flex-1 px-4 py-3">
         {messages.length === 0 ? (
-          <EmptyState icon={MessageSquare} title="No comments yet" description="Start the discussion" />
+          <EmptyState
+            icon={MessageSquare}
+            title="No comments yet"
+            description="Start the discussion"
+          />
         ) : (
           <div className="space-y-4">
             {messages.map((msg) => (
               <div key={msg._id} className="flex gap-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">{getAgentEmoji(msg.agentId) ?? "👤"}</div>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">
+                  {getAgentEmoji(msg.agentId) ?? "👤"}
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2"><span className="text-sm font-medium text-text-primary">{msg.authorName}</span><Timestamp time={msg.createdAt} /></div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-text-primary">
+                        {msg.authorName}
+                      </span>
+                      <Timestamp time={msg.createdAt} />
+                    </div>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px] text-text-muted hover:text-accent-orange gap-1"
+                        onClick={() => openDocModalFor(msg as Doc<"messages">)}
+                      >
+                        <FileText className="h-3 w-3" />
+                        Save as doc
+                      </Button>
+                    )}
+                  </div>
                   <div className="mt-1 text-sm text-text-secondary leading-relaxed">
                     <MarkdownContent content={msg.content} />
                   </div>
@@ -48,7 +145,104 @@ export function CommentThread({ taskId }: CommentThreadProps) {
           </div>
         )}
       </ScrollArea>
-      <div className="border-t border-border-default p-4"><CommentForm taskId={taskId} /></div>
+      <div className="border-t border-border-default p-4">
+        <CommentForm taskId={taskId} />
+      </div>
+
+      {canEdit && sourceMessage && (
+        <Dialog open={!!sourceMessage} onOpenChange={(open) => !open && closeDocModal()}>
+          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle className="text-text-primary flex items-center gap-2">
+                <FileText className="h-4 w-4 text-accent-orange" />
+                Save comment as document
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  Title
+                </p>
+                <Input
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  placeholder="Document title"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  Type
+                </p>
+                <Select
+                  value={docType}
+                  onValueChange={(v) => setDocType(v as DocType)}
+                >
+                  <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-tertiary border-border-default text-xs">
+                    <SelectItem value="deliverable">Deliverable</SelectItem>
+                    <SelectItem value="research">Research</SelectItem>
+                    <SelectItem value="protocol">Protocol</SelectItem>
+                    <SelectItem value="note">Note</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  Attribute to agent
+                </p>
+                <Select
+                  value={docAgentId}
+                  onValueChange={(v) => setDocAgentId(v)}
+                >
+                  <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-tertiary border-border-default text-xs">
+                    {agents.map((agent) => (
+                      <SelectItem key={agent._id} value={agent._id}>
+                        {agent.emoji} {agent.name} — {agent.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  Content (Markdown)
+                </p>
+                <Textarea
+                  value={docContent}
+                  onChange={(e) => setDocContent(e.target.value)}
+                  rows={6}
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeDocModal}
+                className="border-border-default text-text-secondary"
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveDocument}
+                disabled={!docAgentId || isSaving}
+                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              >
+                {isSaving ? "Saving..." : "Save document"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
