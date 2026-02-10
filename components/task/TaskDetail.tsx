@@ -46,7 +46,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl">
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-smooth mb-6"><ArrowLeft className="h-4 w-4" />Back to dashboard</Link>
@@ -132,18 +132,44 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <div className="mt-8 border-t border-border-default pt-6">
               {showDeleteConfirm ? (
                 <div className="flex items-center gap-3 rounded-lg bg-status-blocked/10 border border-status-blocked/30 p-4">
-                  <p className="text-sm text-text-primary flex-1">Are you sure you want to delete this task?</p>
-                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(false)} className="border-border-default text-text-secondary">Cancel</Button>
-                  <Button size="sm" onClick={handleDelete} className="bg-status-blocked hover:bg-status-blocked/90 text-white">Delete</Button>
+                  <p className="text-sm text-text-primary flex-1">
+                    Are you sure you want to delete this task?
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="border-border-default text-text-secondary"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleDelete}
+                    className="bg-status-blocked hover:bg-status-blocked/90 text-white"
+                  >
+                    Delete
+                  </Button>
                 </div>
               ) : (
-                <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(true)} className="border-status-blocked/30 text-status-blocked hover:bg-status-blocked/10"><Trash2 className="h-4 w-4 mr-1.5" />Delete Task</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="border-status-blocked/30 text-status-blocked hover:bg-status-blocked/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Delete Task
+                </Button>
               )}
             </div>
           )}
+
+          <div className="mt-10 rounded-xl border border-border-default bg-bg-secondary">
+            <CommentThread taskId={taskId} />
+          </div>
         </div>
       </div>
-      <div className="w-full lg:w-[400px] border-t lg:border-t-0 lg:border-l border-border-default bg-bg-secondary"><CommentThread taskId={taskId} /></div>
     </div>
   );
 }
