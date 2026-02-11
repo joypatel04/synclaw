@@ -151,15 +151,15 @@ export function CommentThread({ taskId }: CommentThreadProps) {
 
       {canEdit && sourceMessage && (
         <Dialog open={!!sourceMessage} onOpenChange={(open) => !open && closeDocModal()}>
-          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px] max-h-[90vh] flex flex-col">
-            <DialogHeader className="shrink-0">
+          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+            <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
               <DialogTitle className="text-text-primary flex items-center gap-2">
                 <FileText className="h-4 w-4 text-accent-orange" />
                 Save comment as document
               </DialogTitle>
             </DialogHeader>
-            <ScrollArea className="flex-1 min-h-0 px-1">
-              <div className="space-y-4 pr-3">
+            <ScrollArea className="flex-1 min-h-0 overflow-y-auto px-6">
+              <div className="space-y-4 pr-3 pb-4">
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                     Title
@@ -223,7 +223,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
                 </div>
               </div>
             </ScrollArea>
-            <DialogFooter className="shrink-0 mt-4">
+            <DialogFooter className="shrink-0 px-6 pt-4 pb-6 border-t border-border-default">
               <Button
                 type="button"
                 variant="outline"
