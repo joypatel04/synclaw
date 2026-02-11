@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DOC_TYPES = [
   { value: undefined, label: "All" },
@@ -173,77 +174,79 @@ function DocumentsContent() {
 
       {canEdit && (
         <Dialog open={showCreate} onOpenChange={(open) => !open && closeCreate()}>
-          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px]">
-            <DialogHeader>
+          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px] max-h-[90vh] flex flex-col">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="text-text-primary flex items-center gap-2">
                 <FileText className="h-4 w-4 text-accent-orange" />
                 New document
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                  Title
-                </p>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Document title"
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                />
+            <ScrollArea className="flex-1 min-h-0 px-1">
+              <div className="space-y-4 pr-3">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                    Title
+                  </p>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Document title"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                    Type
+                  </p>
+                  <Select
+                    value={docType}
+                    onValueChange={(v) => setDocType(v as DocType)}
+                  >
+                    <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-bg-tertiary border-border-default text-xs">
+                      <SelectItem value="deliverable">Deliverable</SelectItem>
+                      <SelectItem value="research">Research</SelectItem>
+                      <SelectItem value="protocol">Protocol</SelectItem>
+                      <SelectItem value="note">Note</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                    Attribute to agent
+                  </p>
+                  <Select
+                    value={docAgentId}
+                    onValueChange={(v) => setDocAgentId(v)}
+                  >
+                    <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                      <SelectValue placeholder="Select agent" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-bg-tertiary border-border-default text-xs">
+                      {agents.map((agent) => (
+                        <SelectItem key={agent._id} value={agent._id}>
+                          {agent.emoji} {agent.name} — {agent.role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                    Content (Markdown)
+                  </p>
+                  <Textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    rows={6}
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                  Type
-                </p>
-                <Select
-                  value={docType}
-                  onValueChange={(v) => setDocType(v as DocType)}
-                >
-                  <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-bg-tertiary border-border-default text-xs">
-                    <SelectItem value="deliverable">Deliverable</SelectItem>
-                    <SelectItem value="research">Research</SelectItem>
-                    <SelectItem value="protocol">Protocol</SelectItem>
-                    <SelectItem value="note">Note</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                  Attribute to agent
-                </p>
-                <Select
-                  value={docAgentId}
-                  onValueChange={(v) => setDocAgentId(v)}
-                >
-                  <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
-                    <SelectValue placeholder="Select agent" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-bg-tertiary border-border-default text-xs">
-                    {agents.map((agent) => (
-                      <SelectItem key={agent._id} value={agent._id}>
-                        {agent.emoji} {agent.name} — {agent.role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                  Content (Markdown)
-                </p>
-                <Textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={6}
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                />
-              </div>
-            </div>
-            <DialogFooter>
+            </ScrollArea>
+            <DialogFooter className="shrink-0 mt-4">
               <Button
                 type="button"
                 variant="outline"
