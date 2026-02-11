@@ -39,6 +39,10 @@ export function getStatusColor(status: string): string {
       return "text-status-idle";
     case "blocked":
       return "text-status-blocked";
+    case "error":
+      return "text-status-blocked";
+    case "offline":
+      return "text-text-muted";
     case "review":
       return "text-status-review";
     case "in_progress":
@@ -57,6 +61,10 @@ export function getStatusBgColor(status: string): string {
       return "bg-status-idle/20 text-status-idle";
     case "blocked":
       return "bg-status-blocked/20 text-status-blocked";
+    case "error":
+      return "bg-status-blocked/20 text-status-blocked";
+    case "offline":
+      return "bg-text-muted/20 text-text-muted";
     case "review":
       return "bg-status-review/20 text-status-review";
     case "in_progress":

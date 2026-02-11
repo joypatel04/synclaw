@@ -45,6 +45,8 @@ type AgentFormData = {
   externalAgentId: string;
 };
 
+const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000;
+
 const emptyForm: AgentFormData = {
   name: "",
   role: "",
@@ -79,9 +81,34 @@ function AgentsContent() {
 
   const handleStatusChange = async (
     agentId: Id<"agents">,
-    status: "idle" | "active" | "blocked",
+    status: "idle" | "active" | "error" | "offline",
   ) => {
     await updateStatus({ workspaceId, id: agentId, status });
+  };
+
+  const getEffectiveStatus = (
+    agent: (typeof agents)[number],
+  ): "idle" | "active" | "error" | "offline" => {
+    const pulseAt = agent.lastPulseAt ?? 0;
+    if (Date.now() - pulseAt > OFFLINE_THRESHOLD_MS) return "offline";
+    return agent.status;
+  };
+
+  const formatTokens = (tokens: number | undefined) =>
+    typeof tokens === "number" ? tokens.toLocaleString("en-US") : "0";
+
+  const formatDuration = (ms: number | undefined) => {
+    if (!ms || ms <= 0) return "0s";
+    if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+    const mins = Math.floor(ms / 60_000);
+    const secs = Math.floor((ms % 60_000) / 1000);
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  };
+
+  const formatCost = (cost: number | undefined) => {
+    if (cost === undefined || cost === null) return "$0.00";
+    if (cost === 0) return "Free";
+    return `$${cost.toFixed(4)}`;
   };
 
   const openCreate = () => {
@@ -146,6 +173,7 @@ function AgentsContent() {
     const agentTasks = tasks.filter((t) =>
       t.assigneeIds.includes(agent._id),
     );
+    const effectiveStatus = getEffectiveStatus(agent);
     return (
       <div
         key={agent._id}
@@ -160,7 +188,7 @@ function AgentsContent() {
               emoji={agent.emoji}
               name={agent.name}
               size="lg"
-              status={isArchived ? "idle" : agent.status}
+              status={isArchived ? "idle" : effectiveStatus}
             />
             <div>
               <div className="flex items-center gap-2">
@@ -192,11 +220,11 @@ function AgentsContent() {
             {/* Status dropdown — admin+ can change, but not for archived */}
             {canManage && !isArchived && (
               <Select
-                value={agent.status}
+                value={effectiveStatus}
                 onValueChange={(v) =>
                   handleStatusChange(
                     agent._id,
-                    v as "idle" | "active" | "blocked",
+                    v as "idle" | "active" | "error" | "offline",
                   )
                 }
               >
@@ -206,7 +234,8 @@ function AgentsContent() {
                 <SelectContent className="bg-bg-tertiary border-border-default">
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="idle">Idle</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -256,28 +285,57 @@ function AgentsContent() {
         </div>
 
         {!isArchived && (
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">
-                Status
-              </p>
-              <StatusBadge status={agent.status} className="mt-1" />
+          <>
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
+                <p className="text-[10px] text-text-dim uppercase tracking-wider">
+                  Status
+                </p>
+                <StatusBadge status={effectiveStatus} className="mt-1" />
+              </div>
+              <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
+                <p className="text-[10px] text-text-dim uppercase tracking-wider">
+                  Tasks
+                </p>
+                <p className="mt-1 text-sm font-medium text-text-primary">
+                  {agentTasks.length}
+                </p>
+              </div>
+              <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
+                <p className="text-[10px] text-text-dim uppercase tracking-wider">
+                  Last Pulse
+                </p>
+                <Timestamp time={agent.lastPulseAt ?? agent.lastHeartbeat} className="mt-1" />
+              </div>
             </div>
-            <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">
-                Tasks
-              </p>
-              <p className="mt-1 text-sm font-medium text-text-primary">
-                {agentTasks.length}
-              </p>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">Model</p>
+                <p className="mt-1 text-xs font-medium text-text-primary">
+                  {agent.telemetry?.currentModel || "unknown"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">OpenClaw</p>
+                <p className="mt-1 text-xs font-medium text-text-primary">
+                  {agent.telemetry?.openclawVersion || "unknown"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">Total Tokens</p>
+                <p className="mt-1 text-xs font-medium text-text-primary">
+                  {formatTokens(agent.telemetry?.totalTokensUsed)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">Last Run</p>
+                <p className="mt-1 text-xs font-medium text-text-primary">
+                  {formatDuration(agent.telemetry?.lastRunDurationMs)} • {formatCost(agent.telemetry?.lastRunCost)}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg bg-bg-primary/50 px-3 py-2">
-              <p className="text-[10px] text-text-dim uppercase tracking-wider">
-                Last Heartbeat
-              </p>
-              <Timestamp time={agent.lastHeartbeat} className="mt-1" />
-            </div>
-          </div>
+          </>
         )}
       </div>
     );

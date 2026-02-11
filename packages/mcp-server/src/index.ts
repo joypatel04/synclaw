@@ -57,10 +57,10 @@ server.tool(
 
 server.tool(
   "sutraha_update_agent_status",
-  "Update an agent's status (active, idle, or blocked)",
+  "Update an agent's status",
   {
     agentId: z.string().describe("Agent ID"),
-    status: z.enum(["active", "idle", "blocked"]).describe("New status"),
+    status: z.enum(["active", "idle", "error", "offline"]).describe("New status"),
   },
   async ({ agentId, status }) => {
     await client.mutation(api.agents.updateStatus, { id: agentId, status });
@@ -83,7 +83,7 @@ server.tool(
   "Send a pulse with status and optional telemetry. Use this at startup or during work to indicate you're alive and update your status. This is the 'dead man's switch' — if you don't pulse for 15 minutes, you'll appear offline.",
   {
     agentId: z.string().describe("Your Agent ID"),
-    status: z.enum(["idle", "active", "blocked", "error", "offline"]).describe("Current status"),
+    status: z.enum(["idle", "active", "error", "offline"]).describe("Current status"),
     telemetry: z
       .object({
         currentModel: z.string().optional().describe("Model name (e.g., 'nvidia-kimi')"),
@@ -381,34 +381,54 @@ server.tool(
 server.tool(
   "sutraha_list_documents",
   "List documents in the workspace",
-  { taskId: z.string().optional().describe("Filter by task ID") },
-  async ({ taskId }) => {
+  {
+    taskId: z.string().optional().describe("Filter by task ID"),
+    globalOnly: z.boolean().optional().describe("If true, only global-context docs are returned"),
+    draftsOnly: z.boolean().optional().describe("If true, only draft docs are returned"),
+  },
+  async ({ taskId, globalOnly, draftsOnly }) => {
     const docs = taskId
       ? await client.query(api.documents.getByTask, { taskId })
-      : await client.query(api.documents.list);
+      : await client.query(api.documents.list, {
+          ...(globalOnly ? { isGlobalContext: true } : {}),
+          ...(draftsOnly ? { onlyDrafts: true } : {}),
+        });
     return { content: [{ type: "text", text: JSON.stringify(docs, null, 2) }] };
   },
 );
 
 server.tool(
-  "sutraha_create_document",
-  "Create a document in the workspace",
+  "sutraha_upsert_document",
+  "Create or update a document in the workspace",
   {
+    documentId: z.string().optional().describe("Existing document ID to update; omit to create"),
     title: z.string().describe("Document title"),
     content: z.string().describe("Document content (markdown)"),
-    type: z.enum(["deliverable", "research", "protocol", "note"]).optional().describe("Document type (default: note)"),
+    type: z.enum(["deliverable", "research", "protocol", "note", "journal"]).optional().describe("Document type (default: note)"),
+    status: z.enum(["draft", "final", "archived"]).optional().describe("Document status (default: draft)"),
     taskId: z.string().optional().describe("Link to a task"),
+    folderId: z.string().optional().describe("Folder ID"),
     agentId: z.string().describe("Agent ID creating the document"),
+    isGlobalContext: z.boolean().optional().describe("Whether this doc should be injected for all runs"),
   },
-  async ({ title, content, type, taskId, agentId }) => {
-    const id = await client.mutation(api.documents.create, {
+  async ({ documentId, title, content, type, status, taskId, folderId, agentId, isGlobalContext }) => {
+    const id = await client.mutation(api.documents.upsertDocument, {
+      ...(documentId ? { id: documentId } : {}),
       title,
       content,
       type: type ?? "note",
+      status: status ?? "draft",
       taskId: taskId ?? null,
+      folderId,
       agentId,
+      isGlobalContext,
     });
-    return { content: [{ type: "text", text: `Document created with ID: ${id}` }] };
+    return {
+      content: [{
+        type: "text",
+        text: `${documentId ? "Document updated" : "Document created"} with ID: ${id}`,
+      }],
+    };
   },
 );
 

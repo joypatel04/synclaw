@@ -27,12 +27,12 @@ Sutraha HQ CLI
 Usage: sutraha-cli <resource> <action> [options]
 
 Resources:
-  agents     list | get --id <id> | heartbeat --id <id> | status --id <id> --status <s>
+  agents     list | get --id <id> | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
   tasks      list | get --id <id> | create --title <t> | update-status --id <id> --status <s>
   messages   list --task-id <id> | send --task-id <id> --agent-id <id> --content <msg>
   chat       send --session-id <sid> --agent-id <id> --message <msg>
   broadcasts list
-  documents  list | create --title <t> --content <c> --agent-id <id>
+  documents  list | create --title <t> --content <c> --agent-id <id> [--status draft|final|archived]
   activities list
 
 Environment variables:
@@ -192,6 +192,7 @@ async function main() {
               title: requireArg(rest, "--title", "title"),
               content: requireArg(rest, "--content", "content"),
               type: getArg(rest, "--type") ?? "note",
+              status: getArg(rest, "--status") ?? "draft",
               taskId: getArg(rest, "--task-id") ?? null,
               agentId: requireArg(rest, "--agent-id", "agentId"),
             });

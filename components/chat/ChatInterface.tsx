@@ -37,7 +37,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-bg-tertiary text-xl">{agent.emoji}</div>
         <div><h2 className="text-sm font-semibold text-text-primary">{agent.name}</h2><p className="text-xs text-text-muted">{agent.role}</p></div>
         <div className="ml-auto flex items-center gap-1.5">
-          <span className={`h-2 w-2 rounded-full ${agent.status === "active" ? "bg-status-active" : agent.status === "blocked" ? "bg-status-blocked" : "bg-status-idle"}`} />
+          <span className={`h-2 w-2 rounded-full ${agent.status === "active" ? "bg-status-active" : agent.status === "error" ? "bg-status-blocked" : agent.status === "offline" ? "bg-text-muted" : "bg-status-idle"}`} />
           <span className="text-xs text-text-muted capitalize">{agent.status}</span>
         </div>
       </div>

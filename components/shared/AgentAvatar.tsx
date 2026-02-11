@@ -6,7 +6,7 @@ interface AgentAvatarProps {
   emoji: string;
   name: string;
   size?: "sm" | "md" | "lg";
-  status?: "active" | "idle" | "blocked" | "error" | "offline";
+  status?: "active" | "idle" | "error" | "offline";
   className?: string;
 }
 
@@ -19,7 +19,6 @@ const sizeClasses = {
 const statusColors = {
   active: "bg-status-active",
   idle: "bg-status-idle",
-  blocked: "bg-status-blocked",
   error: "bg-status-error",
   offline: "bg-status-offline",
 };

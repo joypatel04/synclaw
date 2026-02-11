@@ -12,13 +12,19 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, currentTask }: AgentCardProps) {
+  const model = agent.telemetry?.currentModel;
+  const openclawVersion = agent.telemetry?.openclawVersion;
+  const showTelemetry =
+    (model && model !== "unknown") ||
+    (openclawVersion && openclawVersion !== "unknown");
+
   return (
     <div
       className={cn(
         "group rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth",
         "hover:border-border-hover hover:bg-bg-tertiary",
         agent.status === "active" && "border-l-2 border-l-status-active",
-        agent.status === "blocked" && "border-l-2 border-l-status-blocked",
+        agent.status === "error" && "border-l-2 border-l-status-blocked",
       )}
     >
       <div className="flex items-start justify-between">
@@ -46,6 +52,12 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
             {currentTask.title}
           </p>
         </div>
+      )}
+
+      {showTelemetry && (
+        <p className="mt-3 text-[11px] text-text-muted truncate">
+          {model && model !== "unknown" ? model : "unknown model"} • OC {openclawVersion && openclawVersion !== "unknown" ? openclawVersion : "unknown"}
+        </p>
       )}
 
       <div className="mt-3 flex items-center justify-between">

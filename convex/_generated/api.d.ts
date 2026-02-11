@@ -17,6 +17,7 @@ import type * as broadcasts from "../broadcasts.js";
 import type * as chatActions from "../chatActions.js";
 import type * as chatMessages from "../chatMessages.js";
 import type * as documents from "../documents.js";
+import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as lib_apiAuth from "../lib/apiAuth.js";
 import type * as lib_permissions from "../lib/permissions.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   chatActions: typeof chatActions;
   chatMessages: typeof chatMessages;
   documents: typeof documents;
+  folders: typeof folders;
   http: typeof http;
   "lib/apiAuth": typeof lib_apiAuth;
   "lib/permissions": typeof lib_permissions;

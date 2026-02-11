@@ -93,29 +93,19 @@ export default defineSchema({
     status: v.union(
       v.literal("idle"),
       v.literal("active"),
-      v.literal("blocked"),
       v.literal("error"),
       v.literal("offline"),
     ),
     currentTaskId: v.union(v.id("tasks"), v.null()),
     lastHeartbeat: v.number(),
-    /**
-     * Last time this agent "checked in" from the perspective of OpenClaw.
-     * Used for online/offline pulse calculations in the dashboard.
-     */
-    lastPulseAt: v.optional(v.number()),
-    /**
-     * Aggregated telemetry for this agent's model usage and performance.
-     */
-    telemetry: v.optional(
-      v.object({
-        currentModel: v.string(),
-        openclawVersion: v.string(),
-        totalTokensUsed: v.number(),
-        lastRunDurationMs: v.number(),
-        lastRunCost: v.float64(),
-      }),
-    ),
+    lastPulseAt: v.number(),
+    telemetry: v.object({
+      currentModel: v.string(),
+      openclawVersion: v.string(),
+      totalTokensUsed: v.number(),
+      lastRunDurationMs: v.number(),
+      lastRunCost: v.float64(),
+    }),
     lastSeenActivityAt: v.optional(v.number()),
     createdAt: v.number(),
   })
@@ -194,22 +184,44 @@ export default defineSchema({
     .index("byWorkspace", ["workspaceId"])
     .index("undeliveredForAgent", ["mentionedAgentId", "delivered"]),
 
+  folders: defineTable({
+    name: v.string(),
+    workspaceId: v.id("workspaces"),
+    parentId: v.optional(v.id("folders")),
+    icon: v.optional(v.string()),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byParent", ["parentId"]),
+
   documents: defineTable({
     workspaceId: v.id("workspaces"),
     title: v.string(),
     content: v.string(),
+    agentId: v.id("agents"),
+    lastEditedBy: v.id("agents"),
     type: v.union(
       v.literal("deliverable"),
       v.literal("research"),
       v.literal("protocol"),
       v.literal("note"),
+      v.literal("journal"),
+    ),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("final"),
+      v.literal("archived"),
     ),
     taskId: v.union(v.id("tasks"), v.null()),
-    agentId: v.id("agents"),
-    createdAt: v.number(),
+    folderId: v.optional(v.id("folders")),
+    isGlobalContext: v.boolean(),
+    version: v.number(),
+    createdAt: v.float64(),
+    updatedAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byTask", ["taskId"])
+    .index("byFolder", ["folderId"])
+    .index("global", ["isGlobalContext"])
     .index("recent", ["createdAt"]),
 
   broadcasts: defineTable({

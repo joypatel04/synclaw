@@ -123,12 +123,21 @@ export const create = mutation({
       { name: "Vision", role: "Research Specialist", emoji: "👁️", sessionKey: `agent:vision:${finalSlug}` },
     ];
     for (const agent of defaultAgents) {
+      const now = Date.now();
       await ctx.db.insert("agents", {
         workspaceId,
         ...agent,
         status: "idle",
         currentTaskId: null,
         lastHeartbeat: now,
+        lastPulseAt: now,
+        telemetry: {
+          currentModel: "unknown",
+          openclawVersion: "unknown",
+          totalTokensUsed: 0,
+          lastRunDurationMs: 0,
+          lastRunCost: 0,
+        },
         createdAt: now,
       });
     }
@@ -194,12 +203,21 @@ export const getOrCreateDefault = mutation({
       { name: "Vision", role: "Research Specialist", emoji: "👁️", sessionKey: `agent:vision:${slug}` },
     ];
     for (const agent of defaultAgents) {
+      const now = Date.now();
       await ctx.db.insert("agents", {
         workspaceId,
         ...agent,
         status: "idle",
         currentTaskId: null,
         lastHeartbeat: now,
+        lastPulseAt: now,
+        telemetry: {
+          currentModel: "unknown",
+          openclawVersion: "unknown",
+          totalTokensUsed: 0,
+          lastRunDurationMs: 0,
+          lastRunCost: 0,
+        },
         createdAt: now,
       });
     }

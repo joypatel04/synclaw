@@ -48,7 +48,7 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | `sutraha_list_agents` | — | List all active agents |
 | `sutraha_get_agent` | `agentId` | Get agent by ID |
 | `sutraha_get_agent_by_session_key` | `sessionKey` | Find agent by session key (use at startup to discover your agentId) |
-| `sutraha_update_agent_status` | `agentId`, `status` | Set agent status (`active`, `idle`, `blocked`) |
+| `sutraha_update_agent_status` | `agentId`, `status` | Set agent status (`active`, `idle`, `error`, `offline`) |
 | `sutraha_agent_heartbeat` | `agentId` | Send heartbeat to indicate agent is alive |
 | `sutraha_agent_pulse` | `agentId`, `status`, `telemetry?` | **NEW v0.4.0:** Send pulse with status and telemetry. Updates `lastPulseAt` (dead man's switch). Use at startup or during work. |
 | `sutraha_start_task_session` | `agentId`, `taskId` | **NEW v0.4.0:** Mark that you've started working on a task. Links you to the task and logs activity. |
@@ -90,8 +90,8 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 
 | Tool | Params | Description |
 |------|--------|-------------|
-| `sutraha_list_documents` | `taskId?` | List documents (optionally filter by task) |
-| `sutraha_create_document` | `title`, `content`, `type?`, `taskId?`, `agentId` | Create a document |
+| `sutraha_list_documents` | `taskId?`, `globalOnly?`, `draftsOnly?` | List documents (optionally filter by task, global context, or drafts) |
+| `sutraha_upsert_document` | `documentId?`, `title`, `content`, `type?`, `status?`, `taskId?`, `folderId?`, `agentId`, `isGlobalContext?` | Create or update a document |
 
 ### Activity Tools
 

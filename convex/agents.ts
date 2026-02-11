@@ -2,6 +2,14 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole, requireMember } from "./lib/permissions";
 
+const defaultTelemetry = {
+  currentModel: "unknown",
+  openclawVersion: "unknown",
+  totalTokensUsed: 0,
+  lastRunDurationMs: 0,
+  lastRunCost: 0,
+};
+
 /** List agents in a workspace (viewer+). */
 export const list = query({
   args: {
@@ -53,7 +61,6 @@ export const updateStatus = mutation({
     status: v.union(
       v.literal("idle"),
       v.literal("active"),
-      v.literal("blocked"),
       v.literal("error"),
       v.literal("offline"),
     ),
@@ -66,7 +73,9 @@ export const updateStatus = mutation({
       throw new Error("Agent not found");
 
     const updates: Record<string, unknown> = { status: args.status };
-    if (args.currentTaskId !== undefined) updates.currentTaskId = args.currentTaskId;
+    if (args.currentTaskId !== undefined) {
+      updates.currentTaskId = args.currentTaskId;
+    }
     await ctx.db.patch(args.id, updates);
 
     await ctx.db.insert("activities", {
@@ -107,7 +116,6 @@ export const agentPulse = mutation({
     status: v.union(
       v.literal("idle"),
       v.literal("active"),
-      v.literal("blocked"),
       v.literal("error"),
       v.literal("offline"),
     ),
@@ -133,13 +141,7 @@ export const agentPulse = mutation({
     };
 
     if (args.telemetry) {
-      const prev = (agent as any).telemetry ?? {
-        currentModel: "unknown",
-        openclawVersion: "unknown",
-        totalTokensUsed: 0,
-        lastRunDurationMs: 0,
-        lastRunCost: 0,
-      };
+      const prev = agent.telemetry ?? defaultTelemetry;
       patch.telemetry = {
         ...prev,
         ...args.telemetry,
@@ -153,7 +155,7 @@ export const agentPulse = mutation({
         workspaceId: agent.workspaceId,
         type: "agent_status",
         agentId: args.id,
-        taskId: (agent as any).currentTaskId ?? null,
+        taskId: agent.currentTaskId ?? null,
         message: `${agent.emoji} ${agent.name} is now ${args.status}`,
         metadata: {
           previousStatus: agent.status,
@@ -234,35 +236,37 @@ export const endTaskSession = mutation({
     if (!agent) throw new Error("Agent not found");
 
     const now = Date.now();
-    const patch: Record<string, unknown> = {
+    const previous = agent.telemetry ?? defaultTelemetry;
+    const runTokens = args.telemetry?.totalTokensUsed ?? 0;
+    const nextTelemetry =
+      args.telemetry === undefined
+        ? previous
+        : {
+            currentModel: args.telemetry.currentModel ?? previous.currentModel,
+            openclawVersion:
+              args.telemetry.openclawVersion ?? previous.openclawVersion,
+            totalTokensUsed: previous.totalTokensUsed + Math.max(0, runTokens),
+            lastRunDurationMs:
+              args.telemetry.lastRunDurationMs ?? previous.lastRunDurationMs,
+            lastRunCost: args.telemetry.lastRunCost ?? previous.lastRunCost,
+          };
+
+    const patch: Partial<typeof agent> = {
       status: args.status,
       currentTaskId: null,
       lastPulseAt: now,
       lastHeartbeat: now,
+      telemetry: nextTelemetry,
     };
-
-    if (args.telemetry) {
-      const prev = (agent as any).telemetry ?? {
-        currentModel: "unknown",
-        openclawVersion: "unknown",
-        totalTokensUsed: 0,
-        lastRunDurationMs: 0,
-        lastRunCost: 0,
-      };
-      patch.telemetry = {
-        ...prev,
-        ...args.telemetry,
-      };
-    }
 
     await ctx.db.patch(args.agentId, patch);
 
-    const currentTaskId = (agent as any).currentTaskId ?? null;
+    const currentTaskId = agent.currentTaskId ?? null;
     let taskTitle: string | null = null;
     if (currentTaskId) {
       const task = await ctx.db.get(currentTaskId);
       if (task) {
-        taskTitle = (task as any).title ?? null;
+        taskTitle = task.title;
       }
     }
 
@@ -291,7 +295,7 @@ export const endTaskSession = mutation({
         agentId: args.agentId,
         taskId: currentTaskId,
         cost: args.telemetry.lastRunCost, // Can be 0.00 for free models
-        tokensUsed: args.telemetry.totalTokensUsed ?? 0,
+        tokensUsed: runTokens,
         durationMs: args.telemetry.lastRunDurationMs ?? 0,
         createdAt: now,
       });
@@ -340,6 +344,8 @@ export const create = mutation({
       status: "idle",
       currentTaskId: null,
       lastHeartbeat: Date.now(),
+      lastPulseAt: Date.now(),
+      telemetry: defaultTelemetry,
       createdAt: Date.now(),
     });
   },
