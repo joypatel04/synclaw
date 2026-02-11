@@ -50,7 +50,13 @@ export const updateStatus = mutation({
   args: {
     workspaceId: v.id("workspaces"),
     id: v.id("agents"),
-    status: v.union(v.literal("idle"), v.literal("active"), v.literal("blocked")),
+    status: v.union(
+      v.literal("idle"),
+      v.literal("active"),
+      v.literal("blocked"),
+      v.literal("error"),
+      v.literal("offline"),
+    ),
     currentTaskId: v.optional(v.union(v.id("tasks"), v.null())),
   },
   handler: async (ctx, args) => {
@@ -81,7 +87,215 @@ export const updateHeartbeat = mutation({
   handler: async (ctx, args) => {
     const agent = await ctx.db.get(args.id);
     if (!agent) throw new Error("Agent not found");
-    await ctx.db.patch(args.id, { lastHeartbeat: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(args.id, {
+      lastHeartbeat: now,
+      lastPulseAt: now,
+    });
+  },
+});
+
+/**
+ * Lightweight "pulse" from an agent.
+ * - No auth (called by agent itself via API key)
+ * - Updates lastPulseAt and status
+ * - Optionally merges in telemetry from the most recent run.
+ */
+export const agentPulse = mutation({
+  args: {
+    id: v.id("agents"),
+    status: v.union(
+      v.literal("idle"),
+      v.literal("active"),
+      v.literal("blocked"),
+      v.literal("error"),
+      v.literal("offline"),
+    ),
+    telemetry: v.optional(
+      v.object({
+        currentModel: v.optional(v.string()),
+        openclawVersion: v.optional(v.string()),
+        totalTokensUsed: v.optional(v.number()),
+        lastRunDurationMs: v.optional(v.number()),
+        lastRunCost: v.optional(v.float64()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db.get(args.id);
+    if (!agent) throw new Error("Agent not found");
+
+    const now = Date.now();
+    const patch: Record<string, unknown> = {
+      status: args.status,
+      lastPulseAt: now,
+      lastHeartbeat: now,
+    };
+
+    if (args.telemetry) {
+      const prev = (agent as any).telemetry ?? {
+        currentModel: "unknown",
+        openclawVersion: "unknown",
+        totalTokensUsed: 0,
+        lastRunDurationMs: 0,
+        lastRunCost: 0,
+      };
+      patch.telemetry = {
+        ...prev,
+        ...args.telemetry,
+      };
+    }
+
+    await ctx.db.patch(args.id, patch);
+
+    if (agent.status !== args.status) {
+      await ctx.db.insert("activities", {
+        workspaceId: agent.workspaceId,
+        type: "agent_status",
+        agentId: args.id,
+        taskId: (agent as any).currentTaskId ?? null,
+        message: `${agent.emoji} ${agent.name} is now ${args.status}`,
+        metadata: {
+          previousStatus: agent.status,
+          newStatus: args.status,
+          source: "agentPulse",
+        },
+        createdAt: now,
+      });
+    }
+  },
+});
+
+/**
+ * Mark that an agent has started actively working on a task.
+ * Called by OpenClaw when it picks up work.
+ */
+export const startTaskSession = mutation({
+  args: {
+    agentId: v.id("agents"),
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent) throw new Error("Agent not found");
+
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error("Task not found");
+    if (task.workspaceId !== agent.workspaceId) {
+      throw new Error("Task and agent belong to different workspaces");
+    }
+
+    const now = Date.now();
+
+    await ctx.db.patch(args.agentId, {
+      status: "active",
+      currentTaskId: args.taskId,
+      lastPulseAt: now,
+      lastHeartbeat: now,
+    });
+
+    await ctx.db.insert("activities", {
+      workspaceId: agent.workspaceId,
+      type: "agent_status",
+      agentId: args.agentId,
+      taskId: args.taskId,
+      message: `${agent.emoji} ${agent.name} started working on "${task.title}"`,
+      metadata: {
+        action: "startTaskSession",
+      },
+      createdAt: now,
+    });
+  },
+});
+
+/**
+ * Mark that an agent finished its current task session.
+ * - Clears currentTaskId
+ * - Updates status (idle / error)
+ * - Optionally updates telemetry + run summary.
+ */
+export const endTaskSession = mutation({
+  args: {
+    agentId: v.id("agents"),
+    status: v.union(v.literal("idle"), v.literal("error")),
+    telemetry: v.optional(
+      v.object({
+        currentModel: v.optional(v.string()),
+        openclawVersion: v.optional(v.string()),
+        totalTokensUsed: v.optional(v.number()),
+        lastRunDurationMs: v.optional(v.number()),
+        lastRunCost: v.optional(v.float64()),
+      }),
+    ),
+    runSummary: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent) throw new Error("Agent not found");
+
+    const now = Date.now();
+    const patch: Record<string, unknown> = {
+      status: args.status,
+      currentTaskId: null,
+      lastPulseAt: now,
+      lastHeartbeat: now,
+    };
+
+    if (args.telemetry) {
+      const prev = (agent as any).telemetry ?? {
+        currentModel: "unknown",
+        openclawVersion: "unknown",
+        totalTokensUsed: 0,
+        lastRunDurationMs: 0,
+        lastRunCost: 0,
+      };
+      patch.telemetry = {
+        ...prev,
+        ...args.telemetry,
+      };
+    }
+
+    await ctx.db.patch(args.agentId, patch);
+
+    const currentTaskId = (agent as any).currentTaskId ?? null;
+    let taskTitle: string | null = null;
+    if (currentTaskId) {
+      const task = await ctx.db.get(currentTaskId);
+      if (task) {
+        taskTitle = (task as any).title ?? null;
+      }
+    }
+
+    await ctx.db.insert("activities", {
+      workspaceId: agent.workspaceId,
+      type: "agent_status",
+      agentId: args.agentId,
+      taskId: currentTaskId,
+      message:
+        taskTitle != null
+          ? `${agent.emoji} ${agent.name} finished working on "${taskTitle}" with status ${args.status}`
+          : `${agent.emoji} ${agent.name} ended session with status ${args.status}`,
+      metadata: {
+        action: "endTaskSession",
+        runSummary: args.runSummary,
+        telemetry: args.telemetry ?? null,
+      },
+      createdAt: now,
+    });
+
+    // Log run for cost tracking (if telemetry provided)
+    // Note: We log runs even if cost is $0.00 (free models) to track activity
+    if (args.telemetry?.lastRunCost !== undefined) {
+      await ctx.db.insert("agentRuns", {
+        workspaceId: agent.workspaceId,
+        agentId: args.agentId,
+        taskId: currentTaskId,
+        cost: args.telemetry.lastRunCost, // Can be 0.00 for free models
+        tokensUsed: args.telemetry.totalTokensUsed ?? 0,
+        durationMs: args.telemetry.lastRunDurationMs ?? 0,
+        createdAt: now,
+      });
+    }
   },
 });
 
@@ -201,5 +415,91 @@ export const toggleArchive = mutation({
       metadata: { action: newArchived ? "archived" : "unarchived" },
       createdAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Calculate daily burn rate (total cost spent today).
+ * Aggregates all agent runs from today.
+ */
+export const getDailyBurnRate = query({
+  args: { workspaceId: v.id("workspaces") },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartMs = todayStart.getTime();
+
+    const runs = await ctx.db
+      .query("agentRuns")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .filter((q) => q.gte(q.field("createdAt"), todayStartMs))
+      .collect();
+
+    const totalCost = runs.reduce((sum, run) => sum + run.cost, 0);
+    const totalTokens = runs.reduce((sum, run) => sum + run.tokensUsed, 0);
+    const totalDuration = runs.reduce((sum, run) => sum + run.durationMs, 0);
+
+    // Get unique agents that ran today
+    const agentIds = new Set(runs.map((r) => r.agentId));
+    const allAgents = await ctx.db
+      .query("agents")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+
+    return {
+      totalCost,
+      totalTokens,
+      totalDurationMs: totalDuration,
+      runCount: runs.length,
+      activeAgentCount: agentIds.size,
+      totalAgentCount: allAgents.filter((a) => !a.isArchived).length,
+      currency: "USD",
+    };
+  },
+});
+
+/**
+ * Get cost breakdown for a specific task.
+ * Sums all runs associated with this task.
+ */
+export const getTaskCost = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+
+    const runs = await ctx.db
+      .query("agentRuns")
+      .withIndex("byTask", (q) => q.eq("taskId", args.taskId))
+      .collect();
+
+    const totalCost = runs.reduce((sum, run) => sum + run.cost, 0);
+    const totalTokens = runs.reduce((sum, run) => sum + run.tokensUsed, 0);
+    const totalDuration = runs.reduce((sum, run) => sum + run.durationMs, 0);
+
+    // Group by agent
+    const byAgent: Record<string, { cost: number; runs: number }> = {};
+    for (const run of runs) {
+      const agentId = run.agentId;
+      if (!byAgent[agentId]) {
+        byAgent[agentId] = { cost: 0, runs: 0 };
+      }
+      byAgent[agentId].cost += run.cost;
+      byAgent[agentId].runs += 1;
+    }
+
+    return {
+      taskId: args.taskId,
+      totalCost,
+      totalTokens,
+      totalDurationMs: totalDuration,
+      runCount: runs.length,
+      byAgent,
+      currency: "USD",
+    };
   },
 });

@@ -94,9 +94,28 @@ export default defineSchema({
       v.literal("idle"),
       v.literal("active"),
       v.literal("blocked"),
+      v.literal("error"),
+      v.literal("offline"),
     ),
     currentTaskId: v.union(v.id("tasks"), v.null()),
     lastHeartbeat: v.number(),
+    /**
+     * Last time this agent "checked in" from the perspective of OpenClaw.
+     * Used for online/offline pulse calculations in the dashboard.
+     */
+    lastPulseAt: v.optional(v.number()),
+    /**
+     * Aggregated telemetry for this agent's model usage and performance.
+     */
+    telemetry: v.optional(
+      v.object({
+        currentModel: v.string(),
+        openclawVersion: v.string(),
+        totalTokensUsed: v.number(),
+        lastRunDurationMs: v.number(),
+        lastRunCost: v.float64(),
+      }),
+    ),
     lastSeenActivityAt: v.optional(v.number()),
     createdAt: v.number(),
   })
@@ -225,4 +244,23 @@ export default defineSchema({
     .index("byWorkspace", ["workspaceId"])
     .index("bySession", ["sessionId", "createdAt"])
     .index("recent", ["createdAt"]),
+
+  /**
+   * Individual agent run records for cost tracking.
+   * Each time an agent finishes a task session, a record is created here.
+   * This enables accurate per-task and daily burn rate calculations.
+   */
+  agentRuns: defineTable({
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    taskId: v.union(v.id("tasks"), v.null()),
+    cost: v.float64(),
+    tokensUsed: v.number(),
+    durationMs: v.number(),
+    createdAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byTask", ["taskId"])
+    .index("byAgent", ["agentId"])
+    .index("byCreatedAt", ["createdAt"]),
 });

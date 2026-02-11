@@ -78,6 +78,99 @@ server.tool(
   },
 );
 
+server.tool(
+  "sutraha_agent_pulse",
+  "Send a pulse with status and optional telemetry. Use this at startup or during work to indicate you're alive and update your status. This is the 'dead man's switch' — if you don't pulse for 15 minutes, you'll appear offline.",
+  {
+    agentId: z.string().describe("Your Agent ID"),
+    status: z.enum(["idle", "active", "blocked", "error", "offline"]).describe("Current status"),
+    telemetry: z
+      .object({
+        currentModel: z.string().optional().describe("Model name (e.g., 'nvidia-kimi')"),
+        openclawVersion: z.string().optional().describe("OpenClaw version (e.g., '2026.2.9')"),
+        totalTokensUsed: z.number().optional().describe("Cumulative tokens used by this agent"),
+        lastRunDurationMs: z.number().optional().describe("Duration of last run in milliseconds"),
+        lastRunCost: z.number().optional().describe("Cost of last run in USD"),
+      })
+      .optional()
+      .describe("Optional telemetry data"),
+  },
+  async ({ agentId, status, telemetry }) => {
+    await client.rawMutation(api.agents.agentPulse, {
+      id: agentId,
+      status,
+      telemetry,
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Pulse sent: status=${status}${telemetry ? `, telemetry updated` : ""}`,
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_start_task_session",
+  "Mark that you've started actively working on a task. This links you to the task and logs an activity. Call this when you pick up a task.",
+  {
+    agentId: z.string().describe("Your Agent ID"),
+    taskId: z.string().describe("Task ID you're starting work on"),
+  },
+  async ({ agentId, taskId }) => {
+    await client.rawMutation(api.agents.startTaskSession, {
+      agentId,
+      taskId,
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Task session started: you are now actively working on task ${taskId}`,
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_end_task_session",
+  "Mark that you've finished your current task session. Clears your currentTaskId and updates status. Call this at the end of every run (success or error).",
+  {
+    agentId: z.string().describe("Your Agent ID"),
+    status: z.enum(["idle", "error"]).describe("Final status (idle = success, error = failed)"),
+    telemetry: z
+      .object({
+        currentModel: z.string().optional().describe("Model name"),
+        openclawVersion: z.string().optional().describe("OpenClaw version"),
+        totalTokensUsed: z.number().optional().describe("Cumulative tokens used"),
+        lastRunDurationMs: z.number().optional().describe("Duration of this run in milliseconds"),
+        lastRunCost: z.number().optional().describe("Cost of this run in USD"),
+      })
+      .optional()
+      .describe("Telemetry from this run"),
+    runSummary: z.string().optional().describe("Short human-readable summary of what was done"),
+  },
+  async ({ agentId, status, telemetry, runSummary }) => {
+    await client.rawMutation(api.agents.endTaskSession, {
+      agentId,
+      status,
+      telemetry,
+      runSummary,
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Task session ended: status=${status}${runSummary ? `, summary: ${runSummary}` : ""}`,
+        },
+      ],
+    };
+  },
+);
+
 // ═══════════════════════════════════════════════════════════
 //  Workspace / Members (human users you can @mention)
 // ═══════════════════════════════════════════════════════════

@@ -4,6 +4,7 @@ import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
+import { TaskCostBadge } from "@/components/task/TaskCostBadge";
 import { cn } from "@/lib/utils";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
@@ -42,15 +43,18 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
         )}
 
         <div className="mt-3 flex items-center justify-between">
-          <div className="flex -space-x-1.5">
-            {assignees.map((agent) => (
-              <AgentAvatar
-                key={agent._id}
-                emoji={agent.emoji}
-                name={agent.name}
-                size="sm"
-              />
-            ))}
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-1.5">
+              {assignees.map((agent) => (
+                <AgentAvatar
+                  key={agent._id}
+                  emoji={agent.emoji}
+                  name={agent.name}
+                  size="sm"
+                />
+              ))}
+            </div>
+            <TaskCostBadge taskId={task._id} compact />
           </div>
           <Timestamp time={task.updatedAt} />
         </div>

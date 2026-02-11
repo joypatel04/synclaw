@@ -73,6 +73,8 @@
   --color-status-idle: var(--cw-status-idle);
   --color-status-blocked: var(--cw-status-blocked);
   --color-status-review: var(--cw-status-review);
+  --color-status-error: var(--cw-status-error);
+  --color-status-offline: var(--cw-status-offline);
   --color-border-default: var(--cw-border-default);
   --color-border-hover: var(--cw-border-hover);
   --color-border-focus: var(--cw-border-focus);
@@ -135,6 +137,8 @@
   --cw-status-idle: #9ca3af;
   --cw-status-blocked: #dc2626;
   --cw-status-review: #d97706;
+  --cw-status-error: #dc2626;
+  --cw-status-offline: #6b7280;
   --cw-border-default: #e5e7eb;
   --cw-border-hover: #d1d5db;
   --cw-border-focus: #ea580c;
@@ -196,6 +200,8 @@
   --cw-status-idle: #6b7280;
   --cw-status-blocked: #ef4444;
   --cw-status-review: #f59e0b;
+  --cw-status-error: #ef4444;
+  --cw-status-offline: #6b7280;
   --cw-border-default: #272735;
   --cw-border-hover: #3f3f50;
   --cw-border-focus: #f97316;

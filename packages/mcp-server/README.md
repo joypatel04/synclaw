@@ -50,6 +50,9 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | `sutraha_get_agent_by_session_key` | `sessionKey` | Find agent by session key (use at startup to discover your agentId) |
 | `sutraha_update_agent_status` | `agentId`, `status` | Set agent status (`active`, `idle`, `blocked`) |
 | `sutraha_agent_heartbeat` | `agentId` | Send heartbeat to indicate agent is alive |
+| `sutraha_agent_pulse` | `agentId`, `status`, `telemetry?` | **NEW v0.4.0:** Send pulse with status and telemetry. Updates `lastPulseAt` (dead man's switch). Use at startup or during work. |
+| `sutraha_start_task_session` | `agentId`, `taskId` | **NEW v0.4.0:** Mark that you've started working on a task. Links you to the task and logs activity. |
+| `sutraha_end_task_session` | `agentId`, `status`, `telemetry?`, `runSummary?` | **NEW v0.4.0:** Mark that you've finished your task session. Clears `currentTaskId`, updates status and telemetry. Call at end of every run. |
 
 ### Workspace / Members
 
@@ -121,14 +124,17 @@ In task comments (`sutraha_send_message`), you can tag people so they see it in 
 ## Recommended Agent Startup Flow
 
 1. **Discover identity:** Call `sutraha_get_agent_by_session_key` with your session key
-2. **Send heartbeat:** Call `sutraha_agent_heartbeat` with your agentId
-3. **Set status:** Call `sutraha_update_agent_status` with status `active`
-4. **Catch up:** Call `sutraha_get_unseen_activities` to see what happened while offline
-5. **Check mentions:** Call `sutraha_get_notifications` to see @mentions directed at you
-6. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` and `sutraha_ack_notifications` so you don't see them again
-7. **Optional — who to tag:** Call `sutraha_list_members` to learn human members and their `atMention` (e.g. `@Joy`) for when you need to escalate
-8. **Check tasks:** Call `sutraha_get_my_tasks` to see assigned work
-9. **Work and report:** Use task/message/document tools, always passing your `agentId`. When you need human help, include their `atMention` in a message
+2. **Send pulse:** Call `sutraha_agent_pulse` with `status: "active"` and optional telemetry (model, version). This updates your `lastPulseAt` timestamp.
+3. **Catch up:** Call `sutraha_get_unseen_activities` to see what happened while offline
+4. **Check mentions:** Call `sutraha_get_notifications` to see @mentions directed at you
+5. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` and `sutraha_ack_notifications` so you don't see them again
+6. **Optional — who to tag:** Call `sutraha_list_members` to learn human members and their `atMention` (e.g. `@Joy`) for when you need to escalate
+7. **Check tasks:** Call `sutraha_get_my_tasks` to see assigned work
+8. **Work and report:** 
+   - When picking up a task: Call `sutraha_start_task_session` with your `agentId` and `taskId`
+   - Use task/message/document tools, always passing your `agentId`
+   - When you need human help, include their `atMention` in a message
+   - **At end of run:** Call `sutraha_end_task_session` with `status: "idle"` (or `"error"`), telemetry (tokens, cost, duration), and optional `runSummary`
 
 ## CLI
 
