@@ -46,9 +46,9 @@ export const upsertDocument = mutation({
         status: args.status,
         taskId: args.taskId,
         folderId: args.folderId,
-        isGlobalContext: args.isGlobalContext ?? existing.isGlobalContext,
+        isGlobalContext: args.isGlobalContext ?? existing.isGlobalContext ?? false,
         lastEditedBy: args.agentId,
-        version: existing.version + 1,
+        version: (existing.version ?? 1) + 1,
         updatedAt: now,
       });
 

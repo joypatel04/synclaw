@@ -98,14 +98,16 @@ export default defineSchema({
     ),
     currentTaskId: v.union(v.id("tasks"), v.null()),
     lastHeartbeat: v.number(),
-    lastPulseAt: v.number(),
-    telemetry: v.object({
-      currentModel: v.string(),
-      openclawVersion: v.string(),
-      totalTokensUsed: v.number(),
-      lastRunDurationMs: v.number(),
-      lastRunCost: v.float64(),
-    }),
+    lastPulseAt: v.optional(v.number()),
+    telemetry: v.optional(
+      v.object({
+        currentModel: v.string(),
+        openclawVersion: v.string(),
+        totalTokensUsed: v.number(),
+        lastRunDurationMs: v.number(),
+        lastRunCost: v.float64(),
+      }),
+    ),
     lastSeenActivityAt: v.optional(v.number()),
     createdAt: v.number(),
   })
@@ -198,7 +200,7 @@ export default defineSchema({
     title: v.string(),
     content: v.string(),
     agentId: v.id("agents"),
-    lastEditedBy: v.id("agents"),
+    lastEditedBy: v.optional(v.id("agents")),
     type: v.union(
       v.literal("deliverable"),
       v.literal("research"),
@@ -206,17 +208,19 @@ export default defineSchema({
       v.literal("note"),
       v.literal("journal"),
     ),
-    status: v.union(
-      v.literal("draft"),
-      v.literal("final"),
-      v.literal("archived"),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("final"),
+        v.literal("archived"),
+      ),
     ),
     taskId: v.union(v.id("tasks"), v.null()),
     folderId: v.optional(v.id("folders")),
-    isGlobalContext: v.boolean(),
-    version: v.number(),
+    isGlobalContext: v.optional(v.boolean()),
+    version: v.optional(v.number()),
     createdAt: v.float64(),
-    updatedAt: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byTask", ["taskId"])

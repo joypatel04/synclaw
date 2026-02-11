@@ -120,10 +120,10 @@ function DocumentsContent() {
     setTitle(doc.title);
     setContent(doc.content);
     setDocType(doc.type);
-    setDocStatus(doc.status);
-    setDocAgentId(String(doc.lastEditedBy));
+    setDocStatus(doc.status ?? "draft");
+    setDocAgentId(String(doc.lastEditedBy ?? doc.agentId));
     setDocFolderId(doc.folderId ? String(doc.folderId) : "__none__");
-    setIsGlobalContext(doc.isGlobalContext);
+    setIsGlobalContext(doc.isGlobalContext ?? false);
     setShowEditor(true);
   };
 
@@ -302,8 +302,11 @@ function DocumentsContent() {
           ) : (
             <div className="space-y-3">
               {documents.map((doc) => {
+                const docStatus = doc.status ?? "draft";
                 const createdBy = agentById.get(doc.agentId);
-                const editedBy = agentById.get(doc.lastEditedBy);
+                const editedBy = doc.lastEditedBy
+                  ? agentById.get(doc.lastEditedBy)
+                  : undefined;
                 return (
                   <div
                     key={doc._id}
@@ -335,10 +338,10 @@ function DocumentsContent() {
                         <span
                           className={cn(
                             "rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                            statusClasses[doc.status],
+                            statusClasses[docStatus],
                           )}
                         >
-                          {doc.status}
+                          {docStatus}
                         </span>
                         {canEdit && (
                           <Button
@@ -355,7 +358,7 @@ function DocumentsContent() {
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                      <span>v{doc.version}</span>
+                      <span>v{doc.version ?? 1}</span>
                       <span>•</span>
                       <span>
                         Created by {createdBy ? `${createdBy.emoji} ${createdBy.name}` : "Unknown"}
