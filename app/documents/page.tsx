@@ -27,7 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { FileText, Folder, FolderTree, Globe, Pencil } from "lucide-react";
+import { FileText, Folder, FolderPlus, FolderTree, Globe, Pencil } from "lucide-react";
 
 type DocType = "deliverable" | "research" | "protocol" | "note" | "journal";
 type DocStatus = "draft" | "final" | "archived";
@@ -72,6 +72,7 @@ function DocumentsContent() {
   const [docFolderId, setDocFolderId] = useState<string>("__none__");
   const [isGlobalContext, setIsGlobalContext] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   const documents = useQuery(api.documents.list, {
     workspaceId,
@@ -83,6 +84,7 @@ function DocumentsContent() {
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
   const folders = useQuery(api.folders.list, { workspaceId }) ?? [];
   const upsertDocument = useMutation(api.documents.upsertDocument);
+  const createFolder = useMutation(api.folders.create);
 
   const childrenByParent = useMemo(() => {
     const map = new Map<string, typeof folders>();
@@ -152,6 +154,25 @@ function DocumentsContent() {
       resetEditor();
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!canEdit || isCreatingFolder) return;
+    const name = window.prompt("Folder name");
+    if (!name || !name.trim()) return;
+
+    setIsCreatingFolder(true);
+    try {
+      const folderId = await createFolder({
+        workspaceId,
+        name: name.trim(),
+      });
+      setDocFolderId(String(folderId));
+      setViewMode("folder");
+      setSelectedFolderId(folderId);
+    } finally {
+      setIsCreatingFolder(false);
     }
   };
 
@@ -436,9 +457,22 @@ function DocumentsContent() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                      Folder
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                        Folder
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCreateFolder}
+                        className="h-6 px-2 text-[11px] text-accent-orange hover:bg-accent-orange/10 hover:text-accent-orange"
+                        disabled={isCreatingFolder}
+                      >
+                        <FolderPlus className="mr-1 h-3 w-3" />
+                        {isCreatingFolder ? "Creating..." : "New"}
+                      </Button>
+                    </div>
                     <Select value={docFolderId} onValueChange={setDocFolderId}>
                       <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
                         <SelectValue />
@@ -446,7 +480,7 @@ function DocumentsContent() {
                       <SelectContent className="bg-bg-tertiary border-border-default text-xs">
                         <SelectItem value="__none__">No folder</SelectItem>
                         {folders.map((folder) => (
-                          <SelectItem key={folder._id} value={folder._id}>
+                          <SelectItem key={folder._id} value={String(folder._id)}>
                             {folder.icon ? `${folder.icon} ` : ""}{folder.name}
                           </SelectItem>
                         ))}
