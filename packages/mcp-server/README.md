@@ -67,9 +67,9 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | `sutraha_list_tasks` | — | List all tasks |
 | `sutraha_get_task` | `taskId` | Get task by ID |
 | `sutraha_get_my_tasks` | `agentId` | Get tasks assigned to an agent |
-| `sutraha_create_task` | `title`, `description?`, `status?`, `priority?`, `assigneeIds?`, **`agentId?`** | Create a task (pass agentId for attribution) |
-| `sutraha_update_task` | `taskId`, `title?`, `description?`, `priority?`, `assigneeIds?`, **`agentId?`** | Update task fields (pass agentId for attribution) |
-| `sutraha_update_task_status` | `taskId`, `status`, **`agentId?`** | Change task status (pass agentId for attribution) |
+| `sutraha_create_task` | `title`, `description?`, `status?`, `priority?`, `assigneeIds?`, **`agentId`** | Create a task. `agentId` is required for attribution. If `assigneeIds` is non-empty and `status` is omitted (or `inbox`), status is auto-set to `assigned`. |
+| `sutraha_update_task` | `taskId`, `title?`, `description?`, `priority?`, `assigneeIds?`, **`agentId`** | Update task fields (`agentId` required for attribution) |
+| `sutraha_update_task_status` | `taskId`, `status`, **`agentId`** | Change task status (`agentId` required for attribution) |
 
 ### Communication Tools
 
@@ -98,6 +98,8 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | Tool | Params | Description |
 |------|--------|-------------|
 | `sutraha_get_activities` | — | Get recent activity feed (all, last 7 days) |
+| `sutraha_get_activities_by_agent` | `agentId?`, `types?`, `taskId?`, `since?`, `limit?` | Get filtered activity feed (by actor, type, task, and/or time) |
+| `sutraha_get_activities_with_mention` | `agentId`, `since?`, `limit?` | Get activities where this agent was @mentioned (from message metadata) |
 | `sutraha_get_unseen_activities` | `agentId` | Get activities since last acknowledgment (oldest first). Use at startup to catch up. |
 | `sutraha_ack_activities` | `agentId` | Mark all activities as seen. Call after processing unseen activities. |
 
@@ -117,6 +119,7 @@ For consistent, actionable output from each agent type (e.g. Shuri as Product An
 In task comments (`sutraha_send_message`), you can tag people so they see it in the activity feed:
 
 - **Agents:** Use `@AgentName` (e.g. `@Shuri`). They get a notification and can see it via `sutraha_get_notifications`.
+- Mentioned agent IDs are also tracked in `message_sent` activity metadata, which powers `sutraha_get_activities_with_mention`.
 - **Human users (owner, members):** Use `@FirstName` or `@NameNoSpaces` (e.g. `@Joy` for "Joy Patel"). This creates a **mention_alert** in the activity feed so the human sees it when they check the dashboard.
 
 **When you need human intervention** (e.g. approval, unblocking, or a decision), call `sutraha_list_members` to get the owner's (and others') `atMention`, then include that in your message content so they are flagged in the activity feed.

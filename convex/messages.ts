@@ -1,6 +1,24 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember, resolveActorName } from "./lib/permissions";
+import { mutation, query } from "./_generated/server";
+import {
+  requireMember,
+  requireRole,
+  resolveActorName,
+} from "./lib/permissions";
+
+function extractMentions(content: string): string[] {
+  const mentionRegex = /@(\w+)/g;
+  const mentions: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while (true) {
+    match = mentionRegex.exec(content);
+    if (!match) break;
+    mentions.push(match[1].toLowerCase());
+  }
+
+  return [...new Set(mentions)];
+}
 
 /** Post a comment (member+). */
 export const create = mutation({
@@ -19,6 +37,15 @@ export const create = mutation({
       args.agentId,
     );
     const now = Date.now();
+    const agents = await ctx.db
+      .query("agents")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+    const mentionTokens = extractMentions(args.content);
+    const mentionedAgents = agents.filter((agent) =>
+      mentionTokens.includes(agent.name.toLowerCase()),
+    );
+    const mentionedAgentIds = mentionedAgents.map((agent) => agent._id);
 
     const messageId = await ctx.db.insert("messages", {
       workspaceId: args.workspaceId,
@@ -35,38 +62,27 @@ export const create = mutation({
     await ctx.db.insert("activities", {
       workspaceId: args.workspaceId,
       type: "message_sent",
-      agentId: args.agentId,
+      agentId,
       taskId: args.taskId,
       message: taskRef
         ? `${authorName} commented on "${taskRef.title}"`
         : `${authorName} posted a message`,
-      metadata: {},
+      metadata: {
+        mentionedAgentIds,
+      },
       createdAt: now,
     });
 
     // @mention detection → create notifications for agents
-    const mentionRegex = /@(\w+)/g;
-    let match: RegExpExecArray | null;
-    const agents = await ctx.db
-      .query("agents")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .collect();
-    while (true) {
-      match = mentionRegex.exec(args.content);
-      if (!match) break;
-      const mentioned = agents.find(
-        (a) => a.name.toLowerCase() === match![1].toLowerCase(),
-      );
-      if (mentioned) {
-        await ctx.db.insert("notifications", {
-          workspaceId: args.workspaceId,
-          mentionedAgentId: mentioned._id,
-          taskId: args.taskId,
-          message: `${authorName} mentioned you: "${args.content.substring(0, 100)}"`,
-          delivered: false,
-          createdAt: now,
-        });
-      }
+    for (const mentioned of mentionedAgents) {
+      await ctx.db.insert("notifications", {
+        workspaceId: args.workspaceId,
+        mentionedAgentId: mentioned._id,
+        taskId: args.taskId,
+        message: `${authorName} mentioned you: "${args.content.substring(0, 100)}"`,
+        delivered: false,
+        createdAt: now,
+      });
     }
 
     // @mention detection → mention_alert for human workspace members
@@ -78,12 +94,18 @@ export const create = mutation({
     const memberHandles: { displayName: string; handles: string[] }[] = [];
     for (const m of members) {
       const user = await ctx.db.get(m.userId);
-      const name = (user as { name?: string | null } | null)?.name ?? (user as { email?: string | null } | null)?.email;
+      const name =
+        (user as { name?: string | null } | null)?.name ??
+        (user as { email?: string | null } | null)?.email;
       if (name && typeof name === "string") {
         const displayName = name.trim();
         const firstWord = displayName.split(/\s+/)[0] ?? displayName;
         const noSpaces = displayName.replace(/\s+/g, "");
-        const handles = [displayName.toLowerCase(), firstWord.toLowerCase(), noSpaces.toLowerCase()];
+        const handles = [
+          displayName.toLowerCase(),
+          firstWord.toLowerCase(),
+          noSpaces.toLowerCase(),
+        ];
         memberHandles.push({ displayName, handles: [...new Set(handles)] });
       }
     }
@@ -97,7 +119,10 @@ export const create = mutation({
       const entry = memberHandles.find((e) => e.handles.includes(token));
       if (entry && !mentionedUserNames.has(entry.displayName)) {
         mentionedUserNames.add(entry.displayName);
-        const snippet = args.content.length > 80 ? `${args.content.substring(0, 80)}…` : args.content;
+        const snippet =
+          args.content.length > 80
+            ? `${args.content.substring(0, 80)}…`
+            : args.content;
         await ctx.db.insert("activities", {
           workspaceId: args.workspaceId,
           type: "mention_alert",

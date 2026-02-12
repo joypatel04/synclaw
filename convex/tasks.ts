@@ -1,6 +1,10 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember, getUserDisplayName, resolveActorName } from "./lib/permissions";
+import { mutation, query } from "./_generated/server";
+import {
+  requireMember,
+  requireRole,
+  resolveActorName,
+} from "./lib/permissions";
 
 const taskStatus = v.union(
   v.literal("inbox"),
@@ -24,7 +28,7 @@ export const create = mutation({
     workspaceId: v.id("workspaces"),
     title: v.string(),
     description: v.string(),
-    status: taskStatus,
+    status: v.optional(taskStatus),
     assigneeIds: v.array(v.id("agents")),
     priority: taskPriority,
     dueAt: v.union(v.number(), v.null()),
@@ -39,12 +43,17 @@ export const create = mutation({
       args.actingAgentId,
     );
     const now = Date.now();
+    const status =
+      args.assigneeIds.length > 0 &&
+      (args.status === undefined || args.status === "inbox")
+        ? "assigned"
+        : (args.status ?? "inbox");
 
     const taskId = await ctx.db.insert("tasks", {
       workspaceId: args.workspaceId,
       title: args.title,
       description: args.description,
-      status: args.status,
+      status,
       assigneeIds: args.assigneeIds,
       priority: args.priority,
       createdBy: displayName,
@@ -59,7 +68,7 @@ export const create = mutation({
       agentId,
       taskId,
       message: `${displayName} created task "${args.title}"`,
-      metadata: { priority: args.priority, status: args.status },
+      metadata: { priority: args.priority, status },
       createdAt: now,
     });
 

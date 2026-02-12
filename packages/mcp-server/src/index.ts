@@ -11,8 +11,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { createClientFromEnv } from "./convex-client.js";
 import { api } from "./api.js";
+import { createClientFromEnv } from "./convex-client.js";
 
 const client = createClientFromEnv();
 
@@ -31,7 +31,9 @@ server.tool(
   {},
   async () => {
     const agents = await client.query(api.agents.list);
-    return { content: [{ type: "text", text: JSON.stringify(agents, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(agents, null, 2) }],
+    };
   },
 );
 
@@ -41,7 +43,9 @@ server.tool(
   { agentId: z.string().describe("Agent ID") },
   async ({ agentId }) => {
     const agent = await client.query(api.agents.getById, { id: agentId });
-    return { content: [{ type: "text", text: JSON.stringify(agent, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(agent, null, 2) }],
+    };
   },
 );
 
@@ -50,8 +54,12 @@ server.tool(
   "Find an agent by its session key",
   { sessionKey: z.string().describe("Agent session key") },
   async ({ sessionKey }) => {
-    const agent = await client.query(api.agents.getBySessionKey, { sessionKey });
-    return { content: [{ type: "text", text: JSON.stringify(agent, null, 2) }] };
+    const agent = await client.query(api.agents.getBySessionKey, {
+      sessionKey,
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(agent, null, 2) }],
+    };
   },
 );
 
@@ -60,11 +68,15 @@ server.tool(
   "Update an agent's status",
   {
     agentId: z.string().describe("Agent ID"),
-    status: z.enum(["active", "idle", "error", "offline"]).describe("New status"),
+    status: z
+      .enum(["active", "idle", "error", "offline"])
+      .describe("New status"),
   },
   async ({ agentId, status }) => {
     await client.mutation(api.agents.updateStatus, { id: agentId, status });
-    return { content: [{ type: "text", text: `Agent status updated to ${status}` }] };
+    return {
+      content: [{ type: "text", text: `Agent status updated to ${status}` }],
+    };
   },
 );
 
@@ -83,13 +95,27 @@ server.tool(
   "Send a pulse with status and optional telemetry. Use this at startup or during work to indicate you're alive and update your status. This is the 'dead man's switch' — if you don't pulse for 15 minutes, you'll appear offline.",
   {
     agentId: z.string().describe("Your Agent ID"),
-    status: z.enum(["idle", "active", "error", "offline"]).describe("Current status"),
+    status: z
+      .enum(["idle", "active", "error", "offline"])
+      .describe("Current status"),
     telemetry: z
       .object({
-        currentModel: z.string().optional().describe("Model name (e.g., 'nvidia-kimi')"),
-        openclawVersion: z.string().optional().describe("OpenClaw version (e.g., '2026.2.9')"),
-        totalTokensUsed: z.number().optional().describe("Cumulative tokens used by this agent"),
-        lastRunDurationMs: z.number().optional().describe("Duration of last run in milliseconds"),
+        currentModel: z
+          .string()
+          .optional()
+          .describe("Model name (e.g., 'nvidia-kimi')"),
+        openclawVersion: z
+          .string()
+          .optional()
+          .describe("OpenClaw version (e.g., '2026.2.9')"),
+        totalTokensUsed: z
+          .number()
+          .optional()
+          .describe("Cumulative tokens used by this agent"),
+        lastRunDurationMs: z
+          .number()
+          .optional()
+          .describe("Duration of last run in milliseconds"),
         lastRunCost: z.number().optional().describe("Cost of last run in USD"),
       })
       .optional()
@@ -140,18 +166,29 @@ server.tool(
   "Mark that you've finished your current task session. Clears your currentTaskId and updates status. Call this at the end of every run (success or error).",
   {
     agentId: z.string().describe("Your Agent ID"),
-    status: z.enum(["idle", "error"]).describe("Final status (idle = success, error = failed)"),
+    status: z
+      .enum(["idle", "error"])
+      .describe("Final status (idle = success, error = failed)"),
     telemetry: z
       .object({
         currentModel: z.string().optional().describe("Model name"),
         openclawVersion: z.string().optional().describe("OpenClaw version"),
-        totalTokensUsed: z.number().optional().describe("Cumulative tokens used"),
-        lastRunDurationMs: z.number().optional().describe("Duration of this run in milliseconds"),
+        totalTokensUsed: z
+          .number()
+          .optional()
+          .describe("Cumulative tokens used"),
+        lastRunDurationMs: z
+          .number()
+          .optional()
+          .describe("Duration of this run in milliseconds"),
         lastRunCost: z.number().optional().describe("Cost of this run in USD"),
       })
       .optional()
       .describe("Telemetry from this run"),
-    runSummary: z.string().optional().describe("Short human-readable summary of what was done"),
+    runSummary: z
+      .string()
+      .optional()
+      .describe("Short human-readable summary of what was done"),
   },
   async ({ agentId, status, telemetry, runSummary }) => {
     await client.rawMutation(api.agents.endTaskSession, {
@@ -181,13 +218,17 @@ server.tool(
   {},
   async () => {
     const members = await client.query(api.workspaces.getMembers);
-    const withHandle = members.map((m: { name?: string; email?: string; role: string }) => {
-      const displayName = m.name || m.email || "User";
-      const firstWord = displayName.trim().split(/\s+/)[0] || displayName;
-      const atMention = `@${firstWord}`;
-      return { ...m, displayName, atMention, role: m.role };
-    });
-    return { content: [{ type: "text", text: JSON.stringify(withHandle, null, 2) }] };
+    const withHandle = members.map(
+      (m: { name?: string; email?: string; role: string }) => {
+        const displayName = m.name || m.email || "User";
+        const firstWord = displayName.trim().split(/\s+/)[0] || displayName;
+        const atMention = `@${firstWord}`;
+        return { ...m, displayName, atMention, role: m.role };
+      },
+    );
+    return {
+      content: [{ type: "text", text: JSON.stringify(withHandle, null, 2) }],
+    };
   },
 );
 
@@ -201,7 +242,9 @@ server.tool(
   {},
   async () => {
     const tasks = await client.query(api.tasks.list);
-    return { content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }],
+    };
   },
 );
 
@@ -221,7 +264,9 @@ server.tool(
   { agentId: z.string().describe("Agent ID") },
   async ({ agentId }) => {
     const tasks = await client.query(api.tasks.getByAssignee, { agentId });
-    return { content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }],
+    };
   },
 );
 
@@ -231,20 +276,33 @@ server.tool(
   {
     title: z.string().describe("Task title"),
     description: z.string().optional().describe("Task description"),
-    status: z.enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"]).optional().describe("Task status (default: inbox)"),
-    priority: z.enum(["high", "medium", "low", "none"]).optional().describe("Priority level (default: medium)"),
+    status: z
+      .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
+      .optional()
+      .describe("Task status (default: inbox)"),
+    priority: z
+      .enum(["high", "medium", "low", "none"])
+      .optional()
+      .describe("Priority level (default: medium)"),
     assigneeIds: z.array(z.string()).optional().describe("Agent IDs to assign"),
-    agentId: z.string().optional().describe("Your Agent ID — activity will be attributed to this agent"),
+    agentId: z.string().describe("Your Agent ID — required for attribution"),
   },
   async ({ title, description, status, priority, assigneeIds, agentId }) => {
+    const normalizedAssigneeIds = assigneeIds ?? [];
+    const normalizedStatus =
+      normalizedAssigneeIds.length > 0 &&
+      (status === undefined || status === "inbox")
+        ? "assigned"
+        : (status ?? "inbox");
+
     const id = await client.mutation(api.tasks.create, {
       title,
       description: description ?? "",
-      status: status ?? "inbox",
+      status: normalizedStatus,
       priority: priority ?? "medium",
-      assigneeIds: assigneeIds ?? [],
+      assigneeIds: normalizedAssigneeIds,
       dueAt: null,
-      ...(agentId ? { actingAgentId: agentId } : {}),
+      actingAgentId: agentId,
     });
     return { content: [{ type: "text", text: `Task created with ID: ${id}` }] };
   },
@@ -257,15 +315,18 @@ server.tool(
     taskId: z.string().describe("Task ID"),
     title: z.string().optional().describe("New title"),
     description: z.string().optional().describe("New description"),
-    priority: z.enum(["high", "medium", "low", "none"]).optional().describe("New priority"),
+    priority: z
+      .enum(["high", "medium", "low", "none"])
+      .optional()
+      .describe("New priority"),
     assigneeIds: z.array(z.string()).optional().describe("New assignee IDs"),
-    agentId: z.string().optional().describe("Your Agent ID — activity will be attributed to this agent"),
+    agentId: z.string().describe("Your Agent ID — required for attribution"),
   },
   async ({ taskId, agentId, ...updates }) => {
     await client.mutation(api.tasks.update, {
       id: taskId,
       ...updates,
-      ...(agentId ? { actingAgentId: agentId } : {}),
+      actingAgentId: agentId,
     });
     return { content: [{ type: "text", text: `Task ${taskId} updated` }] };
   },
@@ -276,16 +337,20 @@ server.tool(
   "Change a task's status. Pass your agentId so the activity is attributed to you.",
   {
     taskId: z.string().describe("Task ID"),
-    status: z.enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"]).describe("New status"),
-    agentId: z.string().optional().describe("Your Agent ID — activity will be attributed to this agent"),
+    status: z
+      .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
+      .describe("New status"),
+    agentId: z.string().describe("Your Agent ID — required for attribution"),
   },
   async ({ taskId, status, agentId }) => {
     await client.mutation(api.tasks.updateStatus, {
       id: taskId,
       status,
-      ...(agentId ? { actingAgentId: agentId } : {}),
+      actingAgentId: agentId,
     });
-    return { content: [{ type: "text", text: `Task status updated to ${status}` }] };
+    return {
+      content: [{ type: "text", text: `Task status updated to ${status}` }],
+    };
   },
 );
 
@@ -299,7 +364,9 @@ server.tool(
   { taskId: z.string().describe("Task ID") },
   async ({ taskId }) => {
     const messages = await client.query(api.messages.list, { taskId });
-    return { content: [{ type: "text", text: JSON.stringify(messages, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(messages, null, 2) }],
+    };
   },
 );
 
@@ -307,7 +374,9 @@ server.tool(
   "sutraha_send_message",
   "Post a comment on a task (supports @mentions)",
   {
-    content: z.string().describe("Message content (use @agent:name for mentions)"),
+    content: z
+      .string()
+      .describe("Message content (use @agent:name for mentions)"),
     taskId: z.string().describe("Task ID to comment on"),
     agentId: z.string().describe("Agent ID posting the message"),
   },
@@ -321,7 +390,9 @@ server.tool(
   "sutraha_send_chat",
   "Send a chat message as an agent",
   {
-    sessionId: z.string().describe("Chat session ID (e.g., chat:agent-session-key)"),
+    sessionId: z
+      .string()
+      .describe("Chat session ID (e.g., chat:agent-session-key)"),
     agentId: z.string().describe("Agent ID sending the message"),
     content: z.string().describe("Message content"),
   },
@@ -346,7 +417,9 @@ server.tool(
   {},
   async () => {
     const broadcasts = await client.query(api.broadcasts.list);
-    return { content: [{ type: "text", text: JSON.stringify(broadcasts, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(broadcasts, null, 2) }],
+    };
   },
 );
 
@@ -383,8 +456,14 @@ server.tool(
   "List documents in the workspace",
   {
     taskId: z.string().optional().describe("Filter by task ID"),
-    globalOnly: z.boolean().optional().describe("If true, only global-context docs are returned"),
-    draftsOnly: z.boolean().optional().describe("If true, only draft docs are returned"),
+    globalOnly: z
+      .boolean()
+      .optional()
+      .describe("If true, only global-context docs are returned"),
+    draftsOnly: z
+      .boolean()
+      .optional()
+      .describe("If true, only draft docs are returned"),
   },
   async ({ taskId, globalOnly, draftsOnly }) => {
     const docs = taskId
@@ -401,17 +480,39 @@ server.tool(
   "sutraha_upsert_document",
   "Create or update a document in the workspace",
   {
-    documentId: z.string().optional().describe("Existing document ID to update; omit to create"),
+    documentId: z
+      .string()
+      .optional()
+      .describe("Existing document ID to update; omit to create"),
     title: z.string().describe("Document title"),
     content: z.string().describe("Document content (markdown)"),
-    type: z.enum(["deliverable", "research", "protocol", "note", "journal"]).optional().describe("Document type (default: note)"),
-    status: z.enum(["draft", "final", "archived"]).optional().describe("Document status (default: draft)"),
+    type: z
+      .enum(["deliverable", "research", "protocol", "note", "journal"])
+      .optional()
+      .describe("Document type (default: note)"),
+    status: z
+      .enum(["draft", "final", "archived"])
+      .optional()
+      .describe("Document status (default: draft)"),
     taskId: z.string().optional().describe("Link to a task"),
     folderId: z.string().optional().describe("Folder ID"),
     agentId: z.string().describe("Agent ID creating the document"),
-    isGlobalContext: z.boolean().optional().describe("Whether this doc should be injected for all runs"),
+    isGlobalContext: z
+      .boolean()
+      .optional()
+      .describe("Whether this doc should be injected for all runs"),
   },
-  async ({ documentId, title, content, type, status, taskId, folderId, agentId, isGlobalContext }) => {
+  async ({
+    documentId,
+    title,
+    content,
+    type,
+    status,
+    taskId,
+    folderId,
+    agentId,
+    isGlobalContext,
+  }) => {
     const id = await client.mutation(api.documents.upsertDocument, {
       ...(documentId ? { id: documentId } : {}),
       title,
@@ -424,10 +525,12 @@ server.tool(
       isGlobalContext,
     });
     return {
-      content: [{
-        type: "text",
-        text: `${documentId ? "Document updated" : "Document created"} with ID: ${id}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `${documentId ? "Document updated" : "Document created"} with ID: ${id}`,
+        },
+      ],
     };
   },
 );
@@ -442,7 +545,74 @@ server.tool(
   {},
   async () => {
     const activities = await client.query(api.activities.recent);
-    return { content: [{ type: "text", text: JSON.stringify(activities, null, 2) }] };
+    return {
+      content: [{ type: "text", text: JSON.stringify(activities, null, 2) }],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_get_activities_by_agent",
+  "Get activities with optional filters (agent, type, task, since timestamp)",
+  {
+    agentId: z
+      .string()
+      .optional()
+      .describe("Filter to activities generated by this agent"),
+    types: z
+      .array(
+        z.enum([
+          "task_created",
+          "task_updated",
+          "message_sent",
+          "agent_status",
+          "broadcast_sent",
+          "mention_alert",
+        ]),
+      )
+      .optional()
+      .describe("Filter to specific activity types"),
+    taskId: z.string().optional().describe("Filter to one task"),
+    since: z
+      .number()
+      .optional()
+      .describe("Only include activities at or after this timestamp (ms)"),
+    limit: z.number().optional().describe("Max results (default 50)"),
+  },
+  async ({ agentId, types, taskId, since, limit }) => {
+    const activities = await client.query(api.activities.getByAgent, {
+      ...(agentId ? { agentId } : {}),
+      ...(types ? { types } : {}),
+      ...(taskId ? { taskId } : {}),
+      ...(since !== undefined ? { since } : {}),
+      ...(limit !== undefined ? { limit } : {}),
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(activities, null, 2) }],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_get_activities_with_mention",
+  "Get activities where the provided agent was @mentioned in message activity metadata",
+  {
+    agentId: z.string().describe("Agent ID that was mentioned"),
+    since: z
+      .number()
+      .optional()
+      .describe("Only include activities at or after this timestamp (ms)"),
+    limit: z.number().optional().describe("Max results (default 50)"),
+  },
+  async ({ agentId, since, limit }) => {
+    const activities = await client.query(api.activities.getWithMention, {
+      agentId,
+      ...(since !== undefined ? { since } : {}),
+      ...(limit !== undefined ? { limit } : {}),
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(activities, null, 2) }],
+    };
   },
 );
 
@@ -451,14 +621,19 @@ server.tool(
   "Get activities that happened since this agent last acknowledged. Use at startup to catch up on what happened while offline.",
   { agentId: z.string().describe("Your Agent ID") },
   async ({ agentId }) => {
-    const activities = await client.query(api.activities.getUnseen, { agentId });
+    const activities = await client.query(api.activities.getUnseen, {
+      agentId,
+    });
     return {
-      content: [{
-        type: "text",
-        text: activities.length === 0
-          ? "No new activities since last acknowledgment."
-          : `${activities.length} unseen activities:\n${JSON.stringify(activities, null, 2)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text:
+            activities.length === 0
+              ? "No new activities since last acknowledgment."
+              : `${activities.length} unseen activities:\n${JSON.stringify(activities, null, 2)}`,
+        },
+      ],
     };
   },
 );
@@ -469,7 +644,11 @@ server.tool(
   { agentId: z.string().describe("Your Agent ID") },
   async ({ agentId }) => {
     await client.mutation(api.agents.ackActivities, { agentId });
-    return { content: [{ type: "text", text: "Activities acknowledged. Watermark updated." }] };
+    return {
+      content: [
+        { type: "text", text: "Activities acknowledged. Watermark updated." },
+      ],
+    };
   },
 );
 
@@ -482,14 +661,19 @@ server.tool(
   "Get undelivered @mention notifications for this agent.",
   { agentId: z.string().describe("Your Agent ID") },
   async ({ agentId }) => {
-    const notifications = await client.query(api.notifications.getUndelivered, { agentId });
+    const notifications = await client.query(api.notifications.getUndelivered, {
+      agentId,
+    });
     return {
-      content: [{
-        type: "text",
-        text: notifications.length === 0
-          ? "No pending notifications."
-          : `${notifications.length} notifications:\n${JSON.stringify(notifications, null, 2)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text:
+            notifications.length === 0
+              ? "No pending notifications."
+              : `${notifications.length} notifications:\n${JSON.stringify(notifications, null, 2)}`,
+        },
+      ],
     };
   },
 );
@@ -500,7 +684,11 @@ server.tool(
   { agentId: z.string().describe("Your Agent ID") },
   async ({ agentId }) => {
     await client.mutation(api.notifications.markAllDelivered, { agentId });
-    return { content: [{ type: "text", text: "All notifications marked as delivered." }] };
+    return {
+      content: [
+        { type: "text", text: "All notifications marked as delivered." },
+      ],
+    };
   },
 );
 
