@@ -21,14 +21,14 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
   return (
     <div
       className={cn(
-        "group overflow-hidden rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth",
+        "group rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth",
         "hover:border-border-hover hover:bg-bg-tertiary",
         agent.status === "active" && "border-l-2 border-l-status-active",
         agent.status === "error" && "border-l-2 border-l-status-blocked",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <AgentAvatar
             emoji={agent.emoji}
             name={agent.name}
@@ -42,7 +42,7 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
             <p className="truncate text-xs text-text-muted">{agent.role}</p>
           </div>
         </div>
-        <StatusBadge status={agent.status} className="shrink-0" />
+        <StatusBadge status={agent.status} className="ml-auto shrink-0" />
       </div>
 
       {currentTask && agent.status === "active" && (
