@@ -46,9 +46,9 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
       </div>
 
       {currentTask && agent.status === "active" && (
-        <div className="mt-3 min-w-0 rounded-lg bg-bg-primary/50 px-3 py-2">
+        <div className="mt-3 w-full min-w-0 rounded-lg bg-bg-primary/50 px-3 py-2">
           <p className="text-xs text-text-muted">Working on</p>
-          <p className="mt-0.5 block truncate text-xs font-medium text-text-primary">
+          <p className="mt-0.5 w-full break-words text-xs font-medium text-text-primary">
             {currentTask.title}
           </p>
         </div>
