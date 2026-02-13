@@ -70,7 +70,7 @@ export function ChatInput({
           placeholder={placeholder}
           rows={1}
           disabled={disabled}
-          className="flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange resize-none min-h-[40px] text-sm"
+          className="flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange resize-none min-h-[40px] max-h-[180px] overflow-y-auto text-sm"
         />
         <Button
           type="submit"

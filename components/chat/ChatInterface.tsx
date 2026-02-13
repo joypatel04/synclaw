@@ -158,11 +158,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     // De-dupe only near-real-time echoes (history/WS repeating what the UI already showed).
     // Do not de-dupe across large time spans to avoid hiding legitimate repeats.
     const windowMs = 60_000;
+    const normalize = (s: string) =>
+      s
+        .replace(/\r\n/g, "\n")
+        // Ignore trailing whitespace differences which can happen between optimistic
+        // UI content and history-normalized content.
+        .replace(/[ \t]+\n/g, "\n")
+        .trim();
+    const needle = normalize(content);
     return localMessagesRef.current.some(
       (m) =>
         m.role === "user" &&
         m.fromUser &&
-        m.content === content &&
+        normalize(m.content) === needle &&
         Math.abs((m.createdAt ?? 0) - ts) <= windowMs,
     );
   };
@@ -318,18 +326,18 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           });
         }
 
-          const display = extractDisplayMessagesFromHistory(history);
-          for (const m of display) {
-            if (!m.externalMessageId) continue;
-            if (m.externalMessageId === id) continue;
+        const display = extractDisplayMessagesFromHistory(history);
+        for (const m of display) {
+          if (!m.externalMessageId) continue;
+          if (m.externalMessageId === id) continue;
 
-            // Skip near-real-time duplicates of the user message we already displayed.
-            if (
-              m.role === "user" &&
-              hasSimilarUserMessage(m.content, m.eventAt ?? Date.now())
-            ) {
-              continue;
-            }
+          // Skip near-real-time duplicates of the user message we already displayed.
+          if (
+            m.role === "user" &&
+            hasSimilarUserMessage(m.content, m.eventAt ?? Date.now())
+          ) {
+            continue;
+          }
 
             upsertLocal({
               id: m.externalMessageId,
@@ -523,6 +531,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         const display = extractDisplayMessagesFromHistory(history);
         for (const m of display) {
           if (!m.externalMessageId) continue;
+          if (
+            m.role === "user" &&
+            hasSimilarUserMessage(m.content, m.eventAt ?? Date.now())
+          ) {
+            continue;
+          }
           upsertLocal({
             id: m.externalMessageId,
             externalMessageId: m.externalMessageId,

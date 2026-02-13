@@ -16,6 +16,35 @@ import { createClientFromEnv } from "./convex-client.js";
 
 const client = createClientFromEnv();
 
+async function resolveAgentId(input: {
+  agentId?: string;
+  sessionKey?: string;
+}): Promise<string> {
+  const { agentId, sessionKey } = input;
+
+  if (sessionKey) {
+    const agent = await client.query(api.agents.getBySessionKey, { sessionKey });
+    if (!agent?._id) {
+      throw new Error(
+        `Agent not found for sessionKey=${sessionKey}. Register the agent in Sutraha HQ first.`,
+      );
+    }
+    return agent._id as string;
+  }
+
+  if (agentId) {
+    const agent = await client.query(api.agents.getById, { id: agentId });
+    if (!agent?._id) {
+      throw new Error(
+        `Agent not found for agentId=${agentId}. This usually means you're using a stale ID or pointing at the wrong Convex deployment.`,
+      );
+    }
+    return agent._id as string;
+  }
+
+  throw new Error("Missing agent identity. Provide sessionKey (preferred).");
+}
+
 const server = new McpServer({
   name: "sutraha-hq",
   version: "0.1.0",
@@ -67,13 +96,21 @@ server.tool(
   "sutraha_update_agent_status",
   "Update an agent's status",
   {
-    agentId: z.string().describe("Agent ID"),
+    agentId: z
+      .string()
+      .optional()
+      .describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
     status: z
       .enum(["active", "idle", "error", "offline"])
       .describe("New status"),
   },
-  async ({ agentId, status }) => {
-    await client.mutation(api.agents.updateStatus, { id: agentId, status });
+  async ({ agentId, sessionKey, status }) => {
+    const id = await resolveAgentId({ agentId, sessionKey });
+    await client.mutation(api.agents.updateStatus, { id, status });
     return {
       content: [{ type: "text", text: `Agent status updated to ${status}` }],
     };
@@ -83,9 +120,16 @@ server.tool(
 server.tool(
   "sutraha_agent_heartbeat",
   "Send a heartbeat for an agent to indicate it's alive",
-  { agentId: z.string().describe("Agent ID") },
-  async ({ agentId }) => {
-    await client.rawMutation(api.agents.updateHeartbeat, { id: agentId });
+  {
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ agentId, sessionKey }) => {
+    const id = await resolveAgentId({ agentId, sessionKey });
+    await client.rawMutation(api.agents.updateHeartbeat, { id });
     return { content: [{ type: "text", text: "Heartbeat sent" }] };
   },
 );
@@ -94,7 +138,11 @@ server.tool(
   "sutraha_agent_pulse",
   "Send a pulse with status and optional telemetry. Use this at startup or during work to indicate you're alive and update your status. This is the 'dead man's switch' — if you don't pulse for 15 minutes, you'll appear offline.",
   {
-    agentId: z.string().describe("Your Agent ID"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
     status: z
       .enum(["idle", "active", "error", "offline"])
       .describe("Current status"),
@@ -140,7 +188,17 @@ server.tool(
       .optional()
       .describe("Optional telemetry data"),
   },
-  async ({ agentId, status, telemetry, currentModel, openclawVersion, totalTokensUsed, lastRunDurationMs, lastRunCost }) => {
+  async ({
+    agentId,
+    sessionKey,
+    status,
+    telemetry,
+    currentModel,
+    openclawVersion,
+    totalTokensUsed,
+    lastRunDurationMs,
+    lastRunCost,
+  }) => {
     const mergedTelemetry =
       telemetry || currentModel || openclawVersion || totalTokensUsed || lastRunDurationMs || lastRunCost
         ? {
@@ -153,8 +211,9 @@ server.tool(
           }
         : undefined;
 
+    const id = await resolveAgentId({ agentId, sessionKey });
     await client.rawMutation(api.agents.agentPulse, {
-      id: agentId,
+      id,
       status,
       telemetry: mergedTelemetry,
     });
@@ -173,12 +232,17 @@ server.tool(
   "sutraha_start_task_session",
   "Mark that you've started actively working on a task. This links you to the task and logs an activity. Call this when you pick up a task.",
   {
-    agentId: z.string().describe("Your Agent ID"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
     taskId: z.string().describe("Task ID you're starting work on"),
   },
-  async ({ agentId, taskId }) => {
+  async ({ agentId, sessionKey, taskId }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     await client.rawMutation(api.agents.startTaskSession, {
-      agentId,
+      agentId: resolvedAgentId,
       taskId,
     });
     return {
@@ -196,7 +260,11 @@ server.tool(
   "sutraha_end_task_session",
   "Mark that you've finished your current task session. Clears your currentTaskId and updates status. Call this at the end of every run (success or error).",
   {
-    agentId: z.string().describe("Your Agent ID"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
     status: z
       .enum(["idle", "error"])
       .describe("Final status (idle = success, error = failed)"),
@@ -221,9 +289,10 @@ server.tool(
       .optional()
       .describe("Short human-readable summary of what was done"),
   },
-  async ({ agentId, status, telemetry, runSummary }) => {
+  async ({ agentId, sessionKey, status, telemetry, runSummary }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     await client.rawMutation(api.agents.endTaskSession, {
-      agentId,
+      agentId: resolvedAgentId,
       status,
       telemetry,
       runSummary,
@@ -269,10 +338,68 @@ server.tool(
 
 server.tool(
   "sutraha_list_tasks",
-  "List all tasks in the workspace",
-  {},
-  async () => {
-    const tasks = await client.query(api.tasks.list);
+  "List tasks in the workspace (use filters to keep context small).",
+  {
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Max number of tasks to return (recommended: 20-50)"),
+    status: z
+      .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
+      .optional()
+      .describe("Filter by a single status"),
+    statuses: z
+      .array(
+        z.enum([
+          "inbox",
+          "assigned",
+          "in_progress",
+          "review",
+          "done",
+          "blocked",
+        ]),
+      )
+      .optional()
+      .describe("Filter by multiple statuses"),
+    assigneeId: z
+      .string()
+      .optional()
+      .describe("Filter tasks assigned to this Convex agentId"),
+    assigneeSessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: filter tasks assigned to this agent sessionKey"),
+    includeDone: z
+      .boolean()
+      .optional()
+      .describe("If false, exclude done tasks (default: true)"),
+    since: z
+      .number()
+      .optional()
+      .describe("Only include tasks updated after this unix ms timestamp"),
+  },
+  async ({
+    limit,
+    status,
+    statuses,
+    assigneeId,
+    assigneeSessionKey,
+    includeDone,
+    since,
+  }) => {
+    const resolvedAssigneeId = assigneeSessionKey
+      ? await resolveAgentId({ sessionKey: assigneeSessionKey })
+      : assigneeId;
+    const tasks = await client.query(api.tasks.list, {
+      limit,
+      status,
+      statuses,
+      assigneeId: resolvedAssigneeId,
+      includeDone,
+      since,
+    });
     return {
       content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }],
     };
@@ -292,9 +419,41 @@ server.tool(
 server.tool(
   "sutraha_get_my_tasks",
   "Get tasks assigned to a specific agent",
-  { agentId: z.string().describe("Agent ID") },
-  async ({ agentId }) => {
-    const tasks = await client.query(api.tasks.getByAssignee, { agentId });
+  {
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+    limit: z.number().int().positive().optional().describe("Max tasks to return"),
+    status: z
+      .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
+      .optional(),
+    statuses: z
+      .array(
+        z.enum([
+          "inbox",
+          "assigned",
+          "in_progress",
+          "review",
+          "done",
+          "blocked",
+        ]),
+      )
+      .optional(),
+    includeDone: z.boolean().optional(),
+    since: z.number().optional(),
+  },
+  async ({ agentId, sessionKey, limit, status, statuses, includeDone, since }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
+    const tasks = await client.query(api.tasks.getByAssignee, {
+      agentId: resolvedAgentId,
+      limit,
+      status,
+      statuses,
+      includeDone,
+      since,
+    });
     return {
       content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }],
     };
@@ -316,9 +475,14 @@ server.tool(
       .optional()
       .describe("Priority level (default: medium)"),
     assigneeIds: z.array(z.string()).optional().describe("Agent IDs to assign"),
-    agentId: z.string().describe("Your Agent ID — required for attribution"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (for attribution)"),
   },
-  async ({ title, description, status, priority, assigneeIds, agentId }) => {
+  async ({ title, description, status, priority, assigneeIds, agentId, sessionKey }) => {
+    const actingAgentId = await resolveAgentId({ agentId, sessionKey });
     const normalizedAssigneeIds = assigneeIds ?? [];
     const normalizedStatus =
       normalizedAssigneeIds.length > 0 &&
@@ -333,7 +497,7 @@ server.tool(
       priority: priority ?? "medium",
       assigneeIds: normalizedAssigneeIds,
       dueAt: null,
-      actingAgentId: agentId,
+      actingAgentId,
     });
     return { content: [{ type: "text", text: `Task created with ID: ${id}` }] };
   },
@@ -351,13 +515,18 @@ server.tool(
       .optional()
       .describe("New priority"),
     assigneeIds: z.array(z.string()).optional().describe("New assignee IDs"),
-    agentId: z.string().describe("Your Agent ID — required for attribution"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (for attribution)"),
   },
-  async ({ taskId, agentId, ...updates }) => {
+  async ({ taskId, agentId, sessionKey, ...updates }) => {
+    const actingAgentId = await resolveAgentId({ agentId, sessionKey });
     await client.mutation(api.tasks.update, {
       id: taskId,
       ...updates,
-      actingAgentId: agentId,
+      actingAgentId,
     });
     return { content: [{ type: "text", text: `Task ${taskId} updated` }] };
   },
@@ -371,13 +540,18 @@ server.tool(
     status: z
       .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
       .describe("New status"),
-    agentId: z.string().describe("Your Agent ID — required for attribution"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (for attribution)"),
   },
-  async ({ taskId, status, agentId }) => {
+  async ({ taskId, status, agentId, sessionKey }) => {
+    const actingAgentId = await resolveAgentId({ agentId, sessionKey });
     await client.mutation(api.tasks.updateStatus, {
       id: taskId,
       status,
-      actingAgentId: agentId,
+      actingAgentId,
     });
     return {
       content: [{ type: "text", text: `Task status updated to ${status}` }],
@@ -409,10 +583,19 @@ server.tool(
       .string()
       .describe("Message content (use @FirstName or @AgentName for mentions)"),
     taskId: z.string().describe("Task ID to comment on"),
-    agentId: z.string().describe("Agent ID posting the message"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (for attribution)"),
   },
-  async ({ content, taskId, agentId }) => {
-    await client.mutation(api.messages.create, { content, taskId, agentId });
+  async ({ content, taskId, agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
+    await client.mutation(api.messages.create, {
+      content,
+      taskId,
+      agentId: resolvedAgentId,
+    });
     return { content: [{ type: "text", text: "Message sent" }] };
   },
 );
@@ -457,14 +640,19 @@ server.tool(
   "Respond to a workspace broadcast. Creates a message and links it as a broadcast response.",
   {
     broadcastId: z.string().describe("Broadcast ID"),
-    agentId: z.string().describe("Agent ID responding"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (for attribution)"),
     content: z.string().describe("Response content"),
   },
-  async ({ broadcastId, agentId, content }) => {
+  async ({ broadcastId, agentId, sessionKey, content }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     // First create a message attributed to the agent
     const messageId = await client.mutation(api.messages.create, {
       taskId: null,
-      agentId,
+      agentId: resolvedAgentId,
       content,
     });
     // Then link it to the broadcast
@@ -525,7 +713,11 @@ server.tool(
       .describe("Document status (default: draft)"),
     taskId: z.string().optional().describe("Link to a task"),
     folderId: z.string().optional().describe("Folder ID"),
-    agentId: z.string().describe("Agent ID creating the document"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (for attribution)"),
     isGlobalContext: z
       .boolean()
       .optional()
@@ -540,8 +732,10 @@ server.tool(
     taskId,
     folderId,
     agentId,
+    sessionKey,
     isGlobalContext,
   }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     const id = await client.mutation(api.documents.upsertDocument, {
       ...(documentId ? { id: documentId } : {}),
       title,
@@ -550,7 +744,7 @@ server.tool(
       status: status ?? "draft",
       taskId: taskId ?? null,
       folderId,
-      agentId,
+      agentId: resolvedAgentId,
       isGlobalContext,
     });
     return {
@@ -626,16 +820,21 @@ server.tool(
   "sutraha_get_activities_with_mention",
   "Get activities where the provided agent was @mentioned in message activity metadata",
   {
-    agentId: z.string().describe("Agent ID that was mentioned"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
     since: z
       .number()
       .optional()
       .describe("Only include activities at or after this timestamp (ms)"),
     limit: z.number().optional().describe("Max results (default 50)"),
   },
-  async ({ agentId, since, limit }) => {
+  async ({ agentId, sessionKey, since, limit }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     const activities = await client.query(api.activities.getWithMention, {
-      agentId,
+      agentId: resolvedAgentId,
       ...(since !== undefined ? { since } : {}),
       ...(limit !== undefined ? { limit } : {}),
     });
@@ -648,10 +847,17 @@ server.tool(
 server.tool(
   "sutraha_get_unseen_activities",
   "Get activities that happened since this agent last acknowledged. Use at startup to catch up on what happened while offline.",
-  { agentId: z.string().describe("Your Agent ID") },
-  async ({ agentId }) => {
+  {
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     const activities = await client.query(api.activities.getUnseen, {
-      agentId,
+      agentId: resolvedAgentId,
     });
     return {
       content: [
@@ -670,9 +876,16 @@ server.tool(
 server.tool(
   "sutraha_ack_activities",
   "Acknowledge activities as seen. Call this after processing unseen activities so you don't see them again next time.",
-  { agentId: z.string().describe("Your Agent ID") },
-  async ({ agentId }) => {
-    await client.mutation(api.agents.ackActivities, { agentId });
+  {
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
+    await client.mutation(api.agents.ackActivities, { agentId: resolvedAgentId });
     return {
       content: [
         { type: "text", text: "Activities acknowledged. Watermark updated." },
@@ -688,10 +901,17 @@ server.tool(
 server.tool(
   "sutraha_get_notifications",
   "Get undelivered @mention notifications for this agent.",
-  { agentId: z.string().describe("Your Agent ID") },
-  async ({ agentId }) => {
+  {
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     const notifications = await client.query(api.notifications.getUndelivered, {
-      agentId,
+      agentId: resolvedAgentId,
     });
     return {
       content: [
@@ -710,9 +930,18 @@ server.tool(
 server.tool(
   "sutraha_ack_notifications",
   "Mark all @mention notifications as delivered for this agent.",
-  { agentId: z.string().describe("Your Agent ID") },
-  async ({ agentId }) => {
-    await client.mutation(api.notifications.markAllDelivered, { agentId });
+  {
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
+    await client.mutation(api.notifications.markAllDelivered, {
+      agentId: resolvedAgentId,
+    });
     return {
       content: [
         { type: "text", text: "All notifications marked as delivered." },

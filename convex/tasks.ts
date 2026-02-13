@@ -153,6 +153,11 @@ export const list = query({
   args: {
     workspaceId: v.id("workspaces"),
     status: v.optional(taskStatus),
+    statuses: v.optional(v.array(taskStatus)),
+    assigneeId: v.optional(v.id("agents")),
+    limit: v.optional(v.number()),
+    since: v.optional(v.number()),
+    includeDone: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
@@ -161,13 +166,39 @@ export const list = query({
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .order("desc")
       .collect();
-    return args.status ? all.filter((t) => t.status === args.status) : all;
+
+    const limit = args.limit ?? 0;
+    const includeDone = args.includeDone ?? true;
+    const statusSet =
+      args.statuses && args.statuses.length > 0
+        ? new Set(args.statuses)
+        : null;
+
+    return all
+      .filter((t) => {
+        if (!includeDone && t.status === "done") return false;
+        if (args.status && t.status !== args.status) return false;
+        if (statusSet && !statusSet.has(t.status)) return false;
+        if (args.assigneeId && !t.assigneeIds.includes(args.assigneeId))
+          return false;
+        if (args.since !== undefined && t.updatedAt < args.since) return false;
+        return true;
+      })
+      .slice(0, limit > 0 ? limit : undefined);
   },
 });
 
 /** Get tasks assigned to a specific agent (viewer+). */
 export const getByAssignee = query({
-  args: { workspaceId: v.id("workspaces"), agentId: v.id("agents") },
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    status: v.optional(taskStatus),
+    statuses: v.optional(v.array(taskStatus)),
+    limit: v.optional(v.number()),
+    since: v.optional(v.number()),
+    includeDone: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
     const all = await ctx.db
@@ -175,7 +206,24 @@ export const getByAssignee = query({
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .order("desc")
       .collect();
-    return all.filter((t) => t.assigneeIds.includes(args.agentId));
+
+    const limit = args.limit ?? 0;
+    const includeDone = args.includeDone ?? true;
+    const statusSet =
+      args.statuses && args.statuses.length > 0
+        ? new Set(args.statuses)
+        : null;
+
+    return all
+      .filter((t) => {
+        if (!t.assigneeIds.includes(args.agentId)) return false;
+        if (!includeDone && t.status === "done") return false;
+        if (args.status && t.status !== args.status) return false;
+        if (statusSet && !statusSet.has(t.status)) return false;
+        if (args.since !== undefined && t.updatedAt < args.since) return false;
+        return true;
+      })
+      .slice(0, limit > 0 ? limit : undefined);
   },
 });
 
