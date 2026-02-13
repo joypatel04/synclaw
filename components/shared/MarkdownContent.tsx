@@ -98,15 +98,42 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               {children}
             </blockquote>
           ),
-          code: ({ className, children, ...props }) => {
-            // Inline code: ReactMarkdown will not wrap this in <pre>.
+          strong: ({ children, ...props }) => (
+            <strong {...props} className="font-semibold text-text-primary">
+              {children}
+            </strong>
+          ),
+          em: ({ children, ...props }) => (
+            <em {...props} className="italic">
+              {children}
+            </em>
+          ),
+          del: ({ children, ...props }) => (
+            <del {...props} className="line-through text-text-dim">
+              {children}
+            </del>
+          ),
+          code: ({ className, children, ...props }: any) => {
+            const inline = !!props.inline;
+            if (inline) {
+              return (
+                <code
+                  {...props}
+                  className={cn(
+                    "font-mono text-[12px] rounded bg-bg-tertiary px-1 py-0.5",
+                    className,
+                  )}
+                >
+                  {children}
+                </code>
+              );
+            }
+
+            // Fenced/indented code blocks: <pre> provides the panel styling.
             return (
               <code
                 {...props}
-                className={cn(
-                  "font-mono text-[12px] rounded bg-bg-tertiary px-1 py-0.5",
-                  className,
-                )}
+                className={cn("font-mono text-[12px] leading-relaxed", className)}
               >
                 {children}
               </code>
@@ -115,19 +142,21 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           pre: ({ children, ...props }) => (
             <pre
               {...props}
-              className="my-2 overflow-x-auto rounded-xl border border-border-default bg-bg-secondary p-3 text-[12px] leading-relaxed"
+              className="my-2 overflow-x-auto rounded-xl border border-border-default bg-bg-tertiary p-3 text-[12px] leading-relaxed"
             >
               {children}
             </pre>
           ),
           table: ({ children, ...props }) => (
             <div className="my-2 max-w-full overflow-x-auto">
-              <table
-                {...props}
-                className="w-max min-w-full border-collapse text-[12px]"
-              >
-                {children}
-              </table>
+              <div className="min-w-fit rounded-xl border border-border-default bg-bg-secondary overflow-hidden">
+                <table
+                  {...props}
+                  className="w-max min-w-full border-collapse text-[12px]"
+                >
+                  {children}
+                </table>
+              </div>
             </div>
           ),
           thead: ({ children, ...props }) => (
@@ -138,7 +167,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           th: ({ children, ...props }) => (
             <th
               {...props}
-              className="border-b border-border-default px-2 py-1.5 text-left font-semibold text-text-primary"
+              className="border-b border-border-default px-2 py-1.5 text-left font-semibold text-text-primary whitespace-nowrap"
             >
               {children}
             </th>
@@ -146,7 +175,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           td: ({ children, ...props }) => (
             <td
               {...props}
-              className="border-b border-border-default px-2 py-1.5 align-top text-text-primary"
+              className="border-b border-border-default px-2 py-1.5 align-top text-text-primary whitespace-normal break-words"
             >
               {children}
             </td>

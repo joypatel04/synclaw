@@ -50,12 +50,29 @@ export function ChatMessage({
   }, [message.content]);
 
   const handleCopy = async () => {
+    const text = plainText;
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(plainText);
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for non-secure contexts / older browsers.
+        const el = document.createElement("textarea");
+        el.value = text;
+        el.style.position = "fixed";
+        el.style.top = "0";
+        el.style.left = "0";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1000);
     } catch {
-      // Ignore clipboard failures (permissions, insecure context, etc.)
+      // Intentionally no-op; UI should not crash if clipboard is blocked.
     }
   };
 
@@ -140,7 +157,7 @@ export function ChatMessage({
       {isUser ? (
         <Avatar size="default" className="shrink-0">
           {userImage ? <AvatarImage src={userImage} alt={userName ?? "You"} /> : null}
-          <AvatarFallback className="bg-accent-orange/20 text-text-primary">
+          <AvatarFallback className="bg-accent-orange/15 text-text-primary border border-accent-orange/25">
             {(userName?.trim()?.[0] ?? "U").toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -151,24 +168,28 @@ export function ChatMessage({
       )}
       <div
         className={cn(
-          "group relative w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5",
+          "group relative w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5 border shadow-xs",
           isUser
-            ? "bg-accent-orange/20 rounded-tr-sm"
-            : "bg-bg-tertiary rounded-tl-sm",
+            ? "bg-bg-secondary border-accent-orange/25 rounded-tr-sm"
+            : "bg-bg-secondary border-border-default rounded-tl-sm",
         )}
       >
         {!isUser && plainText.trim().length > 0 && (
-          <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute right-2 top-2 z-10 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100">
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              className="h-7 w-7 text-text-muted hover:text-text-primary"
+              className="h-7 w-7 border border-border-default bg-bg-secondary/70 text-text-muted hover:text-text-primary hover:bg-bg-secondary"
               onClick={handleCopy}
               aria-label="Copy message"
               title={copied ? "Copied" : "Copy"}
             >
-              <Copy className="h-3.5 w-3.5" />
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-status-active" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
             </Button>
           </div>
         )}
