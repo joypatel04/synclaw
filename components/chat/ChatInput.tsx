@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => Promise<void>;
@@ -21,10 +21,12 @@ export function ChatInput({
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const sendingRef = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSend = async () => {
     if (!content.trim() || isSending) return;
+    if (sendingRef.current) return;
+    sendingRef.current = true;
 
     const outgoing = content.trim();
     // Clear immediately so long-running sends (streaming/history polling) don't
@@ -41,19 +43,23 @@ export function ChatInput({
       setErrorText(msg);
     } finally {
       setIsSending(false);
+      sendingRef.current = false;
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void handleSubmit(e);
+      void doSend();
     }
   };
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void doSend();
+      }}
       className="p-4 border-t border-border-default bg-bg-secondary"
     >
       <div className="flex gap-2">

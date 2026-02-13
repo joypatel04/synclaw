@@ -37,6 +37,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
+  const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
 
   // Direct WS is now mandatory for chat.
@@ -90,7 +91,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const makeClientMessageId = () =>
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-  const sendQueueRef = useRef<string[]>([]);
+  type QueueItem = { clientMessageId: string; content: string };
+  const sendQueueRef = useRef<QueueItem[]>([]);
   const sendingRef = useRef(false);
   const [queuedCount, setQueuedCount] = useState(0);
 
@@ -148,6 +150,23 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     });
   };
 
+  useEffect(() => {
+    localMessagesRef.current = localMessages;
+  }, [localMessages]);
+
+  const hasSimilarUserMessage = (content: string, ts: number) => {
+    // De-dupe only near-real-time echoes (history/WS repeating what the UI already showed).
+    // Do not de-dupe across large time spans to avoid hiding legitimate repeats.
+    const windowMs = 60_000;
+    return localMessagesRef.current.some(
+      (m) =>
+        m.role === "user" &&
+        m.fromUser &&
+        m.content === content &&
+        Math.abs((m.createdAt ?? 0) - ts) <= windowMs,
+    );
+  };
+
   const ensureDirectGatewayConnected = async () => {
     if (!gatewayRef.current) {
       const scopes = (
@@ -198,12 +217,22 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           const msg = mapped.message;
           if (!msg.externalMessageId) return;
 
+          // Avoid duplicate user echoes (we render user messages locally).
+          if (msg.fromUser) return;
+
           // We intentionally do NOT create tool cards from raw WS events to avoid noise.
           if (msg.role === "tool") return;
 
+          // Normalize assistant IDs by runId when available to avoid duplicates between
+          // different gateway messageId formats and history fallback.
+          const externalMessageId =
+            msg.role === "assistant" && msg.externalRunId
+              ? `${msg.externalRunId}:assistant`
+              : msg.externalMessageId;
+
           upsertLocal({
-            id: msg.externalMessageId,
-            externalMessageId: msg.externalMessageId,
+            id: externalMessageId,
+            externalMessageId,
             externalRunId: msg.externalRunId,
             fromUser: msg.fromUser,
             role: msg.role,
@@ -225,13 +254,13 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     await connectRef.current;
   };
 
-  const sendDirect = async (content: string) => {
-    const clientMessageId = makeClientMessageId();
+  const sendDirect = async (content: string, clientMessageId?: string) => {
+    const id = clientMessageId ?? makeClientMessageId();
 
     // Optimistic local echo.
     upsertLocal({
-      id: clientMessageId,
-      externalMessageId: clientMessageId,
+      id,
+      externalMessageId: id,
       fromUser: true,
       role: "user",
       content,
@@ -244,12 +273,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       await gatewayRef.current!.sendChat({
         sessionKey: agent.sessionKey,
         content,
-        clientMessageId,
+        clientMessageId: id,
       });
 
       upsertLocal({
-        id: clientMessageId,
-        externalMessageId: clientMessageId,
+        id,
+        externalMessageId: id,
         fromUser: true,
         role: "user",
         content,
@@ -289,30 +318,36 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           });
         }
 
-        const display = extractDisplayMessagesFromHistory(history);
-        for (const m of display) {
-          if (!m.externalMessageId) continue;
-          if (m.externalMessageId === clientMessageId) continue;
+          const display = extractDisplayMessagesFromHistory(history);
+          for (const m of display) {
+            if (!m.externalMessageId) continue;
+            if (m.externalMessageId === id) continue;
 
-          upsertLocal({
-            id: m.externalMessageId,
-            externalMessageId: m.externalMessageId,
-            fromUser: m.fromUser,
-            role: m.role,
-            content: m.content,
-            state: "completed",
-            createdAt: m.eventAt ?? Date.now(),
-          });
-        }
+            // Skip near-real-time duplicates of the user message we already displayed.
+            if (
+              m.role === "user" &&
+              hasSimilarUserMessage(m.content, m.eventAt ?? Date.now())
+            ) {
+              continue;
+            }
+
+            upsertLocal({
+              id: m.externalMessageId,
+              externalMessageId: m.externalMessageId,
+              fromUser: m.fromUser,
+              role: m.role,
+              content: m.content,
+              state: "completed",
+              createdAt: m.eventAt ?? Date.now(),
+            });
+          }
 
         // Fallback: if WS streaming is not delivering, at least show the latest assistant.
         const assistant = pickLatestAssistantFromHistory(history);
         if (assistant) {
           const externalMessageId =
             assistant.messageId ??
-            (assistant.runId
-              ? `${assistant.runId}:assistant`
-              : `${clientMessageId}:assistant`);
+            (assistant.runId ? `${assistant.runId}:assistant` : `${id}:assistant`);
           upsertLocal({
             id: externalMessageId,
             externalMessageId,
@@ -329,8 +364,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       const msg =
         error instanceof Error ? error.message : "Unknown gateway error";
       upsertLocal({
-        id: clientMessageId,
-        externalMessageId: clientMessageId,
+        id,
+        externalMessageId: id,
         fromUser: true,
         role: "user",
         content,
@@ -358,11 +393,13 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const enqueueOrSend = async (content: string) => {
     // If the agent is responding or we're already sending, enqueue.
     if (isAgentResponding || sendingRef.current) {
-      sendQueueRef.current.push(content);
+      const clientMessageId = makeClientMessageId();
+      sendQueueRef.current.push({ clientMessageId, content });
       setQueuedCount(sendQueueRef.current.length);
       // Show a local "queued" marker for user visibility.
       upsertLocal({
-        id: makeClientMessageId(),
+        id: clientMessageId,
+        externalMessageId: clientMessageId,
         fromUser: true,
         role: "user",
         content,
@@ -389,7 +426,11 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     const next = sendQueueRef.current.shift();
     setQueuedCount(sendQueueRef.current.length);
     if (!next) return;
-    void enqueueOrSend(next);
+    // Send using the reserved id so the queued bubble becomes the sent bubble.
+    sendingRef.current = true;
+    void sendDirect(next.content, next.clientMessageId).finally(() => {
+      sendingRef.current = false;
+    });
   }, [isAgentResponding]);
 
   // Background history sync to pick up agent-initiated runs (heartbeat/cron) where
@@ -426,6 +467,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           }
           const display = extractDisplayMessagesFromHistory(history);
           for (const m of display) {
+            if (
+              m.role === "user" &&
+              hasSimilarUserMessage(m.content, m.eventAt ?? Date.now())
+            ) {
+              continue;
+            }
             upsertLocal({
               id: m.externalMessageId,
               externalMessageId: m.externalMessageId,
