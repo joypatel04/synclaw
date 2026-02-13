@@ -2,7 +2,6 @@
 
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
-import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { Check, Copy, X } from "lucide-react";
 import { ToolOutputSheet } from "./ToolOutputSheet";
@@ -10,17 +9,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 
+export type UiChatMessage = {
+  id: string;
+  fromUser: boolean;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+  createdAt: number;
+  state?: "queued" | "sending" | "streaming" | "completed" | "failed" | "aborted";
+  errorMessage?: string;
+  externalMessageId?: string;
+  externalRunId?: string;
+};
+
 interface ChatMessageProps {
-  message: Doc<"chatMessages"> & {
-    state?:
-      | "queued"
-      | "sending"
-      | "streaming"
-      | "completed"
-      | "failed"
-      | "aborted";
-    errorMessage?: string;
-  };
+  message: UiChatMessage;
   agentEmoji?: string;
   agentName?: string;
   userName?: string;
@@ -89,8 +91,9 @@ export function ChatMessage({
 
   if (isTool) {
     const ok = state !== "failed";
-    const toolCallId = message.externalMessageId;
-    const outputText = typeof message.errorMessage === "string" ? message.errorMessage : undefined;
+    const toolCallId = message.externalMessageId ?? message.id;
+    const outputText =
+      typeof message.errorMessage === "string" ? message.errorMessage : undefined;
     return (
       <div className={cn("flex gap-3", "flex-row")}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
@@ -101,7 +104,7 @@ export function ChatMessage({
             {agentName}
           </p>
           <ToolOutputSheet
-            toolCallId={toolCallId ?? message._id}
+            toolCallId={toolCallId}
             toolName="exec"
             command={message.content}
             output={outputText}
