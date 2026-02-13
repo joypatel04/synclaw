@@ -30,6 +30,16 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function stripRunSuffix(sessionKey: string): string {
+  // OpenClaw can emit per-run session keys like:
+  // - agent:main:main:run:<runId>
+  // - agent:vision:cron:<cronId>:run:<runId>
+  // For the "Other Sessions" list we want one row per base session, so we
+  // collapse `:run:` children into their parent session.
+  const idx = sessionKey.indexOf(":run:");
+  return idx === -1 ? sessionKey : sessionKey.slice(0, idx);
+}
+
 function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
   const p = asRecord(payload);
   if (!p) return [];
@@ -43,7 +53,7 @@ function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
     const key = r && typeof r.key === "string" ? r.key : null;
     if (!key) continue;
     out.push({
-      key,
+      key: stripRunSuffix(key),
       updatedAt: typeof r?.updatedAt === "number" ? r?.updatedAt : undefined,
       age: typeof r?.age === "number" ? r?.age : undefined,
     });
@@ -60,7 +70,7 @@ function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
       const key = r && typeof r.key === "string" ? r.key : null;
       if (!key) continue;
       out.push({
-        key,
+        key: stripRunSuffix(key),
         updatedAt: typeof r?.updatedAt === "number" ? r?.updatedAt : undefined,
         age: typeof r?.age === "number" ? r?.age : undefined,
       });
