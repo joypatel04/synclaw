@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
 import { AgentPanel } from "@/components/dashboard/AgentPanel";
-import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { LiveFeed } from "@/components/dashboard/LiveFeed";
 import { BurnRateCard } from "@/components/dashboard/BurnRateCard";
 import { Activity, Bot, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ type MobileTab = "board" | "agents" | "activity";
 const mobileTabs: { id: MobileTab; label: string; icon: typeof Bot }[] = [
   { id: "agents", label: "Agents", icon: Bot },
   { id: "board", label: "Board", icon: LayoutDashboard },
-  { id: "activity", label: "Activity", icon: Activity },
+  { id: "activity", label: "Live Feed", icon: Activity },
 ];
 
 function DashboardContent() {
@@ -37,7 +37,7 @@ function DashboardContent() {
         </div>
         {/* Right sidebar: Activity */}
         <div className="w-[300px] border-l border-border-default bg-bg-secondary overflow-hidden">
-          <ActivityFeed />
+          <LiveFeed />
         </div>
       </div>
 
@@ -57,7 +57,7 @@ function DashboardContent() {
           )}
           {activeTab === "activity" && (
             <div className="h-full bg-bg-secondary">
-              <ActivityFeed />
+              <LiveFeed />
             </div>
           )}
         </div>

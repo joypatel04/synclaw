@@ -161,6 +161,8 @@ export default defineSchema({
       v.literal("agent_status"),
       v.literal("broadcast_sent"),
       v.literal("mention_alert"),
+      v.literal("document_created"),
+      v.literal("document_updated"),
     ),
     agentId: v.union(v.id("agents"), v.null()),
     taskId: v.union(v.id("tasks"), v.null()),

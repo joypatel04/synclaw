@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Zap,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -20,6 +21,8 @@ const typeIcons = {
   agent_status: CheckCircle,
   broadcast_sent: Radio,
   mention_alert: AlertTriangle,
+  document_created: FileText,
+  document_updated: FileText,
 };
 
 const typeColors = {
@@ -29,6 +32,8 @@ const typeColors = {
   agent_status: "text-status-active",
   broadcast_sent: "text-status-review",
   mention_alert: "text-status-blocked",
+  document_created: "text-text-secondary",
+  document_updated: "text-text-secondary",
 };
 
 interface ActivityItemProps {

@@ -9,6 +9,8 @@ const activityType = v.union(
   v.literal("agent_status"),
   v.literal("broadcast_sent"),
   v.literal("mention_alert"),
+  v.literal("document_created"),
+  v.literal("document_updated"),
 );
 
 /** Log an activity (internal use, no direct auth check). */

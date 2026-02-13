@@ -52,10 +52,20 @@ export const upsertDocument = mutation({
         updatedAt: now,
       });
 
+      await ctx.db.insert("activities", {
+        workspaceId: args.workspaceId,
+        type: "document_updated",
+        agentId: args.agentId,
+        taskId: args.taskId,
+        message: `Updated doc "${args.title}"`,
+        metadata: { documentId: args.id, type: args.type, status: args.status },
+        createdAt: now,
+      });
+
       return args.id;
     }
 
-    return await ctx.db.insert("documents", {
+    const id = await ctx.db.insert("documents", {
       workspaceId: args.workspaceId,
       title: args.title,
       content: args.content,
@@ -70,6 +80,18 @@ export const upsertDocument = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.db.insert("activities", {
+      workspaceId: args.workspaceId,
+      type: "document_created",
+      agentId: args.agentId,
+      taskId: args.taskId,
+      message: `Created doc "${args.title}"`,
+      metadata: { documentId: id, type: args.type, status: args.status },
+      createdAt: now,
+    });
+
+    return id;
   },
 });
 
@@ -88,7 +110,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx, args.workspaceId, "member");
     const now = Date.now();
-    return await ctx.db.insert("documents", {
+    const id = await ctx.db.insert("documents", {
       workspaceId: args.workspaceId,
       title: args.title,
       content: args.content,
@@ -103,6 +125,18 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.db.insert("activities", {
+      workspaceId: args.workspaceId,
+      type: "document_created",
+      agentId: args.agentId,
+      taskId: args.taskId,
+      message: `Created doc "${args.title}"`,
+      metadata: { documentId: id, type: args.type, status: args.status ?? "draft" },
+      createdAt: now,
+    });
+
+    return id;
   },
 });
 

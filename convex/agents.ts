@@ -140,13 +140,18 @@ export const agentPulse = mutation({
       lastHeartbeat: now,
     };
 
-    if (args.telemetry) {
-      const prev = agent.telemetry ?? defaultTelemetry;
-      patch.telemetry = {
-        ...prev,
-        ...args.telemetry,
-      };
-    }
+    // Normalize legacy/partial telemetry. Older rows may be missing fields that are
+    // required by the current schema; merging with defaults repairs them.
+    const prev = {
+      ...defaultTelemetry,
+      ...(agent.telemetry ?? {}),
+    };
+    patch.telemetry = args.telemetry
+      ? {
+          ...prev,
+          ...args.telemetry,
+        }
+      : prev;
 
     await ctx.db.patch(args.id, patch);
 
@@ -236,7 +241,10 @@ export const endTaskSession = mutation({
     if (!agent) throw new Error("Agent not found");
 
     const now = Date.now();
-    const previous = agent.telemetry ?? defaultTelemetry;
+    const previous = {
+      ...defaultTelemetry,
+      ...(agent.telemetry ?? {}),
+    };
     const runTokens = args.telemetry?.totalTokensUsed ?? 0;
     const nextTelemetry =
       args.telemetry === undefined
