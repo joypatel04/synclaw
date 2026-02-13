@@ -11,6 +11,7 @@ const EnvSchema = z.object({
   OPENCLAW_GATEWAY_CLIENT_PLATFORM: z.string().optional(),
   OPENCLAW_GATEWAY_ROLE: z.string().optional(),
   OPENCLAW_GATEWAY_SCOPES: z.string().optional(),
+  OPENCLAW_GATEWAY_SUBSCRIBE_METHOD: z.string().optional(),
   OPENCLAW_GATEWAY_AUTH_TOKEN: z.string().optional(),
   OPENCLAW_GATEWAY_PASSWORD: z.string().optional(),
   OPENCLAW_GATEWAY_CHAT_SUBSCRIBE: z.string().optional(),
@@ -34,6 +35,7 @@ export type BridgeConfig = {
   gatewayClientPlatform: string;
   gatewayRole: string;
   gatewayScopes: string[];
+  gatewaySubscribeMethod: string;
   gatewayAuthToken?: string;
   gatewayPassword?: string;
   subscribeOnConnect: boolean;
@@ -62,6 +64,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
+    gatewaySubscribeMethod:
+      parsed.OPENCLAW_GATEWAY_SUBSCRIBE_METHOD ?? "chat.subscribe",
     gatewayAuthToken: parsed.OPENCLAW_GATEWAY_AUTH_TOKEN,
     gatewayPassword: parsed.OPENCLAW_GATEWAY_PASSWORD,
     subscribeOnConnect:

@@ -156,6 +156,19 @@ Fix:
 - Keep `OPENCLAW_GATEWAY_CHAT_SUBSCRIBE="false"`.
 - Bridge also now treats unsupported `chat.subscribe` as non-fatal.
 
+### E) `invalid chat.send params`
+
+Error seen:
+- `invalid chat.send params: must have required property 'message'; must have required property 'idempotencyKey'; unexpected property 'content'; unexpected property 'clientMessageId'`
+
+Cause:
+- Gateway `chat.send` schema in this deployment expects `message` and `idempotencyKey`.
+
+Fix applied:
+- Bridge payload was updated to:
+  - `message: <text>`
+  - `idempotencyKey: <clientMessageId>`
+
 ## 7) Verification checklist
 
 - Send a chat message from `/chat/[agentId]`.

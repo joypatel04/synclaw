@@ -55,14 +55,22 @@ export class GatewayClient {
           });
           if (this.config.subscribeOnConnect) {
             try {
-              await this.request("chat.subscribe", {});
+              await this.request(this.config.gatewaySubscribeMethod, {});
+              console.log(
+                `Realtime subscribe enabled via method: ${this.config.gatewaySubscribeMethod}`,
+              );
             } catch (error) {
               const message =
                 error instanceof Error ? error.message : String(error);
               // Some gateway builds don't expose chat.subscribe. Keep connection alive.
-              if (message.includes("unknown method: chat.subscribe")) {
+              if (
+                message.includes(
+                  `unknown method: ${this.config.gatewaySubscribeMethod}`,
+                ) ||
+                message.includes("unknown method: chat.subscribe")
+              ) {
                 console.warn(
-                  "Gateway does not support chat.subscribe; continuing without explicit subscription.",
+                  `Gateway does not support ${this.config.gatewaySubscribeMethod}; continuing without explicit subscription.`,
                 );
               } else {
                 throw error;
@@ -165,8 +173,15 @@ export class GatewayClient {
   }) {
     return await this.request("chat.send", {
       sessionKey: params.sessionKey,
-      content: params.content,
-      clientMessageId: params.clientMessageId,
+      message: params.content,
+      idempotencyKey: params.clientMessageId,
+    });
+  }
+
+  async getChatHistory(params: { sessionKey: string; limit?: number }) {
+    return await this.request("chat.history", {
+      sessionKey: params.sessionKey,
+      limit: params.limit ?? 20,
     });
   }
 
