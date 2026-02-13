@@ -403,11 +403,11 @@ server.tool(
 
 server.tool(
   "sutraha_send_message",
-  "Post a comment on a task (supports @mentions)",
+  "Post a comment on a task (supports @mentions like @Joy or @Jarvis).",
   {
     content: z
       .string()
-      .describe("Message content (use @agent:name for mentions)"),
+      .describe("Message content (use @FirstName or @AgentName for mentions)"),
     taskId: z.string().describe("Task ID to comment on"),
     agentId: z.string().describe("Agent ID posting the message"),
   },

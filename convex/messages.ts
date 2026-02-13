@@ -20,6 +20,12 @@ function extractMentions(content: string): string[] {
   return [...new Set(mentions)];
 }
 
+function normalizeHandle(input: string): string {
+  // Mentions are captured by /@(\w+)/ so callers can't include spaces or dashes.
+  // Normalize both sides so "@AncientOne" can match agent name "Ancient One".
+  return input.toLowerCase().replace(/[^a-z0-9_]/g, "");
+}
+
 /** Post a comment (member+). */
 export const create = mutation({
   args: {
@@ -41,10 +47,22 @@ export const create = mutation({
       .query("agents")
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
-    const mentionTokens = extractMentions(args.content);
-    const mentionedAgents = agents.filter((agent) =>
-      mentionTokens.includes(agent.name.toLowerCase()),
-    );
+    const mentionTokens = extractMentions(args.content).map(normalizeHandle);
+
+    // Match agents by a few stable handles:
+    // - full name with non-word chars stripped (Ancient One -> ancientone)
+    // - first word (Ancient One -> ancient)
+    // This mirrors the human-member mention matching below.
+    const mentionedAgents = agents.filter((agent) => {
+      const displayName = (agent.name ?? "").trim();
+      if (!displayName) return false;
+      const firstWord = displayName.split(/\s+/)[0] ?? displayName;
+      const handles = [
+        normalizeHandle(displayName),
+        normalizeHandle(firstWord),
+      ];
+      return handles.some((h) => h && mentionTokens.includes(h));
+    });
     const mentionedAgentIds = mentionedAgents.map((agent) => agent._id);
 
     const messageId = await ctx.db.insert("messages", {
