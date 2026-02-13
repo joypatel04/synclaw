@@ -1,5 +1,88 @@
 # OpenClaw Chat Bridge Migration
 
+## Direct WS Mode (Vercel Frontend)
+
+Use this if you want OpenClaw-like behavior directly from browser to Gateway, without Fly bridge worker.
+
+Set these in Vercel:
+
+```bash
+NEXT_PUBLIC_CHAT_DIRECT_WS_ENABLED=true
+NEXT_PUBLIC_CHAT_BRIDGE_ENABLED=false
+NEXT_PUBLIC_OPENCLAW_GATEWAY_WS_URL="wss://claw.sahayoga.in"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_PROTOCOL="req"
+NEXT_OPENCLAW_GATEWAY_AUTH_TOKEN="<gateway-token>"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_ID="cli"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_MODE="webchat"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_PLATFORM="web"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_ROLE="operator"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES="operator.read,operator.write,operator.admin"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CHAT_SUBSCRIBE="true"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_SUBSCRIBE_METHOD="chat.subscribe"
+```
+
+Notes:
+- `chat.subscribe` may not exist in some gateway builds. Client now ignores that error and continues.
+- User/assistant transcript is still mirrored into Convex via `chatMessages.send` + `chatIngest.upsertGatewayEvent`.
+- In direct mode, browser has gateway credentials by design. Use only if acceptable for your project.
+
+### Copy/Paste env for direct mode (NOT secure)
+
+```bash
+NEXT_PUBLIC_CHAT_DIRECT_WS_ENABLED=true
+NEXT_PUBLIC_CHAT_BRIDGE_ENABLED=false
+NEXT_PUBLIC_OPENCLAW_GATEWAY_WS_URL="wss://claw.sahayoga.in"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_PROTOCOL="req"
+NEXT_OPENCLAW_GATEWAY_AUTH_TOKEN="<gateway-token>"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_ID="cli"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_MODE="webchat"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_PLATFORM="web"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_ROLE="operator"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES="operator.read,operator.write,operator.admin"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_CHAT_SUBSCRIBE="true"
+NEXT_PUBLIC_OPENCLAW_GATEWAY_SUBSCRIBE_METHOD="chat.subscribe"
+```
+
+## Secure Production Mode (Recommended)
+
+If you need token security, do not use browser WS token auth. Keep token server-side in bridge/Fly.
+
+### Copy/Paste env for secure mode (Vercel + Fly bridge)
+
+Vercel (frontend only):
+
+```bash
+NEXT_PUBLIC_CHAT_DIRECT_WS_ENABLED=false
+NEXT_PUBLIC_CHAT_BRIDGE_ENABLED=true
+```
+
+Fly bridge secrets (server-side only):
+
+```bash
+CONVEX_URL="https://<your-project>.convex.cloud"
+CONVEX_SITE_URL="https://<your-project>.convex.site"
+SUTRAHA_API_KEY="sk_<workspace_api_key>"
+SUTRAHA_WORKSPACE_ID="<workspace_id>"
+OPENCLAW_GATEWAY_AUTH_TOKEN="<gateway_token>"
+OPENCLAW_GATEWAY_WS_URL="wss://<gateway-host>"
+OPENCLAW_GATEWAY_PROTOCOL="req"
+OPENCLAW_GATEWAY_CLIENT_ID="<gateway-allowed-client-id>"
+OPENCLAW_GATEWAY_CLIENT_MODE="<gateway-allowed-client-mode>"
+OPENCLAW_GATEWAY_CLIENT_PLATFORM="node"
+OPENCLAW_GATEWAY_ROLE="operator"
+OPENCLAW_GATEWAY_SCOPES="operator.read,operator.write,operator.admin"
+OPENCLAW_GATEWAY_ORIGIN="https://<allowed-origin>"
+OPENCLAW_GATEWAY_CHAT_SUBSCRIBE="false"
+```
+
+### Removing bridge package later
+
+After direct mode is stable:
+1. Remove `packages/openclaw-bridge`.
+2. Remove Fly app and Fly bridge secrets.
+3. Delete bridge-only Convex path if desired (`chatOutbox`, bridge worker flows).
+4. Keep `chatMessages` + `chatIngest` if you still want Convex transcript/history.
+
 ## 1) Deploy schema and functions
 
 1. Run Convex deploy/codegen after pulling this branch.
