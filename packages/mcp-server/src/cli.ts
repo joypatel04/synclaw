@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { api } from "./api.js";
 /**
  * Sutraha HQ CLI
  *
@@ -13,15 +14,15 @@
  *   sutraha-cli tasks list
  *   sutraha-cli tasks create --title "Fix bug" --priority high
  *   sutraha-cli tasks update-status --id <id> --status done
- *   sutraha-cli chat send --session-id chat:key --agent-id <id> --message "Hello"
+ *   sutraha-cli chat send --session-id chat:key --message "Hello"
  */
 import { createClientFromEnv } from "./convex-client.js";
-import { api } from "./api.js";
 
 const client = createClientFromEnv();
 
 function usage() {
-  console.log(`
+  console.log(
+    `
 Sutraha HQ CLI
 
 Usage: sutraha-cli <resource> <action> [options]
@@ -30,7 +31,7 @@ Resources:
   agents     list | get --id <id> | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
   tasks      list | get --id <id> | create --title <t> | update-status --id <id> --status <s>
   messages   list --task-id <id> | send --task-id <id> --agent-id <id> --content <msg>
-  chat       send --session-id <sid> --agent-id <id> --message <msg>
+  chat       send --session-id <sid> --message <msg>
   broadcasts list
   documents  list | create --title <t> --content <c> --agent-id <id> [--status draft|final|archived]
   activities list
@@ -40,7 +41,8 @@ Environment variables:
   CONVEX_SITE_URL        Convex site URL (for token exchange)
   SUTRAHA_API_KEY        Workspace API key
   SUTRAHA_WORKSPACE_ID   Workspace ID
-  `.trim());
+  `.trim(),
+  );
 }
 
 function getArg(args: string[], flag: string): string | undefined {
@@ -69,7 +71,7 @@ async function main() {
   const [resource, action, ...rest] = args;
 
   try {
-    let result: any;
+    let result: unknown;
 
     switch (resource) {
       case "agents":
@@ -159,9 +161,10 @@ async function main() {
           case "send":
             await client.mutation(api.chatMessages.send, {
               sessionId: requireArg(rest, "--session-id", "sessionId"),
-              agentId: requireArg(rest, "--agent-id", "agentId"),
               content: requireArg(rest, "--message", "message"),
               fromUser: false,
+              role: "assistant",
+              state: "completed",
             });
             result = { ok: true };
             break;
@@ -221,8 +224,9 @@ async function main() {
     }
 
     console.log(JSON.stringify(result, null, 2));
-  } catch (error: any) {
-    console.error("Error:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Error:", message);
     process.exit(1);
   }
 }

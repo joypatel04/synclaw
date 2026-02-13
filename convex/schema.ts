@@ -47,11 +47,7 @@ export default defineSchema({
   workspaceInvites: defineTable({
     workspaceId: v.id("workspaces"),
     email: v.string(),
-    role: v.union(
-      v.literal("admin"),
-      v.literal("member"),
-      v.literal("viewer"),
-    ),
+    role: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
     invitedBy: v.id("users"),
     status: v.union(
       v.literal("pending"),
@@ -209,11 +205,7 @@ export default defineSchema({
       v.literal("journal"),
     ),
     status: v.optional(
-      v.union(
-        v.literal("draft"),
-        v.literal("final"),
-        v.literal("archived"),
-      ),
+      v.union(v.literal("draft"), v.literal("final"), v.literal("archived")),
     ),
     taskId: v.union(v.id("tasks"), v.null()),
     folderId: v.optional(v.id("folders")),
@@ -255,11 +247,93 @@ export default defineSchema({
     sessionId: v.string(),
     fromUser: v.boolean(),
     content: v.string(),
+    role: v.optional(
+      v.union(
+        v.literal("user"),
+        v.literal("assistant"),
+        v.literal("system"),
+        v.literal("tool"),
+      ),
+    ),
+    externalMessageId: v.optional(v.string()),
+    externalRunId: v.optional(v.string()),
+    state: v.optional(
+      v.union(
+        v.literal("queued"),
+        v.literal("sending"),
+        v.literal("streaming"),
+        v.literal("completed"),
+        v.literal("failed"),
+        v.literal("aborted"),
+      ),
+    ),
+    errorCode: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    sequence: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])
     .index("bySession", ["sessionId", "createdAt"])
-    .index("recent", ["createdAt"]),
+    .index("recent", ["createdAt"])
+    .index("bySessionSequence", ["sessionId", "sequence"])
+    .index("byExternalMessageId", ["externalMessageId"])
+    .index("byRunId", ["externalRunId"]),
+
+  chatSessions: defineTable({
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    sessionKey: v.string(),
+    openclawSessionId: v.optional(v.string()),
+    lastEventAt: v.number(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("idle"),
+      v.literal("error"),
+      v.literal("closed"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("bySessionKey", ["workspaceId", "sessionKey"])
+    .index("byAgent", ["workspaceId", "agentId"]),
+
+  chatEvents: defineTable({
+    workspaceId: v.id("workspaces"),
+    sessionKey: v.string(),
+    eventId: v.string(),
+    eventType: v.string(),
+    payload: v.any(),
+    receivedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("bySessionAndEvent", ["workspaceId", "sessionKey", "eventId"])
+    .index("recent", ["receivedAt"]),
+
+  chatOutbox: defineTable({
+    workspaceId: v.id("workspaces"),
+    sessionKey: v.string(),
+    clientMessageId: v.string(),
+    commandType: v.union(v.literal("chat.send"), v.literal("chat.abort")),
+    payload: v.any(),
+    attempt: v.number(),
+    nextAttemptAt: v.number(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("claimed"),
+      v.literal("sent"),
+      v.literal("failed"),
+    ),
+    claimedAt: v.optional(v.number()),
+    claimedBy: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byStatusNextAttempt", ["workspaceId", "status", "nextAttemptAt"])
+    .index("byClientMessageId", ["workspaceId", "clientMessageId"]),
 
   /**
    * Individual agent run records for cost tracking.

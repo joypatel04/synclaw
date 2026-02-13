@@ -393,15 +393,15 @@ server.tool(
     sessionId: z
       .string()
       .describe("Chat session ID (e.g., chat:agent-session-key)"),
-    agentId: z.string().describe("Agent ID sending the message"),
     content: z.string().describe("Message content"),
   },
-  async ({ sessionId, agentId, content }) => {
+  async ({ sessionId, content }) => {
     await client.mutation(api.chatMessages.send, {
       sessionId,
-      agentId,
       content,
       fromUser: false,
+      role: "assistant",
+      state: "completed",
     });
     return { content: [{ type: "text", text: "Chat message sent" }] };
   },
