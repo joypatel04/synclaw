@@ -99,7 +99,7 @@ export function ChatMessage({
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
           {agentEmoji}
         </div>
-        <div className="w-full min-w-0 max-w-[44rem] rounded-2xl bg-bg-tertiary rounded-tl-sm px-4 py-2.5">
+        <div className="min-w-0 w-fit max-w-[92%] sm:max-w-[44rem] rounded-2xl bg-bg-tertiary rounded-tl-sm px-4 py-2.5">
           <p className="text-xs font-medium text-text-muted mb-1">
             {agentName}
           </p>
@@ -170,7 +170,7 @@ export function ChatMessage({
       )}
       <div
         className={cn(
-          "group relative w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5 border shadow-xs",
+          "group relative min-w-0 w-fit max-w-[92%] sm:max-w-[44rem] rounded-2xl px-4 py-2.5 border shadow-xs",
           isUser
             ? "bg-accent-orange-dim border-accent-orange/25 rounded-tr-sm"
             : "bg-bg-primary border-border-default rounded-tl-sm",

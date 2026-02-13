@@ -605,15 +605,15 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-col min-h-0 overflow-hidden h-[calc(100dvh-3.5rem)]">
-      <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-6 py-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-bg-tertiary text-xl">
+      <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6 sm:py-3">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-bg-tertiary text-lg sm:text-xl">
           {agent.emoji}
         </div>
         <div>
           <h2 className="text-sm font-semibold text-text-primary">
             {agent.name}
           </h2>
-          <p className="text-xs text-text-muted">{agent.role}</p>
+          <p className="text-xs text-text-muted hidden sm:block">{agent.role}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           {activeRun?.externalRunId && canEdit && (
@@ -636,7 +636,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       </div>
       <div className="relative flex-1 min-h-0">
         <ScrollArea className="h-full bg-bg-secondary" viewportRef={viewportRef}>
-          <div className="space-y-4 p-6">
+          <div className="space-y-3 p-3 sm:space-y-4 sm:p-6">
             {localMessages.length === 0 ? (
               <EmptyState
                 icon={MessageSquare}
@@ -676,7 +676,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
             type="button"
             size="icon"
             variant="secondary"
-            className="absolute bottom-4 right-4 z-10 h-9 w-9 rounded-full shadow-md"
+            className="absolute bottom-24 right-4 z-10 h-9 w-9 rounded-full shadow-md sm:bottom-4"
             onClick={() => scrollToBottom("smooth")}
             aria-label="Scroll to bottom"
           >
@@ -685,7 +685,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         )}
       </div>
 
-      <div className="sticky bottom-0 border-t border-border-default bg-bg-secondary">
+      <div className="sticky bottom-0 border-t border-border-default bg-bg-secondary pb-[env(safe-area-inset-bottom)]">
         <ChatInput
           onSend={handleSend}
           placeholder={`Message ${agent.name}...`}

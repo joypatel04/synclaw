@@ -60,7 +60,7 @@ export function ChatInput({
         e.preventDefault();
         void doSend();
       }}
-      className="p-4 border-t border-border-default bg-bg-secondary"
+      className="p-3 sm:p-4 border-t border-border-default bg-bg-secondary"
     >
       <div className="flex gap-2">
         <Textarea
