@@ -6,12 +6,23 @@ import { Activity, RefreshCw } from "lucide-react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
+import {
+  extractDisplayMessagesFromHistory,
+  OpenClawBrowserGatewayClient,
+} from "@/lib/openclaw-gateway-client";
 
 type OpenClawSessionRow = {
   key: string;
   updatedAt?: number;
   age?: number;
+};
+
+type SessionDetails = {
+  snippet?: string;
+  role?: string;
+  at?: number;
+  loading: boolean;
+  error?: string;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -91,6 +102,23 @@ function prettySessionLabel(sessionKey: string): string {
   return sessionKey;
 }
 
+function sessionKind(sessionKey: string): "run" | "cron" | "main" | "other" {
+  if (sessionKey.includes(":run:")) return "run";
+  if (sessionKey.includes(":cron:")) return "cron";
+  if (sessionKey.startsWith("agent:") && sessionKey.endsWith(":main"))
+    return "main";
+  if (sessionKey.startsWith("agent:") && sessionKey.includes(":main"))
+    return "main";
+  return "other";
+}
+
+function formatAgeMinutes(ageSeconds: number): string {
+  const mins = Math.max(0, Math.round(ageSeconds / 60));
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.round(mins / 60);
+  return `${hours}h`;
+}
+
 export function OpenClawSessionsList({
   agents,
 }: {
@@ -100,6 +128,7 @@ export function OpenClawSessionsList({
   }>;
 }) {
   const [sessions, setSessions] = useState<OpenClawSessionRow[]>([]);
+  const [detailsByKey, setDetailsByKey] = useState<Record<string, SessionDetails>>({});
   const [status, setStatus] = useState<
     "idle" | "connecting" | "connected" | "error"
   >("idle");
@@ -121,10 +150,31 @@ export function OpenClawSessionsList({
     });
   }, [sessions, knownAgentSessionKeys, includeCron]);
 
+  const agentByKeyPrefix = useMemo(() => {
+    // Map `agent:<id>:` prefixes to emoji/name so we can label cron/run sessions nicely.
+    const map = new Map<string, { name: string; emoji: string }>();
+    for (const a of agents) {
+      if (typeof a.sessionKey !== "string") continue;
+      const parts = a.sessionKey.split(":");
+      if (parts[0] !== "agent" || parts.length < 2) continue;
+      const prefix = `agent:${parts[1]}:`;
+      map.set(prefix, { name: a.name, emoji: a.emoji });
+    }
+    return map;
+  }, [agents]);
+
+  const lookupAgent = (sessionKey: string) => {
+    for (const [prefix, meta] of agentByKeyPrefix.entries()) {
+      if (sessionKey.startsWith(prefix)) return meta;
+    }
+    return null;
+  };
+
   const connect = async () => {
     setStatus("connecting");
     setError(null);
     setSessions([]);
+    setDetailsByKey({});
 
     if (clientRef.current) {
       try {
@@ -220,6 +270,66 @@ export function OpenClawSessionsList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Best-effort: fetch a useful "last message" snippet per session (for the top N).
+  useEffect(() => {
+    if (status !== "connected") return;
+    if (!clientRef.current) return;
+    if (otherSessions.length === 0) return;
+
+    let cancelled = false;
+
+    const client = clientRef.current;
+    const keys = otherSessions.slice(0, 20).map((s) => s.key);
+    const missing = keys.filter((k) => !detailsByKey[k]);
+    if (missing.length === 0) return;
+
+    const run = async () => {
+      // Concurrency limiter to avoid hammering the gateway.
+      const concurrency = 4;
+      let idx = 0;
+      const workers = Array.from({ length: concurrency }).map(async () => {
+        while (!cancelled) {
+          const key = missing[idx++];
+          if (!key) return;
+
+          setDetailsByKey((prev) => ({
+            ...prev,
+            [key]: { loading: true },
+          }));
+
+          try {
+            const history = await client.getChatHistory({ sessionKey: key, limit: 8 });
+            const display = extractDisplayMessagesFromHistory(history);
+            const last = display.length > 0 ? display[display.length - 1] : null;
+
+            setDetailsByKey((prev) => ({
+              ...prev,
+              [key]: {
+                loading: false,
+                snippet: last?.content?.trim()?.slice(0, 140) ?? undefined,
+                role: last?.role,
+                at: last?.eventAt,
+              },
+            }));
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setDetailsByKey((prev) => ({
+              ...prev,
+              [key]: { loading: false, error: msg },
+            }));
+          }
+        }
+      });
+
+      await Promise.all(workers);
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, otherSessions, detailsByKey]);
+
   if (status === "error") {
     return (
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
@@ -285,17 +395,33 @@ export function OpenClawSessionsList({
               className="block"
             >
               <div className="group flex items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 transition-smooth hover:border-border-hover">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-text-primary truncate">
-                    {prettySessionLabel(s.key)}
-                  </p>
-                  <p className="text-[11px] text-text-dim truncate">
-                    {s.key}
-                  </p>
+                <div className="min-w-0 flex items-start gap-2">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-default bg-bg-secondary text-sm">
+                    {lookupAgent(s.key)?.emoji ?? "💬"}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium text-text-primary truncate">
+                        {lookupAgent(s.key)?.name ?? prettySessionLabel(s.key)}
+                      </p>
+                      <span className="rounded-md border border-border-default bg-bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text-dim">
+                        {sessionKind(s.key)}
+                      </span>
+                    </div>
+                    {detailsByKey[s.key]?.snippet ? (
+                      <p className="mt-0.5 text-[11px] text-text-dim line-clamp-2">
+                        {detailsByKey[s.key].snippet}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-[11px] text-text-dim truncate">
+                        {s.key}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {typeof s.age === "number" ? (
                   <span className="shrink-0 text-[11px] text-text-muted">
-                    {Math.round(s.age / 60)}m
+                    {formatAgeMinutes(s.age)}
                   </span>
                 ) : null}
               </div>
