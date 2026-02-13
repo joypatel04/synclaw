@@ -23,10 +23,16 @@ export function ChatInput({
     e.preventDefault();
     if (!content.trim() || isSending) return;
 
+    const outgoing = content.trim();
+    // Clear immediately so long-running sends (streaming/history polling) don't
+    // leave the input looking "stuck". Restore on error.
+    setContent("");
     setIsSending(true);
     try {
-      await onSend(content.trim());
-      setContent("");
+      await onSend(outgoing);
+    } catch (error) {
+      setContent(outgoing);
+      throw error;
     } finally {
       setIsSending(false);
     }
