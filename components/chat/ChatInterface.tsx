@@ -90,7 +90,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
             process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_PROTOCOL === "jsonrpc"
               ? "jsonrpc"
               : "req",
-          authToken: process.env.NEXT_OPENCLAW_GATEWAY_AUTH_TOKEN,
+          authToken: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_AUTH_TOKEN,
           password: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_PASSWORD,
           clientId: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_ID ?? "cli",
           clientMode:
