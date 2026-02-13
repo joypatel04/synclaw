@@ -143,8 +143,8 @@ export function extractContextSizeFromHistory(history: unknown): string | null {
   if (!total || !Number.isFinite(total)) return null;
 
   const limit = pickUsageLimit(usage, total);
-  if (limit) return `ctx ${formatNumber(total)}/${formatNumber(limit)}`;
-  return `tok ${formatNumber(total)}`;
+  if (limit) return `context: ${formatNumber(total)}/${formatNumber(limit)}`;
+  return `Tokens used: ${formatNumber(total)}`;
 }
 
 export function pickLatestAssistantFromHistory(history: unknown): {

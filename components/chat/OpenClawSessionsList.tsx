@@ -32,16 +32,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function stripRunSuffix(sessionKey: string): string {
-  // OpenClaw can emit per-run session keys like:
-  // - agent:main:main:run:<runId>
-  // - agent:vision:cron:<cronId>:run:<runId>
-  // For the "Other Sessions" list we want one row per base session, so we
-  // collapse `:run:` children into their parent session.
-  const idx = sessionKey.indexOf(":run:");
-  return idx === -1 ? sessionKey : sessionKey.slice(0, idx);
-}
-
 function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
   const p = asRecord(payload);
   if (!p) return [];
@@ -55,7 +45,7 @@ function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
     const key = r && typeof r.key === "string" ? r.key : null;
     if (!key) continue;
     out.push({
-      key: stripRunSuffix(key),
+      key,
       updatedAt: typeof r?.updatedAt === "number" ? r?.updatedAt : undefined,
       age: typeof r?.age === "number" ? r?.age : undefined,
     });
@@ -72,7 +62,7 @@ function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
       const key = r && typeof r.key === "string" ? r.key : null;
       if (!key) continue;
       out.push({
-        key: stripRunSuffix(key),
+        key,
         updatedAt: typeof r?.updatedAt === "number" ? r?.updatedAt : undefined,
         age: typeof r?.age === "number" ? r?.age : undefined,
       });
@@ -157,12 +147,12 @@ export function OpenClawSessionsList({
     return new Set(agents.map((a) => a.sessionKey));
   }, [agents]);
 
-  type KindFilter = "main" | "cron" | "other";
+  type KindFilter = "cron" | "run" | "other";
   const [kindFilters, setKindFilters] = useState<Record<KindFilter, boolean>>({
-    // Default behavior: show what you can't already reach via the agent list,
-    // but allow toggling MAIN + CRON for quick debugging.
-    main: false,
+    // Default behavior: show CRON + OTHER, and allow enabling RUN when you
+    // want to inspect per-run sessions.
     cron: true,
+    run: false,
     other: true,
   });
 
@@ -174,32 +164,34 @@ export function OpenClawSessionsList({
   }, [sessions, includeCron]);
 
   const sessionKindForFilter = (sessionKey: string): KindFilter => {
+    if (sessionKey.includes(":run:")) return "run";
     if (sessionKey.includes(":cron:")) return "cron";
-    if (sessionKey.startsWith("agent:") && sessionKey.endsWith(":main")) return "main";
-    if (sessionKey.startsWith("agent:") && sessionKey.includes(":main")) return "main";
     return "other";
   };
 
   const visibleSessions = useMemo(() => {
     return allSessions.filter((s) => {
-      const kind = sessionKindForFilter(s.key);
+      // "Other Sessions" should not duplicate the main agent list.
+      // Hide canonical agent main sessions, and also hide any "main" shaped
+      // sessions (even if they aren't in Convex).
+      if (knownAgentSessionKeys.has(s.key)) return false;
+      if (sessionKind(s.key) === "main") return false;
 
-      // If MAIN toggle is off, hide known agent MAIN sessions to keep the list focused.
-      if (kind === "main" && knownAgentSessionKeys.has(s.key) && !kindFilters.main) {
-        return false;
-      }
+      const kind = sessionKindForFilter(s.key);
 
       return kindFilters[kind];
     });
   }, [allSessions, knownAgentSessionKeys, kindFilters]);
 
   const counts = useMemo(() => {
-    const base = { main: 0, cron: 0, other: 0 } as Record<KindFilter, number>;
+    const base = { cron: 0, run: 0, other: 0 } as Record<KindFilter, number>;
     for (const s of allSessions) {
+      if (knownAgentSessionKeys.has(s.key)) continue;
+      if (sessionKind(s.key) === "main") continue;
       base[sessionKindForFilter(s.key)]++;
     }
     return base;
-  }, [allSessions]);
+  }, [allSessions, knownAgentSessionKeys]);
 
   const agentByKeyPrefix = useMemo(() => {
     // Map `agent:<id>:` prefixes to emoji/name so we can label cron/run sessions nicely.
@@ -436,7 +428,7 @@ export function OpenClawSessionsList({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {(["main", "cron", "other"] as const).map((k) => (
+        {(["cron", "run", "other"] as const).map((k) => (
           <button
             key={k}
             type="button"
