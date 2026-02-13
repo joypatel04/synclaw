@@ -118,6 +118,86 @@ export function pickLatestAssistantFromHistory(history: unknown): {
   return { text, runId, messageId };
 }
 
+function hashString(input: string): string {
+  // Simple deterministic hash for stable IDs; not cryptographic.
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
+export type HistoryIngestMessage = {
+  externalMessageId: string;
+  role: "user" | "assistant" | "system" | "tool";
+  fromUser: boolean;
+  content: string;
+  state: "completed";
+  eventAt?: number;
+};
+
+export function extractDisplayMessagesFromHistory(
+  history: unknown,
+): HistoryIngestMessage[] {
+  const messages = pickHistoryMessages(history);
+  if (messages.length === 0) return [];
+
+  const out: HistoryIngestMessage[] = [];
+  for (const m of messages) {
+    const roleRaw =
+      (typeof m.role === "string" && m.role) ||
+      (typeof m.author === "string" && m.author) ||
+      "assistant";
+
+    // Skip toolResult here; we ingest exec cards via extractExecTracesFromHistory.
+    if (roleRaw === "toolResult") continue;
+
+    const role: "user" | "assistant" | "system" | "tool" =
+      roleRaw === "user" || roleRaw === "assistant" || roleRaw === "system"
+        ? roleRaw
+        : roleRaw === "tool"
+          ? "tool"
+          : "assistant";
+
+    // For assistant messages, keep only readable text parts (ignore thinking/toolCall parts).
+    let text: string | null = null;
+    if (role === "assistant" && Array.isArray(m.content)) {
+      const textParts = m.content
+        .filter((p: any) => p && typeof p === "object" && p.type === "text")
+        .map((p: any) => (typeof p.text === "string" ? p.text : ""))
+        .filter((t: string) => t.trim().length > 0);
+      text = textParts.length > 0 ? textParts.join("\n") : null;
+    } else {
+      text =
+        pickText(m.content) ??
+        pickText(m.text) ??
+        pickText(m.message) ??
+        pickText(m.reply);
+    }
+    if (!text) continue;
+
+    const ts = typeof m.timestamp === "number" ? m.timestamp : undefined;
+    const stableKey = `${ts ?? "na"}:${role}:${text.slice(0, 64)}`;
+    const externalMessageId =
+      (typeof m.id === "string" && m.id) ||
+      (typeof m.messageId === "string" && m.messageId) ||
+      `hist_${ts ?? Date.now()}_${role}_${hashString(stableKey).slice(0, 8)}`;
+
+    out.push({
+      externalMessageId,
+      role,
+      fromUser: role === "user",
+      content: text,
+      state: "completed",
+      eventAt: ts,
+    });
+  }
+
+  // Deterministic order by timestamp where possible.
+  return out.sort((a, b) => (a.eventAt ?? 0) - (b.eventAt ?? 0));
+}
+
 export type ToolExecTrace = {
   toolCallId: string;
   toolName: string;

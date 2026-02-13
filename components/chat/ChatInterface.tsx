@@ -12,6 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
   OpenClawBrowserGatewayClient,
+  extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
   pickLatestAssistantFromHistory,
   pickRunId,
@@ -61,6 +62,11 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const useDirectWs =
     process.env.NEXT_PUBLIC_CHAT_DIRECT_WS_ENABLED === "true";
   const useBridge = process.env.NEXT_PUBLIC_CHAT_BRIDGE_ENABLED === "true";
+  const includeCron =
+    process.env.NEXT_PUBLIC_OPENCLAW_INCLUDE_CRON === "true";
+  const historyPollMs = Number(
+    process.env.NEXT_PUBLIC_OPENCLAW_HISTORY_POLL_MS ?? "0",
+  );
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -115,11 +121,23 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         },
         async (event) => {
           const mapped = mapGatewayEventForIngest(event, makeClientMessageId());
-          if (!mapped || mapped.sessionKey !== agent.sessionKey) return;
+          if (!mapped) return;
+          const isPrimary = mapped.sessionKey === agent.sessionKey;
+          const isCron =
+            includeCron &&
+            mapped.sessionKey.startsWith(`${agent.sessionKey}:cron:`);
+          if (!isPrimary && !isCron) return;
+
+          // Optional: mirror cron/heartbeat runs into the primary chat so they show
+          // up in Sutraha HQ without creating a separate "cron session" thread.
+          const sessionKey = isCron ? agent.sessionKey : mapped.sessionKey;
+          const eventId = isCron
+            ? `cron:${mapped.sessionKey}:${mapped.eventId}`
+            : mapped.eventId;
           await upsertGatewayEvent({
             workspaceId,
-            sessionKey: mapped.sessionKey,
-            eventId: mapped.eventId,
+            sessionKey,
+            eventId,
             eventType: mapped.eventType,
             eventAt: mapped.eventAt,
             payload: mapped.payload,
@@ -181,6 +199,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
       const assistantText = pickText(response);
       const runId = pickRunId(response);
+      let assistantIngested = false;
 
       if (assistantText) {
         await upsertGatewayEvent({
@@ -204,11 +223,11 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           },
           sessionStatus: "idle",
         });
-        return;
+        assistantIngested = true;
       }
 
-      // If the gateway doesn't return assistant output inline, poll `chat.history`
-      // like the Control UI does.
+      // Always poll `chat.history` after send to ingest tool calls/results.
+      // Also use it as a fallback for assistant text if not already ingested.
       for (const delayMs of [750, 1500, 3000]) {
         await new Promise((r) => setTimeout(r, delayMs));
         const history = await gatewayRef.current!.getChatHistory({
@@ -253,6 +272,33 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           });
         }
 
+        // Ingest displayable user/system messages that Control UI shows (e.g. HEARTBEAT prompt).
+        const display = extractDisplayMessagesFromHistory(history);
+        for (const m of display) {
+          // Avoid duplicating the just-sent user message; we already inserted it.
+          if (m.externalMessageId === clientMessageId) continue;
+          await upsertGatewayEvent({
+            workspaceId,
+            sessionKey: agent.sessionKey,
+            eventId: `direct.history.msg.${m.externalMessageId}.${delayMs}`,
+            eventType: "chat.history.message",
+            eventAt: m.eventAt,
+            payload:
+              typeof history === "object" && history !== null
+                ? (history as Record<string, unknown>)
+                : { history },
+            message: {
+              externalMessageId: m.externalMessageId,
+              role: m.role,
+              fromUser: m.fromUser,
+              content: m.content,
+              state: "completed",
+            },
+            sessionStatus: "active",
+          });
+        }
+
+        if (assistantIngested) continue;
         const assistant = pickLatestAssistantFromHistory(history);
         if (!assistant) continue;
 
@@ -282,7 +328,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           },
           sessionStatus: "idle",
         });
-        return;
+        assistantIngested = true;
       }
     } catch (error) {
       await upsertGatewayEvent({
@@ -307,6 +353,87 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       });
     }
   };
+
+  // Background history sync to pick up agent-initiated runs (heartbeat/cron) where
+  // tool calls are only available via `chat.history`.
+  useEffect(() => {
+    if (!useDirectWs) return;
+    if (!historyPollMs || Number.isNaN(historyPollMs) || historyPollMs < 1000)
+      return;
+
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        await ensureDirectGatewayConnected();
+        const history = await gatewayRef.current!.getChatHistory({
+          sessionKey: agent.sessionKey,
+          limit: 50,
+        });
+
+        const traces = extractExecTracesFromHistory(history);
+        for (const t of traces) {
+          await upsertGatewayEvent({
+            workspaceId,
+            sessionKey: agent.sessionKey,
+            eventId: `sync.history.exec.${t.toolCallId}`,
+            eventType: "chat.history.exec",
+            eventAt: t.timestamp ?? t.resultTimestamp,
+            payload:
+              typeof history === "object" && history !== null
+                ? (history as Record<string, unknown>)
+                : { history },
+            message: {
+              externalMessageId: t.toolCallId,
+              role: "tool",
+              fromUser: false,
+              content: t.command ?? `${t.toolName} (missing command)`,
+              state:
+                t.status === "error" ||
+                (t.resultText && t.resultText.includes("Server Error"))
+                  ? "failed"
+                  : "completed",
+              errorMessage:
+                t.status === "error" ? t.resultText ?? "Tool failed" : undefined,
+            },
+            sessionStatus: "active",
+          });
+        }
+
+        const display = extractDisplayMessagesFromHistory(history);
+        for (const m of display) {
+          await upsertGatewayEvent({
+            workspaceId,
+            sessionKey: agent.sessionKey,
+            eventId: `sync.history.msg.${m.externalMessageId}`,
+            eventType: "chat.history.message",
+            eventAt: m.eventAt,
+            payload:
+              typeof history === "object" && history !== null
+                ? (history as Record<string, unknown>)
+                : { history },
+            message: {
+              externalMessageId: m.externalMessageId,
+              role: m.role,
+              fromUser: m.fromUser,
+              content: m.content,
+              state: "completed",
+            },
+            sessionStatus: "active",
+          });
+        }
+      } catch {
+        // Ignore; next tick will retry.
+      }
+    };
+
+    const interval = setInterval(() => void tick(), historyPollMs);
+    void tick();
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [useDirectWs, historyPollMs, agent.sessionKey, workspaceId]);
 
   const handleSend = async (content: string) => {
     if (useDirectWs) {
