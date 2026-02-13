@@ -26,6 +26,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { FileText, Folder, FolderPlus, FolderTree, Globe, Pencil } from "lucide-react";
 
@@ -61,6 +68,7 @@ function DocumentsContent() {
   const [docTypeFilter, setDocTypeFilter] = useState<"all" | DocType>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [selectedFolderId, setSelectedFolderId] = useState<Id<"folders"> | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingDocumentId, setEditingDocumentId] = useState<Id<"documents"> | null>(null);
@@ -209,93 +217,124 @@ function DocumentsContent() {
     });
   };
 
+  const sidebar = (
+    <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <FolderTree className="h-4 w-4 text-text-muted" />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+          Knowledge Sidebar
+        </h2>
+      </div>
+
+      <div className="space-y-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("all");
+            setSelectedFolderId(null);
+            setSidebarOpen(false);
+          }}
+          className={cn(
+            "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
+            viewMode === "all"
+              ? "bg-accent-orange/20 text-accent-orange"
+              : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+          )}
+        >
+          All Documents
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("global");
+            setSelectedFolderId(null);
+            setSidebarOpen(false);
+          }}
+          className={cn(
+            "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
+            viewMode === "global"
+              ? "bg-accent-orange/20 text-accent-orange"
+              : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+          )}
+        >
+          🌍 Global Context
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("drafts");
+            setSelectedFolderId(null);
+            setSidebarOpen(false);
+          }}
+          className={cn(
+            "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
+            viewMode === "drafts"
+              ? "bg-accent-orange/20 text-accent-orange"
+              : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+          )}
+        >
+          📝 Drafts
+        </button>
+      </div>
+
+      <div className="my-4 border-t border-border-default" />
+      <div className="space-y-1">{renderFolderTree()}</div>
+    </div>
+  );
+
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-6xl p-3 sm:p-6">
+      <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-orange/20">
             <FileText className="h-4 w-4 text-accent-orange" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-text-primary">Documents</h1>
-            <p className="text-xs text-text-muted">
+            <h1 className="text-lg font-bold text-text-primary sm:text-xl">Documents</h1>
+            <p className="text-xs text-text-muted hidden sm:block">
               Shared Brain: intelligence, protocols, and agent outputs
             </p>
           </div>
         </div>
-        {canEdit && (
-          <Button
-            size="sm"
-            className="bg-accent-orange text-white hover:bg-accent-orange/90 text-xs"
-            onClick={openCreate}
-          >
-            New document
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs lg:hidden"
+              >
+                <FolderTree className="mr-2 h-3.5 w-3.5" />
+                Browse
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="bg-bg-secondary border-border-default p-0">
+              <SheetHeader className="border-b border-border-default">
+                <SheetTitle className="text-text-primary text-sm">
+                  Documents
+                </SheetTitle>
+              </SheetHeader>
+              <div className="p-4">{sidebar}</div>
+            </SheetContent>
+          </Sheet>
+
+          {canEdit && (
+            <Button
+              size="sm"
+              className="bg-accent-orange text-white hover:bg-accent-orange/90 text-xs h-8 px-3 sm:h-9 sm:px-4"
+              onClick={openCreate}
+            >
+              New document
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        <aside className="rounded-xl border border-border-default bg-bg-secondary p-4">
-          <div className="mb-4 flex items-center gap-2">
-            <FolderTree className="h-4 w-4 text-text-muted" />
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-              Knowledge Sidebar
-            </h2>
-          </div>
+        <aside className="hidden lg:block">{sidebar}</aside>
 
-          <div className="space-y-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("all");
-                setSelectedFolderId(null);
-              }}
-              className={cn(
-                "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
-                viewMode === "all"
-                  ? "bg-accent-orange/20 text-accent-orange"
-                  : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-              )}
-            >
-              All Documents
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("global");
-                setSelectedFolderId(null);
-              }}
-              className={cn(
-                "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
-                viewMode === "global"
-                  ? "bg-accent-orange/20 text-accent-orange"
-                  : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-              )}
-            >
-              🌍 Global Context
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("drafts");
-                setSelectedFolderId(null);
-              }}
-              className={cn(
-                "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
-                viewMode === "drafts"
-                  ? "bg-accent-orange/20 text-accent-orange"
-                  : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-              )}
-            >
-              📝 Drafts
-            </button>
-          </div>
-
-          <div className="my-4 border-t border-border-default" />
-          <div className="space-y-1">{renderFolderTree()}</div>
-        </aside>
-
-        <main>
+        <main className="order-1 lg:order-none">
           <div className="mb-4 flex gap-2 overflow-x-auto">
             {DOC_TYPES.map((t) => (
               <button
@@ -331,7 +370,7 @@ function DocumentsContent() {
                 return (
                   <div
                     key={doc._id}
-                    className="rounded-xl border border-border-default bg-bg-secondary p-5 transition-smooth hover:border-border-hover"
+                    className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-5 transition-smooth hover:border-border-hover"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
