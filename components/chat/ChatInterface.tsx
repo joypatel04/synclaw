@@ -107,12 +107,117 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     localIndexRef.current = map;
   };
 
+  const normalizeChatText = (s: string) =>
+    s
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .trim();
+
+  const stateRank = (s: UiChatMessage["state"] | undefined) => {
+    // Higher = more "final"/informative.
+    switch (s) {
+      case "failed":
+        return 50;
+      case "aborted":
+        return 40;
+      case "completed":
+        return 30;
+      case "streaming":
+        return 20;
+      case "sending":
+        return 10;
+      case "queued":
+        return 5;
+      default:
+        return 0;
+    }
+  };
+
+  const collapseNearDuplicates = (messages: UiChatMessage[]) => {
+    if (messages.length < 2) return messages;
+
+    const out: UiChatMessage[] = [];
+    const windowMs = 5_000; // tight: only collapse immediate duplicates
+
+    for (const m of messages) {
+      const last = out[out.length - 1];
+      if (!last) {
+        out.push(m);
+        continue;
+      }
+
+      const isUserOrAssistant =
+        (m.role === "user" && m.fromUser) ||
+        (m.role === "assistant" && !m.fromUser);
+      const lastIsUserOrAssistant =
+        (last.role === "user" && last.fromUser) ||
+        (last.role === "assistant" && !last.fromUser);
+
+      const sameKind =
+        isUserOrAssistant &&
+        lastIsUserOrAssistant &&
+        m.role === last.role &&
+        m.fromUser === last.fromUser;
+
+      const sameText =
+        normalizeChatText(m.content) === normalizeChatText(last.content);
+      const closeInTime =
+        Math.abs((m.createdAt ?? 0) - (last.createdAt ?? 0)) <= windowMs;
+
+      // Only merge if they look like the same message arriving twice right away.
+      if (sameKind && sameText && closeInTime) {
+        const keep = last;
+        const incoming = m;
+        const merged: UiChatMessage = {
+          ...keep,
+          // Prefer the most advanced state.
+          state:
+            stateRank(incoming.state) > stateRank(keep.state)
+              ? incoming.state
+              : keep.state,
+          // Prefer non-empty/longer content (streaming -> final).
+          content:
+            incoming.content.length > keep.content.length
+              ? incoming.content
+              : keep.content,
+          errorMessage: incoming.errorMessage ?? keep.errorMessage,
+          externalRunId: incoming.externalRunId ?? keep.externalRunId,
+          externalMessageId: keep.externalMessageId ?? incoming.externalMessageId,
+        };
+        out[out.length - 1] = merged;
+        continue;
+      }
+
+      out.push(m);
+    }
+
+    return out;
+  };
+
   const upsertLocal = (partial: Omit<UiChatMessage, "id"> & { id?: string }) => {
     setLocalMessages((prev) => {
-      const key = partial.externalMessageId ?? partial.id;
+      // Canonicalize assistant IDs by runId when possible to avoid duplicates coming
+      // from different gateway id formats (WS vs history vs ack frames).
+      const canonicalExternalId =
+        partial.role === "assistant" && partial.externalRunId
+          ? `${partial.externalRunId}:assistant`
+          : partial.externalMessageId;
+
+      const key = canonicalExternalId ?? partial.id;
       if (!key) return prev;
 
-      const idx = localIndexRef.current.get(key);
+      let idx = localIndexRef.current.get(key);
+      // Extra safety: if the key doesn't match but the runId does, merge anyway.
+      if (
+        idx === undefined &&
+        partial.role === "assistant" &&
+        partial.externalRunId
+      ) {
+        const byRunId = prev.findIndex(
+          (m) => m.role === "assistant" && m.externalRunId === partial.externalRunId,
+        );
+        if (byRunId !== -1) idx = byRunId;
+      }
       const now = Date.now();
 
       if (idx === undefined) {
@@ -124,10 +229,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           createdAt: partial.createdAt ?? now,
           state: partial.state,
           errorMessage: partial.errorMessage,
-          externalMessageId: partial.externalMessageId,
+          externalMessageId: canonicalExternalId ?? partial.externalMessageId,
           externalRunId: partial.externalRunId,
         };
-        const next = [...prev, nextMsg].sort((a, b) => a.createdAt - b.createdAt);
+        const next = collapseNearDuplicates(
+          [...prev, nextMsg].sort((a, b) => a.createdAt - b.createdAt),
+        );
         rebuildIndex(next);
         return next;
       }
@@ -144,11 +251,16 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         id: existing.id,
         content: nextContent,
         createdAt: existing.createdAt,
+        externalMessageId:
+          canonicalExternalId ?? partial.externalMessageId ?? existing.externalMessageId,
       };
       const next = prev.slice();
       next[idx] = updated;
-      rebuildIndex(next);
-      return next;
+      const collapsed = collapseNearDuplicates(
+        next.slice().sort((a, b) => a.createdAt - b.createdAt),
+      );
+      rebuildIndex(collapsed);
+      return collapsed;
     });
   };
 
@@ -160,19 +272,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     // De-dupe only near-real-time echoes (history/WS repeating what the UI already showed).
     // Do not de-dupe across large time spans to avoid hiding legitimate repeats.
     const windowMs = 60_000;
-    const normalize = (s: string) =>
-      s
-        .replace(/\r\n/g, "\n")
-        // Ignore trailing whitespace differences which can happen between optimistic
-        // UI content and history-normalized content.
-        .replace(/[ \t]+\n/g, "\n")
-        .trim();
-    const needle = normalize(content);
+    const needle = normalizeChatText(content);
     return localMessagesRef.current.some(
       (m) =>
         m.role === "user" &&
         m.fromUser &&
-        normalize(m.content) === needle &&
+        normalizeChatText(m.content) === needle &&
         Math.abs((m.createdAt ?? 0) - ts) <= windowMs,
     );
   };
