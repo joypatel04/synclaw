@@ -60,6 +60,64 @@ export function pickRunId(value: unknown): string | undefined {
   return undefined;
 }
 
+export type HistoryMessage = Record<string, unknown>;
+
+export function pickHistoryMessages(history: unknown): HistoryMessage[] {
+  const obj = asRecord(history);
+  if (!obj) return [];
+
+  const candidates = [
+    obj.messages,
+    obj.items,
+    asRecord(obj.data)?.messages,
+    asRecord(obj.result)?.messages,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((m) => !!asRecord(m)) as HistoryMessage[];
+    }
+  }
+
+  return [];
+}
+
+export function pickLatestAssistantFromHistory(history: unknown): {
+  text: string;
+  runId?: string;
+  messageId?: string;
+} | null {
+  const messages = pickHistoryMessages(history);
+  if (messages.length === 0) return null;
+
+  const assistant = messages
+    .slice()
+    .reverse()
+    .find((m) => {
+      const role =
+        (typeof m.role === "string" && m.role) ||
+        (typeof m.author === "string" && m.author) ||
+        "assistant";
+      return role !== "user";
+    });
+  if (!assistant) return null;
+
+  const text =
+    pickText(assistant.reply) ??
+    pickText(assistant.message) ??
+    pickText(assistant.content) ??
+    pickText(assistant.text);
+  if (!text) return null;
+
+  const runId = typeof assistant.runId === "string" ? assistant.runId : undefined;
+  const messageId =
+    (typeof assistant.messageId === "string" && assistant.messageId) ||
+    (typeof assistant.id === "string" && assistant.id) ||
+    undefined;
+
+  return { text, runId, messageId };
+}
+
 export type IngestMappedEvent = {
   sessionKey: string;
   eventId: string;
@@ -334,5 +392,11 @@ export class OpenClawBrowserGatewayClient {
       clientMessageId: params.clientMessageId,
     });
   }
-}
 
+  async getChatHistory(params: { sessionKey: string; limit?: number }) {
+    return await this.request("chat.history", {
+      sessionKey: params.sessionKey,
+      limit: params.limit ?? 20,
+    });
+  }
+}

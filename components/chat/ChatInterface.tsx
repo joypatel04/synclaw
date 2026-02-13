@@ -12,6 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
   OpenClawBrowserGatewayClient,
+  pickLatestAssistantFromHistory,
   pickRunId,
   pickText,
 } from "@/lib/openclaw-gateway-client";
@@ -172,30 +173,72 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       });
 
       const assistantText = pickText(response);
-      if (!assistantText) return;
       const runId = pickRunId(response);
 
-      await upsertGatewayEvent({
-        workspaceId,
-        sessionKey: agent.sessionKey,
-        eventId: `direct.assistant.ack.${clientMessageId}`,
-        eventType: "chat.send.ack.assistant",
-        payload:
-          typeof response === "object" && response !== null
-            ? (response as Record<string, unknown>)
-            : { response },
-        message: {
-          externalMessageId: runId
-            ? `${runId}:assistant`
-            : `${clientMessageId}:assistant`,
-          externalRunId: runId,
-          role: "assistant",
-          fromUser: false,
-          content: assistantText,
-          state: "completed",
-        },
-        sessionStatus: "idle",
-      });
+      if (assistantText) {
+        await upsertGatewayEvent({
+          workspaceId,
+          sessionKey: agent.sessionKey,
+          eventId: `direct.assistant.ack.${clientMessageId}`,
+          eventType: "chat.send.ack.assistant",
+          payload:
+            typeof response === "object" && response !== null
+              ? (response as Record<string, unknown>)
+              : { response },
+          message: {
+            externalMessageId: runId
+              ? `${runId}:assistant`
+              : `${clientMessageId}:assistant`,
+            externalRunId: runId,
+            role: "assistant",
+            fromUser: false,
+            content: assistantText,
+            state: "completed",
+          },
+          sessionStatus: "idle",
+        });
+        return;
+      }
+
+      // If the gateway doesn't return assistant output inline, poll `chat.history`
+      // like the Control UI does.
+      for (const delayMs of [750, 1500, 3000]) {
+        await new Promise((r) => setTimeout(r, delayMs));
+        const history = await gatewayRef.current!.getChatHistory({
+          sessionKey: agent.sessionKey,
+          limit: 25,
+        });
+        const assistant = pickLatestAssistantFromHistory(history);
+        if (!assistant) continue;
+
+        const externalRunId = assistant.runId ?? runId;
+        const externalMessageId =
+          assistant.messageId ||
+          (externalRunId
+            ? `${externalRunId}:assistant`
+            : `${clientMessageId}:assistant`);
+
+        await upsertGatewayEvent({
+          workspaceId,
+          sessionKey: agent.sessionKey,
+          eventId: `direct.history.assistant.${clientMessageId}.${delayMs}`,
+          eventType: "chat.history.assistant",
+          payload:
+            typeof history === "object" && history !== null
+              ? (history as Record<string, unknown>)
+              : { history },
+          message: {
+            externalMessageId,
+            externalRunId,
+            role: "assistant",
+            fromUser: false,
+            content: assistant.text,
+            state: "completed",
+          },
+          sessionStatus: "idle",
+        });
+        return;
+      }
     } catch (error) {
       await upsertGatewayEvent({
         workspaceId,
