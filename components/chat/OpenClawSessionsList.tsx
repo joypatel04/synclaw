@@ -157,13 +157,49 @@ export function OpenClawSessionsList({
     return new Set(agents.map((a) => a.sessionKey));
   }, [agents]);
 
-  const otherSessions = useMemo(() => {
+  type KindFilter = "main" | "cron" | "other";
+  const [kindFilters, setKindFilters] = useState<Record<KindFilter, boolean>>({
+    // Default behavior: show what you can't already reach via the agent list,
+    // but allow toggling MAIN + CRON for quick debugging.
+    main: false,
+    cron: true,
+    other: true,
+  });
+
+  const allSessions = useMemo(() => {
     return sessions.filter((s) => {
-      if (knownAgentSessionKeys.has(s.key)) return false;
       if (!includeCron && s.key.includes(":cron:")) return false;
       return true;
     });
-  }, [sessions, knownAgentSessionKeys, includeCron]);
+  }, [sessions, includeCron]);
+
+  const sessionKindForFilter = (sessionKey: string): KindFilter => {
+    if (sessionKey.includes(":cron:")) return "cron";
+    if (sessionKey.startsWith("agent:") && sessionKey.endsWith(":main")) return "main";
+    if (sessionKey.startsWith("agent:") && sessionKey.includes(":main")) return "main";
+    return "other";
+  };
+
+  const visibleSessions = useMemo(() => {
+    return allSessions.filter((s) => {
+      const kind = sessionKindForFilter(s.key);
+
+      // If MAIN toggle is off, hide known agent MAIN sessions to keep the list focused.
+      if (kind === "main" && knownAgentSessionKeys.has(s.key) && !kindFilters.main) {
+        return false;
+      }
+
+      return kindFilters[kind];
+    });
+  }, [allSessions, knownAgentSessionKeys, kindFilters]);
+
+  const counts = useMemo(() => {
+    const base = { main: 0, cron: 0, other: 0 } as Record<KindFilter, number>;
+    for (const s of allSessions) {
+      base[sessionKindForFilter(s.key)]++;
+    }
+    return base;
+  }, [allSessions]);
 
   const agentByKeyPrefix = useMemo(() => {
     // Map `agent:<id>:` prefixes to emoji/name so we can label cron/run sessions nicely.
@@ -289,12 +325,12 @@ export function OpenClawSessionsList({
   useEffect(() => {
     if (status !== "connected") return;
     if (!clientRef.current) return;
-    if (otherSessions.length === 0) return;
+    if (visibleSessions.length === 0) return;
 
     let cancelled = false;
 
     const client = clientRef.current;
-    const keys = otherSessions.slice(0, 20).map((s) => s.key);
+    const keys = visibleSessions.slice(0, 20).map((s) => s.key);
     const missing = keys.filter((k) => !detailsByKey[k]);
     if (missing.length === 0) return;
 
@@ -345,7 +381,7 @@ export function OpenClawSessionsList({
     return () => {
       cancelled = true;
     };
-  }, [status, otherSessions, detailsByKey]);
+  }, [status, visibleSessions, detailsByKey]);
 
   if (status === "error") {
     return (
@@ -399,13 +435,37 @@ export function OpenClawSessionsList({
         </Button>
       </div>
 
-      {otherSessions.length === 0 ? (
+      <div className="mt-3 flex flex-wrap gap-2">
+        {(["main", "cron", "other"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() =>
+              setKindFilters((prev) => ({ ...prev, [k]: !prev[k] }))
+            }
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[11px] transition-smooth",
+              kindFilters[k]
+                ? "border-accent-orange bg-accent-orange/15 text-accent-orange"
+                : "border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary",
+            )}
+            aria-pressed={kindFilters[k]}
+          >
+            <span className="uppercase tracking-wider">{k}</span>
+            <span className="rounded-md bg-bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-text-dim">
+              {counts[k]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {visibleSessions.length === 0 ? (
         <p className="mt-2 text-xs text-text-muted">
           No other active sessions found.
         </p>
       ) : (
         <div className="mt-3 flex flex-col gap-2">
-          {otherSessions.slice(0, 40).map((s) => (
+          {visibleSessions.slice(0, 40).map((s) => (
             <Link
               key={s.key}
               href={`/chat/session/${encodeURIComponent(s.key)}`}
