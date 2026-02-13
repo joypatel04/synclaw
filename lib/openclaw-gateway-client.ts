@@ -88,6 +88,65 @@ export function pickHistoryMessages(history: unknown): HistoryMessage[] {
   return [];
 }
 
+function formatNumber(n: number): string {
+  return new Intl.NumberFormat("en-US").format(n);
+}
+
+function pickUsageLimit(usage: Record<string, unknown>, total: number): number | undefined {
+  // Try common names for model context window / token limits.
+  const candidates = [
+    "contextWindow",
+    "contextTokens",
+    "maxContextTokens",
+    "maxTokens",
+    "tokenLimit",
+    "limit",
+    "capacity",
+    "contextSize",
+  ];
+  for (const k of candidates) {
+    const v = usage[k];
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+      // Only treat it as a "limit" if it is plausibly >= total.
+      if (v >= total) return v;
+    }
+  }
+  return undefined;
+}
+
+export function extractContextSizeFromHistory(history: unknown): string | null {
+  // Best-effort: some gateways embed token usage + context limits on assistant messages.
+  // If we can't find a limit, we still show total token usage.
+  const messages = pickHistoryMessages(history);
+  if (messages.length === 0) return null;
+
+  const lastAssistant = messages
+    .slice()
+    .reverse()
+    .find((m) => {
+      const role =
+        (typeof m.role === "string" && m.role) ||
+        (typeof m.author === "string" && m.author) ||
+        "assistant";
+      return role === "assistant";
+    });
+
+  if (!lastAssistant) return null;
+  const usage = asRecord((lastAssistant as any).usage);
+  if (!usage) return null;
+
+  const total =
+    (typeof usage.totalTokens === "number" && usage.totalTokens) ||
+    (typeof usage.total === "number" && usage.total) ||
+    (typeof usage.tokens === "number" && usage.tokens) ||
+    undefined;
+  if (!total || !Number.isFinite(total)) return null;
+
+  const limit = pickUsageLimit(usage, total);
+  if (limit) return `ctx ${formatNumber(total)}/${formatNumber(limit)}`;
+  return `tok ${formatNumber(total)}`;
+}
+
 export function pickLatestAssistantFromHistory(history: unknown): {
   text: string;
   runId?: string;

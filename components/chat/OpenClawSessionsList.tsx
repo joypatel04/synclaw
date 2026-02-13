@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   extractDisplayMessagesFromHistory,
+  extractContextSizeFromHistory,
   OpenClawBrowserGatewayClient,
 } from "@/lib/openclaw-gateway-client";
 
@@ -21,6 +22,7 @@ type SessionDetails = {
   snippet?: string;
   role?: string;
   at?: number;
+  contextText?: string;
   loading: boolean;
   error?: string;
 };
@@ -122,11 +124,14 @@ function sessionKind(sessionKey: string): "run" | "cron" | "main" | "other" {
   return "other";
 }
 
-function formatAgeMinutes(ageSeconds: number): string {
-  const mins = Math.max(0, Math.round(ageSeconds / 60));
+function formatAge(ageSeconds: number): string {
+  const secs = Math.max(0, Math.floor(ageSeconds));
+  const mins = Math.floor(secs / 60);
   if (mins < 60) return `${mins}m`;
-  const hours = Math.round(mins / 60);
-  return `${hours}h`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
 }
 
 export function OpenClawSessionsList({
@@ -311,6 +316,7 @@ export function OpenClawSessionsList({
             const history = await client.getChatHistory({ sessionKey: key, limit: 8 });
             const display = extractDisplayMessagesFromHistory(history);
             const last = display.length > 0 ? display[display.length - 1] : null;
+            const ctx = extractContextSizeFromHistory(history);
 
             setDetailsByKey((prev) => ({
               ...prev,
@@ -319,6 +325,7 @@ export function OpenClawSessionsList({
                 snippet: last?.content?.trim()?.slice(0, 140) ?? undefined,
                 role: last?.role,
                 at: last?.eventAt,
+                contextText: ctx ?? undefined,
               },
             }));
           } catch (e) {
@@ -427,11 +434,16 @@ export function OpenClawSessionsList({
                         {s.key}
                       </p>
                     )}
+                    {detailsByKey[s.key]?.contextText ? (
+                      <p className="mt-1 text-[10px] text-text-muted font-mono">
+                        {detailsByKey[s.key].contextText}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 {typeof s.age === "number" ? (
                   <span className="shrink-0 text-[11px] text-text-muted">
-                    {formatAgeMinutes(s.age)}
+                    {formatAge(s.age)}
                   </span>
                 ) : null}
               </div>
