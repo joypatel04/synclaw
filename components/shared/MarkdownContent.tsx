@@ -120,7 +120,10 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                 <code
                   {...props}
                   className={cn(
-                    "font-mono text-[12px] rounded bg-bg-tertiary px-1 py-0.5",
+                    // Inline code should read like a "chip" (similar to the tool command pill),
+                    // and remain visible on both agent and user bubbles.
+                    "font-mono text-[12px] rounded-md border border-border-default bg-bg-secondary/70 px-1.5 py-0.5 text-text-primary",
+                    "break-words",
                     className,
                   )}
                 >
