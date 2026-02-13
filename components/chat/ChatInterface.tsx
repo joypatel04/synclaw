@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { MessageSquare } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -50,14 +50,13 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       limit: 200,
     }) ?? [];
   const legacySendMessage = useMutation(api.chatMessages.send);
-  const legacySendToAgent = useAction(api.chatActions.sendToAgent);
   const upsertGatewayEvent = useMutation(api.chatIngest.upsertGatewayEvent);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
 
-  const useDirectWs =
-    process.env.NEXT_PUBLIC_CHAT_DIRECT_WS_ENABLED === "true";
+  // Direct WS is now mandatory for chat.
+  const useDirectWs = true;
   const includeCron =
     process.env.NEXT_PUBLIC_OPENCLAW_INCLUDE_CRON === "true";
   const historyPollMs = Number(
@@ -83,7 +82,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
   const ensureDirectGatewayConnected = async () => {
-    if (!useDirectWs) return;
     if (!gatewayRef.current) {
       const scopes = (
         process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES ??
@@ -432,32 +430,16 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   }, [useDirectWs, historyPollMs, agent.sessionKey, workspaceId]);
 
   const handleSend = async (content: string) => {
-    if (useDirectWs) {
-      await sendDirect(content);
-      return;
-    }
-
-    await legacySendMessage({
-      workspaceId,
-      sessionId,
-      fromUser: true,
-      content,
-      role: "user",
-      state: "completed",
-    });
-    await legacySendToAgent({ sessionKey: agent.sessionKey, message: content });
+    await sendDirect(content);
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {
     if (!externalMessageId) return;
-    if (useDirectWs) {
-      const failedMessage = messages.find(
-        (m) => m.externalMessageId === externalMessageId,
-      );
-      if (!failedMessage) return;
-      await sendDirect(failedMessage.content);
-      return;
-    }
+    const failedMessage = messages.find(
+      (m) => m.externalMessageId === externalMessageId,
+    );
+    if (!failedMessage) return;
+    await sendDirect(failedMessage.content);
   };
 
   const activeRun = messages
@@ -467,35 +449,32 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   const handleAbort = async () => {
     if (!activeRun?.externalRunId) return;
-    if (useDirectWs) {
-      const clientMessageId = makeClientMessageId();
-      try {
-        await ensureDirectGatewayConnected();
-        await gatewayRef.current!.abortChat({
-          sessionKey: agent.sessionKey,
-          runId: activeRun.externalRunId,
-          clientMessageId,
-        });
-      } finally {
-        await upsertGatewayEvent({
-          workspaceId,
-          sessionKey: agent.sessionKey,
-          eventId: `direct.abort.${clientMessageId}`,
-          eventType: "chat.abort",
-          payload: { runId: activeRun.externalRunId },
-          message: {
-            externalMessageId:
-              activeRun.externalMessageId ?? `${activeRun.externalRunId}:assistant`,
-            externalRunId: activeRun.externalRunId,
-            role: "assistant",
-            fromUser: false,
-            content: activeRun.content,
-            state: "aborted",
-          },
-          sessionStatus: "idle",
-        });
-      }
-      return;
+    const clientMessageId = makeClientMessageId();
+    try {
+      await ensureDirectGatewayConnected();
+      await gatewayRef.current!.abortChat({
+        sessionKey: agent.sessionKey,
+        runId: activeRun.externalRunId,
+        clientMessageId,
+      });
+    } finally {
+      await upsertGatewayEvent({
+        workspaceId,
+        sessionKey: agent.sessionKey,
+        eventId: `direct.abort.${clientMessageId}`,
+        eventType: "chat.abort",
+        payload: { runId: activeRun.externalRunId },
+        message: {
+          externalMessageId:
+            activeRun.externalMessageId ?? `${activeRun.externalRunId}:assistant`,
+          externalRunId: activeRun.externalRunId,
+          role: "assistant",
+          fromUser: false,
+          content: activeRun.content,
+          state: "aborted",
+        },
+        sessionStatus: "idle",
+      });
     }
   };
 
