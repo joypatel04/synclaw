@@ -170,8 +170,8 @@ export function ChatMessage({
         className={cn(
           "group relative w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5 border shadow-xs",
           isUser
-            ? "bg-bg-secondary border-accent-orange/25 rounded-tr-sm"
-            : "bg-bg-secondary border-border-default rounded-tl-sm",
+            ? "bg-accent-orange-dim border-accent-orange/25 rounded-tr-sm"
+            : "bg-bg-primary border-border-default rounded-tl-sm",
         )}
       >
         {!isUser && plainText.trim().length > 0 && (

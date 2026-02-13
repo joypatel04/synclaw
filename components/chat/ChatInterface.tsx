@@ -543,7 +543,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         </div>
       </div>
       <div className="relative flex-1 min-h-0">
-        <ScrollArea className="h-full" viewportRef={viewportRef}>
+        <ScrollArea className="h-full bg-bg-secondary" viewportRef={viewportRef}>
           <div className="space-y-4 p-6">
             {messages.length === 0 ? (
               <EmptyState
