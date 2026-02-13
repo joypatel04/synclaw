@@ -25,7 +25,6 @@ interface ChatMessageProps {
   agentName?: string;
   userName?: string;
   userImage?: string;
-  eventsForSession?: Doc<"chatEvents">[];
 }
 
 export function ChatMessage({
@@ -34,7 +33,6 @@ export function ChatMessage({
   agentName = "Agent",
   userName,
   userImage,
-  eventsForSession = [],
 }: ChatMessageProps) {
   const isUser = message.fromUser;
   const state = message.state;
@@ -92,6 +90,7 @@ export function ChatMessage({
   if (isTool) {
     const ok = state !== "failed";
     const toolCallId = message.externalMessageId;
+    const outputText = typeof message.errorMessage === "string" ? message.errorMessage : undefined;
     return (
       <div className={cn("flex gap-3", "flex-row")}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
@@ -104,8 +103,8 @@ export function ChatMessage({
           <ToolOutputSheet
             toolCallId={toolCallId ?? message._id}
             toolName="exec"
-            commandFallback={message.content}
-            eventsForSession={eventsForSession}
+            command={message.content}
+            output={outputText}
           >
             <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
               <div className="flex items-start justify-between gap-3">
@@ -134,13 +133,13 @@ export function ChatMessage({
               >
                 {ok ? "Completed" : "Failed"}
               </div>
-              {errorMessage && (
+              {outputText && (
                 <details className="mt-2">
                   <summary className="cursor-pointer select-none text-[11px] text-text-dim hover:text-text-primary underline">
-                    Show error
+                    {ok ? "Show output" : "Show error"}
                   </summary>
                   <pre className="mt-2 text-[10px] overflow-x-auto rounded-md bg-bg-tertiary p-2">
-                    {errorMessage}
+                    {outputText}
                   </pre>
                 </details>
               )}

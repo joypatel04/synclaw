@@ -10,7 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import {
-  mapGatewayEventForIngest,
   OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -49,14 +48,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     () => members.find((m) => m._id === membershipId),
     [members, membershipId],
   );
-  const eventsForSession =
-    useQuery(api.chatEvents.listBySessionKey, {
-      workspaceId,
-      sessionKey: agent.sessionKey,
-      limit: 200,
-    }) ?? [];
   const legacySendMessage = useMutation(api.chatMessages.send);
-  const upsertGatewayEvent = useMutation(api.chatIngest.upsertGatewayEvent);
   const viewportRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
   const [showScrollDown, setShowScrollDown] = useState(false);
@@ -146,33 +138,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
             process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SUBSCRIBE_METHOD ??
             "chat.subscribe",
         },
-        async (event) => {
-          const mapped = mapGatewayEventForIngest(event, makeClientMessageId());
-          if (!mapped) return;
-          const isPrimary = mapped.sessionKey === agent.sessionKey;
-          const isCron =
-            includeCron &&
-            mapped.sessionKey.startsWith(`${agent.sessionKey}:cron:`);
-          if (!isPrimary && !isCron) return;
-
-          // Optional: mirror cron/heartbeat runs into the primary chat so they show
-          // up in Sutraha HQ without creating a separate "cron session" thread.
-          const sessionKey = isCron ? agent.sessionKey : mapped.sessionKey;
-          const eventId = isCron
-            ? `cron:${mapped.sessionKey}:${mapped.eventId}`
-            : mapped.eventId;
-          await upsertGatewayEvent({
-            workspaceId,
-            sessionKey,
-            eventId,
-            eventType: mapped.eventType,
-            eventAt: mapped.eventAt,
-            payload: mapped.payload,
-            message: mapped.message,
-            sessionStatus: mapped.sessionStatus,
-            openclawSessionId: mapped.openclawSessionId,
-          });
-        },
+        // Intentionally no-op: do not mirror per-token WS deltas into Convex.
+        // We persist only "complete" artifacts via chat.history (see sendDirect + optional poll).
+        async () => {},
       );
     }
 
@@ -187,15 +155,27 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   const sendDirect = async (content: string) => {
     const clientMessageId = makeClientMessageId();
-    await legacySendMessage({
-      workspaceId,
-      sessionId,
-      fromUser: true,
-      content,
-      role: "user",
-      state: "sending",
-      externalMessageId: clientMessageId,
-    });
+
+    // Avoid repeated inserts when polling history multiple times.
+    const seenExternal = new Set(
+      messages
+        .map((m) => m.externalMessageId)
+        .filter((x): x is string => typeof x === "string" && x.length > 0),
+    );
+
+    // Store the user message once as completed. Any "sending" indicator is UI-only.
+    if (!seenExternal.has(clientMessageId)) {
+      await legacySendMessage({
+        workspaceId,
+        sessionId,
+        fromUser: true,
+        content,
+        role: "user",
+        state: "completed",
+        externalMessageId: clientMessageId,
+      });
+      seenExternal.add(clientMessageId);
+    }
 
     try {
       await ensureDirectGatewayConnected();
@@ -205,56 +185,31 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         clientMessageId,
       });
 
-      await upsertGatewayEvent({
-        workspaceId,
-        sessionKey: agent.sessionKey,
-        eventId: `direct.user.ack.${clientMessageId}`,
-        eventType: "chat.send.ack.user",
-        payload:
-          typeof response === "object" && response !== null
-            ? (response as Record<string, unknown>)
-            : { response },
-        message: {
-          externalMessageId: clientMessageId,
-          role: "user",
-          fromUser: true,
-          content,
-          state: "completed",
-        },
-        sessionStatus: "active",
-      });
-
       const assistantText = pickText(response);
       const runId = pickRunId(response);
-      let assistantIngested = false;
 
+      // Best-effort: if sendChat returns assistant text, persist it once.
       if (assistantText) {
-        await upsertGatewayEvent({
-          workspaceId,
-          sessionKey: agent.sessionKey,
-          eventId: `direct.assistant.ack.${clientMessageId}`,
-          eventType: "chat.send.ack.assistant",
-          payload:
-            typeof response === "object" && response !== null
-              ? (response as Record<string, unknown>)
-              : { response },
-          message: {
-            externalMessageId: runId
-              ? `${runId}:assistant`
-              : `${clientMessageId}:assistant`,
-            externalRunId: runId,
-            role: "assistant",
+        const assistantExternal = runId
+          ? `${runId}:assistant`
+          : `${clientMessageId}:assistant`;
+        if (!seenExternal.has(assistantExternal)) {
+          await legacySendMessage({
+            workspaceId,
+            sessionId,
             fromUser: false,
             content: assistantText,
+            role: "assistant",
             state: "completed",
-          },
-          sessionStatus: "idle",
-        });
-        assistantIngested = true;
+            externalMessageId: assistantExternal,
+            externalRunId: runId ?? undefined,
+          });
+          seenExternal.add(assistantExternal);
+        }
       }
 
-      // Always poll `chat.history` after send to ingest tool calls/results.
-      // Also use it as a fallback for assistant text if not already ingested.
+      // Poll `chat.history` after send to persist tool calls/results and
+      // displayable system/user messages (e.g. HEARTBEAT prompt).
       for (const delayMs of [750, 1500, 3000]) {
         await new Promise((r) => setTimeout(r, delayMs));
         const history = await gatewayRef.current!.getChatHistory({
@@ -262,70 +217,52 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           limit: 25,
         });
 
-        // Ingest tool call/result messages from history so they show up in the chat
-        // timeline like Control UI (exec cards).
         const traces = extractExecTracesFromHistory(history);
         for (const t of traces) {
-          const eventAt = t.timestamp ?? t.resultTimestamp;
+          const toolCallId = t.toolCallId;
+          if (!toolCallId) continue;
+          if (seenExternal.has(toolCallId)) continue;
+
           const state =
             t.status === "error" ||
             (t.resultText && t.resultText.includes("Server Error"))
               ? "failed"
-              : t.status === "completed"
-                ? "completed"
-                : "streaming";
+              : "completed";
 
-          await upsertGatewayEvent({
+          await legacySendMessage({
             workspaceId,
-            sessionKey: agent.sessionKey,
-            eventId: `direct.history.exec.${t.toolCallId}.${delayMs}`,
-            eventType: "chat.history.exec",
-            eventAt,
-            payload:
-              typeof history === "object" && history !== null
-                ? (history as Record<string, unknown>)
-                : { history },
-            message: {
-              externalMessageId: t.toolCallId,
-              role: "tool",
-              fromUser: false,
-              // Store command as content; UI renders it as an exec card.
-              content: t.command ?? `${t.toolName} (missing command)`,
-              state,
-              errorMessage:
-                state === "failed" ? t.resultText ?? "Tool failed" : undefined,
-            },
-            sessionStatus: state === "failed" ? "error" : "active",
-          });
+            sessionId,
+            fromUser: false,
+            role: "tool",
+            state,
+            externalMessageId: toolCallId,
+            content: t.command ?? `${t.toolName} (missing command)`,
+            // Store tool output in errorMessage (even on success) so ToolOutputSheet
+            // doesn't need chatEvents/raw payloads.
+            errorMessage: t.resultText,
+          } as any);
+          seenExternal.add(toolCallId);
         }
 
-        // Ingest displayable user/system messages that Control UI shows (e.g. HEARTBEAT prompt).
         const display = extractDisplayMessagesFromHistory(history);
         for (const m of display) {
-          // Avoid duplicating the just-sent user message; we already inserted it.
+          if (!m.externalMessageId) continue;
           if (m.externalMessageId === clientMessageId) continue;
-          await upsertGatewayEvent({
+          if (seenExternal.has(m.externalMessageId)) continue;
+
+          await legacySendMessage({
             workspaceId,
-            sessionKey: agent.sessionKey,
-            eventId: `direct.history.msg.${m.externalMessageId}.${delayMs}`,
-            eventType: "chat.history.message",
-            eventAt: m.eventAt,
-            payload:
-              typeof history === "object" && history !== null
-                ? (history as Record<string, unknown>)
-                : { history },
-            message: {
-              externalMessageId: m.externalMessageId,
-              role: m.role,
-              fromUser: m.fromUser,
-              content: m.content,
-              state: "completed",
-            },
-            sessionStatus: "active",
-          });
+            sessionId,
+            fromUser: m.fromUser,
+            role: m.role,
+            state: "completed",
+            externalMessageId: m.externalMessageId,
+            content: m.content,
+          } as any);
+          seenExternal.add(m.externalMessageId);
         }
 
-        if (assistantIngested) continue;
+        // Fallback: persist final assistant message if not already saved.
         const assistant = pickLatestAssistantFromHistory(history);
         if (!assistant) continue;
 
@@ -336,47 +273,30 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
             ? `${externalRunId}:assistant`
             : `${clientMessageId}:assistant`);
 
-        await upsertGatewayEvent({
+        if (seenExternal.has(externalMessageId)) continue;
+        await legacySendMessage({
           workspaceId,
-          sessionKey: agent.sessionKey,
-          eventId: `direct.history.assistant.${clientMessageId}.${delayMs}`,
-          eventType: "chat.history.assistant",
-          payload:
-            typeof history === "object" && history !== null
-              ? (history as Record<string, unknown>)
-              : { history },
-          message: {
-            externalMessageId,
-            externalRunId,
-            role: "assistant",
-            fromUser: false,
-            content: assistant.text,
-            state: "completed",
-          },
-          sessionStatus: "idle",
-        });
-        assistantIngested = true;
+          sessionId,
+          fromUser: false,
+          role: "assistant",
+          state: "completed",
+          externalMessageId,
+          externalRunId: externalRunId ?? undefined,
+          content: assistant.text,
+        } as any);
+        seenExternal.add(externalMessageId);
       }
     } catch (error) {
-      await upsertGatewayEvent({
+      const msg =
+        error instanceof Error ? error.message : "Unknown gateway error";
+      await legacySendMessage({
         workspaceId,
-        sessionKey: agent.sessionKey,
-        eventId: `direct.user.fail.${clientMessageId}`,
-        eventType: "chat.send.error",
-        payload: {
-          error:
-            error instanceof Error ? error.message : "Unknown gateway error",
-        },
-        message: {
-          externalMessageId: clientMessageId,
-          role: "user",
-          fromUser: true,
-          content,
-          state: "failed",
-          errorMessage:
-            error instanceof Error ? error.message : "Unknown gateway error",
-        },
-        sessionStatus: "error",
+        sessionId,
+        fromUser: false,
+        role: "system",
+        state: "completed",
+        externalMessageId: `system.error.${clientMessageId}`,
+        content: `Send failed: ${msg}`,
       });
     }
   };
@@ -400,54 +320,41 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
         const traces = extractExecTracesFromHistory(history);
         for (const t of traces) {
-          await upsertGatewayEvent({
+          const toolCallId = t.toolCallId;
+          if (!toolCallId) continue;
+          if (messages.some((m) => m.externalMessageId === toolCallId)) continue;
+
+          await legacySendMessage({
             workspaceId,
-            sessionKey: agent.sessionKey,
-            eventId: `sync.history.exec.${t.toolCallId}`,
-            eventType: "chat.history.exec",
-            eventAt: t.timestamp ?? t.resultTimestamp,
-            payload:
-              typeof history === "object" && history !== null
-                ? (history as Record<string, unknown>)
-                : { history },
-            message: {
-              externalMessageId: t.toolCallId,
-              role: "tool",
-              fromUser: false,
-              content: t.command ?? `${t.toolName} (missing command)`,
-              state:
-                t.status === "error" ||
-                (t.resultText && t.resultText.includes("Server Error"))
-                  ? "failed"
-                  : "completed",
-              errorMessage:
-                t.status === "error" ? t.resultText ?? "Tool failed" : undefined,
-            },
-            sessionStatus: "active",
-          });
+            sessionId,
+            fromUser: false,
+            role: "tool",
+            state:
+              t.status === "error" ||
+              (t.resultText && t.resultText.includes("Server Error"))
+                ? "failed"
+                : "completed",
+            externalMessageId: toolCallId,
+            content: t.command ?? `${t.toolName} (missing command)`,
+            errorMessage: t.resultText,
+          } as any);
         }
 
         const display = extractDisplayMessagesFromHistory(history);
         for (const m of display) {
-          await upsertGatewayEvent({
+          if (!m.externalMessageId) continue;
+          if (messages.some((x) => x.externalMessageId === m.externalMessageId))
+            continue;
+
+          await legacySendMessage({
             workspaceId,
-            sessionKey: agent.sessionKey,
-            eventId: `sync.history.msg.${m.externalMessageId}`,
-            eventType: "chat.history.message",
-            eventAt: m.eventAt,
-            payload:
-              typeof history === "object" && history !== null
-                ? (history as Record<string, unknown>)
-                : { history },
-            message: {
-              externalMessageId: m.externalMessageId,
-              role: m.role,
-              fromUser: m.fromUser,
-              content: m.content,
-              state: "completed",
-            },
-            sessionStatus: "active",
-          });
+            sessionId,
+            fromUser: m.fromUser,
+            role: m.role,
+            state: "completed",
+            externalMessageId: m.externalMessageId,
+            content: m.content,
+          } as any);
         }
       } catch {
         // Ignore; next tick will retry.
@@ -460,7 +367,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [useDirectWs, historyPollMs, agent.sessionKey, workspaceId]);
+  }, [useDirectWs, historyPollMs, agent.sessionKey, workspaceId, sessionId, messages]);
 
   const handleSend = async (content: string) => {
     await sendDirect(content);
@@ -490,24 +397,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         runId: activeRun.externalRunId,
         clientMessageId,
       });
-    } finally {
-      await upsertGatewayEvent({
+      await legacySendMessage({
         workspaceId,
-        sessionKey: agent.sessionKey,
-        eventId: `direct.abort.${clientMessageId}`,
-        eventType: "chat.abort",
-        payload: { runId: activeRun.externalRunId },
-        message: {
-          externalMessageId:
-            activeRun.externalMessageId ?? `${activeRun.externalRunId}:assistant`,
-          externalRunId: activeRun.externalRunId,
-          role: "assistant",
-          fromUser: false,
-          content: activeRun.content,
-          state: "aborted",
-        },
-        sessionStatus: "idle",
+        sessionId,
+        fromUser: false,
+        role: "assistant",
+        state: "aborted",
+        externalMessageId:
+          activeRun.externalMessageId ?? `${activeRun.externalRunId}:assistant`,
+        externalRunId: activeRun.externalRunId,
+        content: activeRun.content,
       });
+    } finally {
+      // no-op
     }
   };
 
@@ -560,7 +462,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                     agentName={agent.name}
                     userName={me?.name}
                     userImage={me?.image ?? undefined}
-                    eventsForSession={eventsForSession}
                   />
                   {msg.state === "failed" && msg.externalMessageId && canEdit && (
                     <div className="mt-1 flex justify-end">

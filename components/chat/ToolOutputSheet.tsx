@@ -7,52 +7,28 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { extractExecTracesFromHistory } from "@/lib/openclaw-gateway-client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export function ToolOutputSheet({
   toolCallId,
   toolName = "exec",
-  commandFallback,
-  eventsForSession,
+  command,
+  output,
+  rawDetails,
   children,
 }: {
   toolCallId: string;
   toolName?: string;
-  commandFallback?: string;
-  eventsForSession: Doc<"chatEvents">[];
+  command?: string;
+  output?: string;
+  rawDetails?: unknown;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-
-  const trace = useMemo(() => {
-    // Tool calls/results are coming via chat.history payloads. Those are stored in chatEvents.payload.
-    // Find the latest trace for this toolCallId.
-    let best:
-      | ReturnType<typeof extractExecTracesFromHistory>[number]
-      | undefined;
-    for (const e of eventsForSession) {
-      const traces = extractExecTracesFromHistory(e.payload);
-      for (const t of traces) {
-        if (t.toolCallId !== toolCallId) continue;
-        if (!best) best = t;
-        const bestTs = best.resultTimestamp ?? best.timestamp ?? 0;
-        const curTs = t.resultTimestamp ?? t.timestamp ?? 0;
-        if (curTs >= bestTs) best = t;
-      }
-    }
-    return best;
-  }, [eventsForSession, toolCallId]);
-
-  const command = trace?.command ?? commandFallback ?? "";
-  const output = trace?.resultText;
-  const status = trace?.status ?? (output ? "completed" : undefined);
   const isError =
-    status === "error" ||
-    (typeof output === "string" &&
-      (output.includes("Server Error") || output.includes("Request ID")));
+    typeof output === "string" &&
+    (output.includes("Server Error") || output.includes("Request ID"));
 
   return (
     <>
@@ -107,7 +83,7 @@ export function ToolOutputSheet({
               )}
             </div>
 
-            {trace && (
+            {rawDetails != null && (
               <details className="rounded-lg border border-border-default bg-bg-secondary p-3">
                 <summary className="cursor-pointer text-sm text-text-muted">
                   Raw details
@@ -118,7 +94,7 @@ export function ToolOutputSheet({
                     isError ? "text-status-blocked" : "text-text-primary",
                   )}
                 >
-                  {JSON.stringify(trace, null, 2)}
+                  {JSON.stringify({ toolCallId, rawDetails }, null, 2)}
                 </pre>
               </details>
             )}
@@ -128,4 +104,3 @@ export function ToolOutputSheet({
     </>
   );
 }
-
