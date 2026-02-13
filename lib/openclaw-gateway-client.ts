@@ -160,33 +160,62 @@ export function mapGatewayEventForIngest(
   raw: GatewayMessage,
   fallbackEventId: string,
 ): IngestMappedEvent | null {
+  // Gateway emits both "req/res" frames and "event" frames.
+  // For events, the useful fields are usually nested under `payload`.
+  const payload = asRecord(raw.payload) ?? null;
+  const message = payload ? (asRecord(payload.message) ?? null) : null;
+
   const sessionKey =
     (typeof raw.sessionKey === "string" && raw.sessionKey) ||
     (typeof raw.session === "string" && raw.session) ||
-    (typeof raw.sessionId === "string" && raw.sessionId);
+    (typeof raw.sessionId === "string" && raw.sessionId) ||
+    (payload && typeof payload.sessionKey === "string" && payload.sessionKey) ||
+    (payload && typeof payload.session === "string" && payload.session) ||
+    (payload && typeof payload.sessionId === "string" && payload.sessionId);
   if (!sessionKey) return null;
 
   const eventType =
-    (typeof raw.type === "string" && raw.type) ||
+    // Prefer the explicit gateway `event` label, otherwise fall back to `type/name`.
     (typeof raw.event === "string" && raw.event) ||
+    (typeof raw.type === "string" && raw.type) ||
     (typeof raw.name === "string" && raw.name) ||
+    (payload && typeof payload.event === "string" && payload.event) ||
     "unknown";
 
+  const seq =
+    (typeof raw.seq === "number" && raw.seq) ||
+    (payload && typeof payload.seq === "number" && payload.seq) ||
+    undefined;
+  const runIdFromPayload =
+    payload && typeof payload.runId === "string" ? payload.runId : undefined;
   const eventId =
     (typeof raw.id === "string" && raw.id) ||
     (typeof raw.eventId === "string" && raw.eventId) ||
-    fallbackEventId;
+    (seq !== undefined
+      ? `evt_${sessionKey}_${runIdFromPayload ?? "na"}_${seq}`
+      : fallbackEventId);
 
-  const runId = typeof raw.runId === "string" ? raw.runId : undefined;
+  const runId =
+    (typeof raw.runId === "string" && raw.runId) || runIdFromPayload;
+
+  // Support both legacy flat text and the structured OpenClaw chat message format.
+  // Examples seen:
+  // - event:"chat" payload.message.content=[{type:"text",text:"..."}]
+  // - event:"agent" payload.data.text / payload.delta
   const content =
     (typeof raw.delta === "string" && raw.delta) ||
     (typeof raw.content === "string" && raw.content) ||
     (typeof raw.reply === "string" && raw.reply) ||
+    (payload && pickText(payload.data) ? pickText(payload.data) : undefined) ||
+    (message && pickText(message.content) ? pickText(message.content) : undefined) ||
+    (payload && pickText(payload.message) ? pickText(payload.message) : undefined) ||
     undefined;
 
   const roleRaw =
     (typeof raw.role === "string" && raw.role) ||
     (typeof raw.author === "string" && raw.author) ||
+    (payload && typeof payload.stream === "string" ? payload.stream : undefined) ||
+    (message && typeof message.role === "string" ? message.role : undefined) ||
     "assistant";
   const role: "user" | "assistant" | "system" | "tool" =
     roleRaw === "user" ||
@@ -199,13 +228,23 @@ export function mapGatewayEventForIngest(
   const fromUser = role === "user";
   const messageId =
     (typeof raw.messageId === "string" && raw.messageId) ||
+    (payload && typeof payload.messageId === "string" ? payload.messageId : undefined) ||
     (runId ? `${runId}:assistant` : `${sessionKey}:${eventId}`);
 
   const isMessageEvent =
     eventType.includes("chat") ||
     eventType.includes("message") ||
+    eventType === "chat" ||
     content !== undefined ||
     runId !== undefined;
+
+  const payloadState = payload ? payload.state : undefined; // "delta" | "final" for chat events
+  const status =
+    payloadState === "final"
+      ? "completed"
+      : payloadState === "delta"
+        ? "streaming"
+        : raw.status;
 
   return {
     sessionKey,
@@ -219,19 +258,22 @@ export function mapGatewayEventForIngest(
           role,
           fromUser,
           content,
+          // Most gateway deltas send the full accumulated text, so we replace content.
+          // If a gateway emits true incremental deltas, it will use `raw.delta` at top-level.
           append: typeof raw.delta === "string",
-          state: mapStatusToMessageState(raw.status),
+          state: mapStatusToMessageState(status),
           errorMessage: typeof raw.error === "string" ? raw.error : undefined,
         }
       : undefined,
     sessionStatus:
-      raw.status === "failed" || raw.status === "error"
+      raw.status === "failed" || raw.status === "error" || status === "failed"
         ? "error"
-        : raw.status === "completed" || raw.status === "done"
+        : raw.status === "completed" || raw.status === "done" || status === "completed"
           ? "idle"
           : undefined,
     openclawSessionId:
-      typeof raw.sessionId === "string" ? raw.sessionId : undefined,
+      (typeof raw.sessionId === "string" ? raw.sessionId : undefined) ||
+      (payload && typeof payload.sessionId === "string" ? payload.sessionId : undefined),
   };
 }
 
