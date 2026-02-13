@@ -280,25 +280,6 @@ export default defineSchema({
     .index("byExternalMessageId", ["externalMessageId"])
     .index("byRunId", ["externalRunId"]),
 
-  chatSessions: defineTable({
-    workspaceId: v.id("workspaces"),
-    agentId: v.id("agents"),
-    sessionKey: v.string(),
-    openclawSessionId: v.optional(v.string()),
-    lastEventAt: v.number(),
-    status: v.union(
-      v.literal("active"),
-      v.literal("idle"),
-      v.literal("error"),
-      v.literal("closed"),
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("bySessionKey", ["workspaceId", "sessionKey"])
-    .index("byAgent", ["workspaceId", "agentId"]),
-
   chatEvents: defineTable({
     workspaceId: v.id("workspaces"),
     sessionKey: v.string(),
@@ -311,30 +292,6 @@ export default defineSchema({
     .index("bySessionAndEvent", ["workspaceId", "sessionKey", "eventId"])
     .index("bySessionRecent", ["workspaceId", "sessionKey", "receivedAt"])
     .index("recent", ["receivedAt"]),
-
-  chatOutbox: defineTable({
-    workspaceId: v.id("workspaces"),
-    sessionKey: v.string(),
-    clientMessageId: v.string(),
-    commandType: v.union(v.literal("chat.send"), v.literal("chat.abort")),
-    payload: v.any(),
-    attempt: v.number(),
-    nextAttemptAt: v.number(),
-    status: v.union(
-      v.literal("queued"),
-      v.literal("claimed"),
-      v.literal("sent"),
-      v.literal("failed"),
-    ),
-    claimedAt: v.optional(v.number()),
-    claimedBy: v.optional(v.string()),
-    lastError: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("byStatusNextAttempt", ["workspaceId", "status", "nextAttemptAt"])
-    .index("byClientMessageId", ["workspaceId", "clientMessageId"]),
 
   /**
    * Individual agent run records for cost tracking.

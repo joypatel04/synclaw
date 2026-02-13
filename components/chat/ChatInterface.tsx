@@ -51,17 +51,13 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     }) ?? [];
   const legacySendMessage = useMutation(api.chatMessages.send);
   const legacySendToAgent = useAction(api.chatActions.sendToAgent);
-  const sendFromUser = useMutation(api.chatMessages.sendFromUser);
   const upsertGatewayEvent = useMutation(api.chatIngest.upsertGatewayEvent);
-  const abortRun = useMutation(api.chatMessages.abortRun);
-  const retryFailedMessage = useMutation(api.chatMessages.retryFailedMessage);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
 
   const useDirectWs =
     process.env.NEXT_PUBLIC_CHAT_DIRECT_WS_ENABLED === "true";
-  const useBridge = process.env.NEXT_PUBLIC_CHAT_BRIDGE_ENABLED === "true";
   const includeCron =
     process.env.NEXT_PUBLIC_OPENCLAW_INCLUDE_CRON === "true";
   const historyPollMs = Number(
@@ -441,16 +437,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       return;
     }
 
-    if (useBridge) {
-      await sendFromUser({
-        workspaceId,
-        sessionId,
-        sessionKey: agent.sessionKey,
-        content,
-      });
-      return;
-    }
-
     await legacySendMessage({
       workspaceId,
       sessionId,
@@ -472,7 +458,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       await sendDirect(failedMessage.content);
       return;
     }
-    await retryFailedMessage({ workspaceId, externalMessageId });
   };
 
   const activeRun = messages
@@ -512,11 +497,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       }
       return;
     }
-    await abortRun({
-      workspaceId,
-      sessionId,
-      externalRunId: activeRun.externalRunId,
-    });
   };
 
   return (

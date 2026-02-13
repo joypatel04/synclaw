@@ -18,7 +18,6 @@ import type * as chatActions from "../chatActions.js";
 import type * as chatEvents from "../chatEvents.js";
 import type * as chatIngest from "../chatIngest.js";
 import type * as chatMessages from "../chatMessages.js";
-import type * as chatOutbox from "../chatOutbox.js";
 import type * as documents from "../documents.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
@@ -46,7 +45,6 @@ declare const fullApi: ApiFromModules<{
   chatEvents: typeof chatEvents;
   chatIngest: typeof chatIngest;
   chatMessages: typeof chatMessages;
-  chatOutbox: typeof chatOutbox;
   documents: typeof documents;
   folders: typeof folders;
   http: typeof http;

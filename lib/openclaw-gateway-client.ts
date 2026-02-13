@@ -66,9 +66,15 @@ export function pickHistoryMessages(history: unknown): HistoryMessage[] {
   const obj = asRecord(history);
   if (!obj) return [];
 
+  const payloadObj = asRecord(obj.payload);
+  const payloadPayloadObj = payloadObj ? asRecord(payloadObj.payload) : null;
+
   const candidates = [
     obj.messages,
     obj.items,
+    payloadObj?.messages,
+    payloadObj?.items,
+    payloadPayloadObj?.messages,
     asRecord(obj.data)?.messages,
     asRecord(obj.result)?.messages,
   ];
@@ -98,7 +104,7 @@ export function pickLatestAssistantFromHistory(history: unknown): {
         (typeof m.role === "string" && m.role) ||
         (typeof m.author === "string" && m.author) ||
         "assistant";
-      return role !== "user";
+      return role === "assistant";
     });
   if (!assistant) return null;
 

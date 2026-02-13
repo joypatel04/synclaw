@@ -92,34 +92,6 @@ export const upsertGatewayEvent = mutation({
       throw new Error("Agent/session not found for workspace");
     }
 
-    const existingSession = await ctx.db
-      .query("chatSessions")
-      .withIndex("bySessionKey", (q) =>
-        q.eq("workspaceId", args.workspaceId).eq("sessionKey", args.sessionKey),
-      )
-      .first();
-
-    if (existingSession) {
-      await ctx.db.patch(existingSession._id, {
-        openclawSessionId:
-          args.openclawSessionId ?? existingSession.openclawSessionId,
-        lastEventAt: eventTime,
-        status: args.sessionStatus ?? existingSession.status,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.insert("chatSessions", {
-        workspaceId: args.workspaceId,
-        agentId: agent._id,
-        sessionKey: args.sessionKey,
-        openclawSessionId: args.openclawSessionId,
-        lastEventAt: eventTime,
-        status: args.sessionStatus ?? "active",
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
     if (!args.message) {
       return { deduped: false, eventId: args.eventId, updatedMessage: null };
     }
