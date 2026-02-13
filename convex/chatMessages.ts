@@ -131,11 +131,18 @@ export const listBySession = query({
   },
 });
 
-/** List active chat sessions (viewer+). */
-export const getSessions = query({
+/** List active chat sessions - legacy (viewer+). */
+export const getSessionsLegacy = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
+    // This query is only used for UI convenience. If the client calls it
+    // during auth/workspace bootstrap with a stale workspaceId, we prefer
+    // returning an empty list over crashing the entire /chat page.
+    try {
+      await requireMember(ctx, args.workspaceId);
+    } catch {
+      return [];
+    }
 
     // Backward-compatible fallback if sessions have not been created yet.
     const messages = await ctx.db

@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { MessageSquare } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { ChevronDown, MessageSquare } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -37,12 +37,18 @@ type ChatMessageRow = Doc<"chatMessages"> & {
 };
 
 export function ChatInterface({ agent }: ChatInterfaceProps) {
-  const { workspaceId, canEdit } = useWorkspace();
+  const { workspaceId, canEdit, membershipId } = useWorkspace();
   const sessionId = `chat:${agent.sessionKey}`;
   const messages = (useQuery(api.chatMessages.listBySession, {
     workspaceId,
     sessionId,
   }) ?? []) as ChatMessageRow[];
+  const members =
+    useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
+  const me = useMemo(
+    () => members.find((m) => m._id === membershipId),
+    [members, membershipId],
+  );
   const eventsForSession =
     useQuery(api.chatEvents.listBySessionKey, {
       workspaceId,
@@ -51,7 +57,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     }) ?? [];
   const legacySendMessage = useMutation(api.chatMessages.send);
   const upsertGatewayEvent = useMutation(api.chatIngest.upsertGatewayEvent);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const atBottomRef = useRef(true);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
 
@@ -63,11 +71,36 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     process.env.NEXT_PUBLIC_OPENCLAW_HISTORY_POLL_MS ?? "0",
   );
 
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const el = viewportRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
+  // Auto-scroll only when the user is already at the bottom.
   useEffect(() => {
     if (messages.length === 0) return;
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (atBottomRef.current) scrollToBottom("auto");
   }, [messages.length]);
+
+  // Track whether the user has scrolled up; show a jump-to-bottom button.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const thresholdPx = 120;
+    const onScroll = () => {
+      const distanceFromBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight;
+      const atBottom = distanceFromBottom <= thresholdPx;
+      atBottomRef.current = atBottom;
+      setShowScrollDown(!atBottom);
+    };
+
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(
     () => () => {
@@ -479,7 +512,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col min-h-0 overflow-hidden h-[calc(100dvh-3.5rem)]">
       <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-6 py-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-bg-tertiary text-xl">
           {agent.emoji}
@@ -509,45 +542,65 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           </span>
         </div>
       </div>
-      <ScrollArea className="flex-1" ref={scrollRef}>
-        <div className="space-y-4 p-6">
-          {messages.length === 0 ? (
-            <EmptyState
-              icon={MessageSquare}
-              title={`Start chatting with ${agent.name}`}
-              description="Messages are stored and synced in real-time"
-            />
-          ) : (
-            messages.map((msg) => (
-              <div key={msg._id}>
-                <ChatMessage
-                  message={msg}
-                  agentEmoji={agent.emoji}
-                  agentName={agent.name}
-                  eventsForSession={eventsForSession}
-                />
-                {msg.state === "failed" && msg.externalMessageId && canEdit && (
-                  <div className="mt-1 flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => handleRetry(msg.externalMessageId)}
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </ScrollArea>
-      <ChatInput
-        onSend={handleSend}
-        placeholder={`Message ${agent.name}...`}
-        disabled={!canEdit}
-      />
+      <div className="relative flex-1 min-h-0">
+        <ScrollArea className="h-full" viewportRef={viewportRef}>
+          <div className="space-y-4 p-6">
+            {messages.length === 0 ? (
+              <EmptyState
+                icon={MessageSquare}
+                title={`Start chatting with ${agent.name}`}
+                description="Messages are stored and synced in real-time"
+              />
+            ) : (
+              messages.map((msg) => (
+                <div key={msg._id}>
+                  <ChatMessage
+                    message={msg}
+                    agentEmoji={agent.emoji}
+                    agentName={agent.name}
+                    userName={me?.name}
+                    userImage={me?.image ?? undefined}
+                    eventsForSession={eventsForSession}
+                  />
+                  {msg.state === "failed" && msg.externalMessageId && canEdit && (
+                    <div className="mt-1 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleRetry(msg.externalMessageId)}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+
+        {showScrollDown && (
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="absolute bottom-4 right-4 z-10 h-9 w-9 rounded-full shadow-md"
+            onClick={() => scrollToBottom("smooth")}
+            aria-label="Scroll to bottom"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      <div className="sticky bottom-0 border-t border-border-default bg-bg-secondary">
+        <ChatInput
+          onSend={handleSend}
+          placeholder={`Message ${agent.name}...`}
+          disabled={!canEdit}
+        />
+      </div>
     </div>
   );
 }

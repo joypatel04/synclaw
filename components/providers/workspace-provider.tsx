@@ -19,11 +19,13 @@ export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 
 export interface WorkspaceContext {
   workspaceId: Id<"workspaces">;
+  membershipId: Id<"workspaceMembers">;
   workspace: {
     _id: Id<"workspaces">;
     name: string;
     slug: string;
     role: string;
+    membershipId: Id<"workspaceMembers">;
   };
   role: WorkspaceRole;
   workspaces: Array<{
@@ -31,6 +33,7 @@ export interface WorkspaceContext {
     name: string;
     slug: string;
     role: string;
+    membershipId: Id<"workspaceMembers">;
   }>;
   switchWorkspace: (id: Id<"workspaces">) => void;
   isLoading: boolean;
@@ -133,7 +136,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     return {
       workspaceId: ws._id as Id<"workspaces">,
-      workspace: ws,
+      membershipId: ws.membershipId as Id<"workspaceMembers">,
+      workspace: ws as typeof ws & { membershipId: Id<"workspaceMembers"> },
       role,
       workspaces,
       switchWorkspace,

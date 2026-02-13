@@ -4,9 +4,9 @@ import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { RunDetails } from "./RunDetails";
 import { Check, X } from "lucide-react";
 import { ToolOutputSheet } from "./ToolOutputSheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ChatMessageProps {
   message: Doc<"chatMessages"> & {
@@ -21,6 +21,8 @@ interface ChatMessageProps {
   };
   agentEmoji?: string;
   agentName?: string;
+  userName?: string;
+  userImage?: string;
   eventsForSession?: Doc<"chatEvents">[];
 }
 
@@ -28,12 +30,13 @@ export function ChatMessage({
   message,
   agentEmoji = "🤖",
   agentName = "Agent",
+  userName,
+  userImage,
   eventsForSession = [],
 }: ChatMessageProps) {
   const isUser = message.fromUser;
   const state = message.state;
   const errorMessage = message.errorMessage;
-  const runId = message.externalRunId;
   const role = message.role;
   const isTool = role === "tool";
 
@@ -115,14 +118,18 @@ export function ChatMessage({
 
   return (
     <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
-      <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm",
-          isUser ? "bg-accent-orange/20" : "bg-bg-tertiary",
-        )}
-      >
-        {isUser ? "👤" : agentEmoji}
-      </div>
+      {isUser ? (
+        <Avatar size="default" className="shrink-0">
+          {userImage ? <AvatarImage src={userImage} alt={userName ?? "You"} /> : null}
+          <AvatarFallback className="bg-accent-orange/20 text-text-primary">
+            {(userName?.trim()?.[0] ?? "U").toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      ) : (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
+          {agentEmoji}
+        </div>
+      )}
       <div
         className={cn(
           "w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5",
@@ -142,9 +149,6 @@ export function ChatMessage({
         )}
         {errorMessage && (
           <p className="mt-1 text-[10px] text-status-blocked">{errorMessage}</p>
-        )}
-        {runId && (
-          <RunDetails runId={runId} eventsForSession={eventsForSession} />
         )}
         <Timestamp time={message.createdAt} className="mt-1 block text-right" />
       </div>
