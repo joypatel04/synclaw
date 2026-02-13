@@ -118,6 +118,100 @@ export function pickLatestAssistantFromHistory(history: unknown): {
   return { text, runId, messageId };
 }
 
+export type ToolExecTrace = {
+  toolCallId: string;
+  toolName: string;
+  command?: string;
+  resultText?: string;
+  status?: "completed" | "error";
+  timestamp?: number;
+  resultTimestamp?: number;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!asRecord(value);
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+export function extractExecTracesFromHistory(history: unknown): ToolExecTrace[] {
+  const messages = pickHistoryMessages(history);
+  if (messages.length === 0) return [];
+
+  const byId = new Map<string, ToolExecTrace>();
+
+  for (const m of messages) {
+    const role = asString(m.role) ?? "assistant";
+    const timestamp = asNumber(m.timestamp);
+
+    // Tool calls are represented as assistant content parts with type:"toolCall".
+    if (role === "assistant" && Array.isArray(m.content)) {
+      for (const part of m.content) {
+        if (!isRecord(part)) continue;
+        if (part.type !== "toolCall") continue;
+        const toolCallId = asString(part.id);
+        const toolName = asString(part.name) ?? "exec";
+        const args = asRecord(part.arguments);
+        const command = asString(args?.command);
+        if (!toolCallId) continue;
+        const existing = byId.get(toolCallId) ?? {
+          toolCallId,
+          toolName,
+        };
+        byId.set(toolCallId, {
+          ...existing,
+          toolName,
+          command: command ?? existing.command,
+          timestamp: timestamp ?? existing.timestamp,
+        });
+      }
+    }
+
+    // Tool results are represented as messages with role:"toolResult".
+    if (role === "toolResult") {
+      const toolCallId = asString(m.toolCallId);
+      const toolName = asString(m.toolName) ?? "exec";
+      if (!toolCallId) continue;
+
+      const details = asRecord(m.details);
+      const statusRaw = asString(details?.status);
+      const status: "completed" | "error" | undefined =
+        statusRaw === "error" || statusRaw === "failed"
+          ? "error"
+          : statusRaw === "completed"
+            ? "completed"
+            : undefined;
+
+      const resultText =
+        asString(details?.aggregated) ??
+        pickText(m.content) ??
+        pickText(details) ??
+        undefined;
+
+      const existing = byId.get(toolCallId) ?? { toolCallId, toolName };
+      byId.set(toolCallId, {
+        ...existing,
+        toolName,
+        status: status ?? existing.status,
+        resultText: resultText ?? existing.resultText,
+        resultTimestamp: timestamp ?? existing.resultTimestamp,
+      });
+    }
+  }
+
+  return Array.from(byId.values()).sort((a, b) => {
+    const ta = a.timestamp ?? a.resultTimestamp ?? 0;
+    const tb = b.timestamp ?? b.resultTimestamp ?? 0;
+    return ta - tb;
+  });
+}
+
 export type IngestMappedEvent = {
   sessionKey: string;
   eventId: string;
@@ -223,7 +317,9 @@ export function mapGatewayEventForIngest(
     roleRaw === "system" ||
     roleRaw === "tool"
       ? roleRaw
-      : "assistant";
+      : roleRaw === "toolResult" || roleRaw === "toolCall"
+        ? "tool"
+        : "assistant";
 
   const fromUser = role === "user";
   const messageId =

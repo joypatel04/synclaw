@@ -12,6 +12,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
   OpenClawBrowserGatewayClient,
+  extractExecTracesFromHistory,
   pickLatestAssistantFromHistory,
   pickRunId,
   pickText,
@@ -214,6 +215,44 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           sessionKey: agent.sessionKey,
           limit: 25,
         });
+
+        // Ingest tool call/result messages from history so they show up in the chat
+        // timeline like Control UI (exec cards).
+        const traces = extractExecTracesFromHistory(history);
+        for (const t of traces) {
+          const eventAt = t.timestamp ?? t.resultTimestamp;
+          const state =
+            t.status === "error" ||
+            (t.resultText && t.resultText.includes("Server Error"))
+              ? "failed"
+              : t.status === "completed"
+                ? "completed"
+                : "streaming";
+
+          await upsertGatewayEvent({
+            workspaceId,
+            sessionKey: agent.sessionKey,
+            eventId: `direct.history.exec.${t.toolCallId}.${delayMs}`,
+            eventType: "chat.history.exec",
+            eventAt,
+            payload:
+              typeof history === "object" && history !== null
+                ? (history as Record<string, unknown>)
+                : { history },
+            message: {
+              externalMessageId: t.toolCallId,
+              role: "tool",
+              fromUser: false,
+              // Store command as content; UI renders it as an exec card.
+              content: t.command ?? `${t.toolName} (missing command)`,
+              state,
+              errorMessage:
+                state === "failed" ? t.resultText ?? "Tool failed" : undefined,
+            },
+            sessionStatus: state === "failed" ? "error" : "active",
+          });
+        }
+
         const assistant = pickLatestAssistantFromHistory(history);
         if (!assistant) continue;
 

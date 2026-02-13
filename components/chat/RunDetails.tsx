@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
+import { Check } from "lucide-react";
 
 type EventRow = Doc<"chatEvents">;
 
@@ -13,16 +14,26 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function pickRunId(payload: unknown): string | null {
-  const obj = asRecord(payload);
+function deepFindString(
+  value: unknown,
+  key: string,
+  depth = 0,
+  maxDepth = 6,
+): string | null {
+  if (depth > maxDepth) return null;
+  const obj = asRecord(value);
   if (!obj) return null;
-  const direct = obj.runId;
+  const direct = obj[key];
   if (typeof direct === "string" && direct.length > 0) return direct;
-  for (const key of ["payload", "data", "message"]) {
-    const nested = pickRunId(obj[key]);
-    if (nested) return nested;
+  for (const v of Object.values(obj)) {
+    const found = deepFindString(v, key, depth + 1, maxDepth);
+    if (found) return found;
   }
   return null;
+}
+
+function pickRunId(payload: unknown): string | null {
+  return deepFindString(payload, "runId");
 }
 
 function pickTs(payload: unknown, fallback: number): number {
@@ -54,9 +65,25 @@ type ToolArtifact = {
   input?: unknown;
   output?: unknown;
   status?: string;
+  summary?: string;
   ts: number;
   raw: unknown;
 };
+
+function pickExecSummary(payload: any): string | null {
+  const text =
+    (typeof payload?.data?.text === "string" && payload.data.text) ||
+    (typeof payload?.text === "string" && payload.text) ||
+    null;
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  // Common Control UI exec format: "mcporter call <tool> key=\"value\" ..."
+  if (trimmed.includes(" call ") || trimmed.startsWith("mcporter call")) {
+    return trimmed;
+  }
+  return null;
+}
 
 function extractToolArtifacts(events: EventRow[], runId: string): ToolArtifact[] {
   const artifacts: ToolArtifact[] = [];
@@ -106,13 +133,17 @@ function extractToolArtifacts(events: EventRow[], runId: string): ToolArtifact[]
 
     // 2) Agent stream tool/exec-like events: payload.stream + payload.data
     const stream = typeof p?.stream === "string" ? p.stream : null;
-    if (stream && (stream === "tool" || stream === "exec" || stream === "call")) {
+    if (
+      stream &&
+      (stream === "tool" || stream === "exec" || stream === "call")
+    ) {
       const data = p?.data;
       const name =
         (typeof data?.name === "string" && data.name) ||
         (typeof data?.tool === "string" && data.tool) ||
         (typeof p?.tool === "string" && p.tool) ||
         stream;
+      const summary = pickExecSummary(p);
       artifacts.push({
         id: e._id,
         kind: stream === "exec" ? "exec" : "tool_call",
@@ -120,9 +151,27 @@ function extractToolArtifacts(events: EventRow[], runId: string): ToolArtifact[]
         input: data?.input ?? data?.args ?? data?.arguments ?? data,
         output: data?.output ?? data?.result,
         status: typeof data?.status === "string" ? data.status : undefined,
+        summary: summary ?? undefined,
         ts,
         raw: p,
       });
+    }
+
+    // 2b) Some gateway builds emit exec text under `event:"agent"` with `stream:"assistant"`
+    // but still include a `data.text` line that represents a tool/exec call.
+    if (eventLabel === "agent") {
+      const summary = pickExecSummary(p);
+      if (summary) {
+        artifacts.push({
+          id: `${e._id}:exec`,
+          kind: "exec",
+          name: "exec",
+          summary,
+          status: "completed",
+          ts,
+          raw: p,
+        });
+      }
     }
 
     // 3) Generic exec/tool fields anywhere
@@ -239,51 +288,79 @@ export function RunDetails({
               ) : (
                 <div className="space-y-2">
                   {tools.map((t) => (
-                    <details
+                    <div
                       key={t.id}
-                      className="rounded-lg border border-border-default bg-bg-tertiary p-2"
+                      className="rounded-xl border border-border-default bg-bg-tertiary p-3"
                     >
-                      <summary className="cursor-pointer select-none text-[11px] text-text-primary">
-                        <span className="font-medium">{t.name}</span>
-                        <span className="text-text-dim"> · {t.kind}</span>
-                        {t.status ? (
-                          <span className="text-text-dim"> · {t.status}</span>
-                        ) : null}
-                      </summary>
-                      <div className="mt-2 space-y-2">
-                        {t.input !== undefined && (
-                          <div>
-                            <div className="text-[10px] text-text-dim mb-1">
-                              Input
-                            </div>
-                            <pre className="text-[10px] overflow-x-auto rounded-md bg-bg-secondary p-2">
-                              {JSON.stringify(t.input, null, 2)}
-                            </pre>
-                          </div>
-                        )}
-                        {t.output !== undefined && (
-                          <div>
-                            <div className="text-[10px] text-text-dim mb-1">
-                              Output
-                            </div>
-                            {typeof t.output === "string" ? (
-                              <div className="text-[11px] text-text-primary">
-                                <MarkdownContent content={t.output} />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-text-muted">🧩</span>
+                          <span className="font-mono text-sm font-semibold text-text-primary">
+                            {t.kind === "exec" ? "exec" : t.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {t.status ? (
+                            <span className="text-[11px] text-text-dim">
+                              {t.status}
+                            </span>
+                          ) : null}
+                          <Check className="h-4 w-4 text-status-active" />
+                        </div>
+                      </div>
+
+                      {t.summary ? (
+                        <pre className="mt-2 text-[12px] overflow-x-auto rounded-md bg-bg-secondary p-2 font-mono text-text-primary">
+                          {t.summary}
+                        </pre>
+                      ) : null}
+
+                      {(t.input !== undefined || t.output !== undefined) && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer select-none text-[11px] text-text-dim hover:text-text-primary underline">
+                            Show payload
+                          </summary>
+                          <div className="mt-2 space-y-2">
+                            {t.input !== undefined && (
+                              <div>
+                                <div className="text-[10px] text-text-dim mb-1">
+                                  Input
+                                </div>
+                                <pre className="text-[10px] overflow-x-auto rounded-md bg-bg-secondary p-2">
+                                  {JSON.stringify(t.input, null, 2)}
+                                </pre>
                               </div>
-                            ) : (
-                              <pre className="text-[10px] overflow-x-auto rounded-md bg-bg-secondary p-2">
-                                {JSON.stringify(t.output, null, 2)}
-                              </pre>
+                            )}
+                            {t.output !== undefined && (
+                              <div>
+                                <div className="text-[10px] text-text-dim mb-1">
+                                  Output
+                                </div>
+                                {typeof t.output === "string" ? (
+                                  <div className="text-[11px] text-text-primary">
+                                    <MarkdownContent content={t.output} />
+                                  </div>
+                                ) : (
+                                  <pre className="text-[10px] overflow-x-auto rounded-md bg-bg-secondary p-2">
+                                    {JSON.stringify(t.output, null, 2)}
+                                  </pre>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
-                        {t.input === undefined && t.output === undefined && (
-                          <div className="text-[10px] text-text-dim">
-                            {stringifyShort(t.raw)}
-                          </div>
-                        )}
+                        </details>
+                      )}
+
+                      {!t.summary && t.input === undefined && t.output === undefined && (
+                        <div className="mt-2 text-[10px] text-text-dim">
+                          {stringifyShort(t.raw)}
+                        </div>
+                      )}
+
+                      <div className="mt-2 text-[11px] text-text-dim">
+                        {t.status ? "Completed" : "Completed"}
                       </div>
-                    </details>
+                    </div>
                   ))}
                 </div>
               )}
@@ -300,4 +377,3 @@ export function RunDetails({
     </div>
   );
 }
-
