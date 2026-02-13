@@ -15,6 +15,7 @@ import type * as apiKeys_internal from "../apiKeys_internal.js";
 import type * as auth from "../auth.js";
 import type * as broadcasts from "../broadcasts.js";
 import type * as chatActions from "../chatActions.js";
+import type * as chatEvents from "../chatEvents.js";
 import type * as chatIngest from "../chatIngest.js";
 import type * as chatMessages from "../chatMessages.js";
 import type * as chatOutbox from "../chatOutbox.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   broadcasts: typeof broadcasts;
   chatActions: typeof chatActions;
+  chatEvents: typeof chatEvents;
   chatIngest: typeof chatIngest;
   chatMessages: typeof chatMessages;
   chatOutbox: typeof chatOutbox;

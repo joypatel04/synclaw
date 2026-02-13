@@ -309,6 +309,7 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("bySessionAndEvent", ["workspaceId", "sessionKey", "eventId"])
+    .index("bySessionRecent", ["workspaceId", "sessionKey", "receivedAt"])
     .index("recent", ["receivedAt"]),
 
   chatOutbox: defineTable({

@@ -41,6 +41,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     workspaceId,
     sessionId,
   }) ?? []) as ChatMessageRow[];
+  const eventsForSession =
+    useQuery(api.chatEvents.listBySessionKey, {
+      workspaceId,
+      sessionKey: agent.sessionKey,
+      limit: 200,
+    }) ?? [];
   const legacySendMessage = useMutation(api.chatMessages.send);
   const legacySendToAgent = useAction(api.chatActions.sendToAgent);
   const sendFromUser = useMutation(api.chatMessages.sendFromUser);
@@ -393,6 +399,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                   message={msg}
                   agentEmoji={agent.emoji}
                   agentName={agent.name}
+                  eventsForSession={eventsForSession}
                 />
                 {msg.state === "failed" && msg.externalMessageId && canEdit && (
                   <div className="mt-1 flex justify-end">
