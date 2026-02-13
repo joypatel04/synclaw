@@ -159,14 +159,10 @@ async function main() {
       case "chat":
         switch (action) {
           case "send":
-            await client.mutation(api.chatMessages.send, {
-              sessionId: requireArg(rest, "--session-id", "sessionId"),
-              content: requireArg(rest, "--message", "message"),
-              fromUser: false,
-              role: "assistant",
-              state: "completed",
-            });
-            result = { ok: true };
+            result = {
+              ok: false,
+              error: "chat is OpenClaw WS-only; CLI chat send is deprecated",
+            };
             break;
           default:
             console.error(`Unknown chat action: ${action}`);

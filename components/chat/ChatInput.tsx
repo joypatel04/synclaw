@@ -9,12 +9,14 @@ interface ChatInputProps {
   onSend: (message: string) => Promise<void>;
   disabled?: boolean;
   placeholder?: string;
+  statusText?: string;
 }
 
 export function ChatInput({
   onSend,
   disabled = false,
   placeholder = "Type a message...",
+  statusText,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -75,6 +77,9 @@ export function ChatInput({
       </div>
       {errorText && (
         <div className="mt-2 text-xs text-status-blocked">{errorText}</div>
+      )}
+      {statusText && !errorText && (
+        <div className="mt-2 text-xs text-text-dim">{statusText}</div>
       )}
     </form>
   );

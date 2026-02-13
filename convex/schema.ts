@@ -244,56 +244,7 @@ export default defineSchema({
     .index("byAgent", ["agentId"])
     .index("byTask", ["taskId"]),
 
-  chatMessages: defineTable({
-    workspaceId: v.id("workspaces"),
-    sessionId: v.string(),
-    fromUser: v.boolean(),
-    content: v.string(),
-    role: v.optional(
-      v.union(
-        v.literal("user"),
-        v.literal("assistant"),
-        v.literal("system"),
-        v.literal("tool"),
-      ),
-    ),
-    externalMessageId: v.optional(v.string()),
-    externalRunId: v.optional(v.string()),
-    state: v.optional(
-      v.union(
-        v.literal("queued"),
-        v.literal("sending"),
-        v.literal("streaming"),
-        v.literal("completed"),
-        v.literal("failed"),
-        v.literal("aborted"),
-      ),
-    ),
-    errorCode: v.optional(v.string()),
-    errorMessage: v.optional(v.string()),
-    sequence: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("bySession", ["sessionId", "createdAt"])
-    .index("recent", ["createdAt"])
-    .index("bySessionSequence", ["sessionId", "sequence"])
-    .index("byExternalMessageId", ["externalMessageId"])
-    .index("byRunId", ["externalRunId"]),
-
-  chatEvents: defineTable({
-    workspaceId: v.id("workspaces"),
-    sessionKey: v.string(),
-    eventId: v.string(),
-    eventType: v.string(),
-    payload: v.any(),
-    receivedAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("bySessionAndEvent", ["workspaceId", "sessionKey", "eventId"])
-    .index("bySessionRecent", ["workspaceId", "sessionKey", "receivedAt"])
-    .index("recent", ["receivedAt"]),
+  // NOTE: chatMessages/chatEvents tables removed. Chat is OpenClaw WS-only.
 
   /**
    * Individual agent run records for cost tracking.

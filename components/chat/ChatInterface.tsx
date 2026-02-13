@@ -15,8 +15,6 @@ import {
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
   pickLatestAssistantFromHistory,
-  pickRunId,
-  pickText,
 } from "@/lib/openclaw-gateway-client";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, type UiChatMessage } from "./ChatMessage";
@@ -24,17 +22,6 @@ import { ChatMessage, type UiChatMessage } from "./ChatMessage";
 interface ChatInterfaceProps {
   agent: Pick<Doc<"agents">, "name" | "emoji" | "role" | "status" | "sessionKey">;
 }
-type ChatMessageRow = Doc<"chatMessages"> & {
-  externalMessageId?: string;
-  externalRunId?: string;
-  state?:
-    | "queued"
-    | "sending"
-    | "streaming"
-    | "completed"
-    | "failed"
-    | "aborted";
-};
 
 export function ChatInterface({ agent }: ChatInterfaceProps) {
   const { workspaceId, canEdit, membershipId } = useWorkspace();
@@ -102,6 +89,10 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   const makeClientMessageId = () =>
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  const sendQueueRef = useRef<string[]>([]);
+  const sendingRef = useRef(false);
+  const [queuedCount, setQueuedCount] = useState(0);
 
   const rebuildIndex = (next: UiChatMessage[]) => {
     const map = new Map<string, number>();
@@ -350,6 +341,57 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     }
   };
 
+  const isAgentResponding = useMemo(() => {
+    // "Responding" = any assistant message currently streaming.
+    return localMessages.some(
+      (m) => m.role === "assistant" && m.state === "streaming",
+    );
+  }, [localMessages]);
+
+  const activeRun = useMemo(() => {
+    return localMessages
+      .slice()
+      .reverse()
+      .find((m) => m.role === "assistant" && m.state === "streaming" && m.externalRunId);
+  }, [localMessages]);
+
+  const enqueueOrSend = async (content: string) => {
+    // If the agent is responding or we're already sending, enqueue.
+    if (isAgentResponding || sendingRef.current) {
+      sendQueueRef.current.push(content);
+      setQueuedCount(sendQueueRef.current.length);
+      // Show a local "queued" marker for user visibility.
+      upsertLocal({
+        id: makeClientMessageId(),
+        fromUser: true,
+        role: "user",
+        content,
+        state: "queued",
+        createdAt: Date.now(),
+      });
+      return;
+    }
+
+    sendingRef.current = true;
+    try {
+      await sendDirect(content);
+    } finally {
+      sendingRef.current = false;
+    }
+  };
+
+  // Drain the queue when the agent finishes responding.
+  useEffect(() => {
+    if (isAgentResponding) return;
+    if (sendingRef.current) return;
+    if (sendQueueRef.current.length === 0) return;
+
+    const next = sendQueueRef.current.shift();
+    setQueuedCount(sendQueueRef.current.length);
+    if (!next) return;
+    void enqueueOrSend(next);
+  }, [isAgentResponding]);
+
   // Background history sync to pick up agent-initiated runs (heartbeat/cron) where
   // tool calls are only available via `chat.history`.
   useEffect(() => {
@@ -458,7 +500,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   }, [useDirectWs, historyPollMs, agent.sessionKey]);
 
   const handleSend = async (content: string) => {
-    await sendDirect(content);
+    await enqueueOrSend(content);
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {
@@ -470,11 +512,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     await sendDirect(failedMessage.content);
   };
 
-  const activeRun = localMessages
-    .slice()
-    .reverse()
-    .find((m) => m.externalRunId && m.state === "streaming");
-
   const handleAbort = async () => {
     if (!activeRun?.externalRunId) return;
     const clientMessageId = makeClientMessageId();
@@ -485,6 +522,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         runId: activeRun.externalRunId,
         clientMessageId,
       });
+      // Clear any queued messages when stopping, matching Control UI behavior.
+      sendQueueRef.current = [];
+      setQueuedCount(0);
       upsertLocal({
         id:
           activeRun.externalMessageId ?? `${activeRun.externalRunId}:assistant`,
@@ -522,7 +562,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
               className="h-7 px-2 text-xs"
               onClick={handleAbort}
             >
-              Abort Run
+              Stop
             </Button>
           )}
           <span
@@ -589,6 +629,13 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           onSend={handleSend}
           placeholder={`Message ${agent.name}...`}
           disabled={!canEdit}
+          statusText={
+            queuedCount > 0
+              ? `Queued: ${queuedCount} (will send after the agent finishes)`
+              : isAgentResponding
+                ? "Agent is responding… new messages will be queued"
+                : undefined
+          }
         />
       </div>
     </div>

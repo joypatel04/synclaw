@@ -419,22 +419,20 @@ server.tool(
 
 server.tool(
   "sutraha_send_chat",
-  "Send a chat message as an agent",
+  "DEPRECATED: Sutraha HQ chat is now OpenClaw WS-only. Use OpenClaw chat APIs instead.",
   {
-    sessionId: z
-      .string()
-      .describe("Chat session ID (e.g., chat:agent-session-key)"),
-    content: z.string().describe("Message content"),
+    sessionId: z.string().describe("Unused. Kept for compatibility."),
+    content: z.string().describe("Unused. Kept for compatibility."),
   },
-  async ({ sessionId, content }) => {
-    await client.mutation(api.chatMessages.send, {
-      sessionId,
-      content,
-      fromUser: false,
-      role: "assistant",
-      state: "completed",
-    });
-    return { content: [{ type: "text", text: "Chat message sent" }] };
+  async () => {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "sutraha_send_chat is deprecated (chat is OpenClaw WS-only).",
+        },
+      ],
+    };
   },
 );
 

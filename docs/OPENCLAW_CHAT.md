@@ -26,7 +26,7 @@ NEXT_PUBLIC_OPENCLAW_HISTORY_POLL_MS="10000"
 
 Notes:
 - These are `NEXT_PUBLIC_*` vars, so the gateway token is exposed to the browser.
-- Tool cards and the right-side Tool Output drawer are populated from `chat.history` projections stored in `chatEvents`.
+- Tool cards and the right-side Tool Output drawer are populated from `chat.history` (in-memory only; not persisted to Convex).
 
 ## Fly.io Shutdown
 
@@ -37,4 +37,3 @@ fly apps destroy sutraha-openclaw-bridge
 ```
 
 After that you can delete any local bridge files (already removed from this repo).
-

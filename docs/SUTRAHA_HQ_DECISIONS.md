@@ -110,26 +110,14 @@ New page: `/chat`
 
 ### Chat Implementation
 
-**Convex Schema Addition:**
-```typescript
-chatMessages: {
-  _id: Id<"chatMessages">,
-  sessionId: string,        // "chat:<agentSessionKey>"
-  fromUser: boolean,         // true = Joy, false = Agent
-  content: string,
-  createdAt: number,
-}
-```
+**Current Approach (WS-only):**
+- Chat is rendered directly from OpenClaw Gateway WebSocket events (`chat`/`agent`) in the browser.
+- History and tool calls/results are loaded from `chat.history` (OpenClaw), not from Convex.
+- Convex does not store chat transcripts (no `chatMessages` / `chatEvents` tables).
 
-**Server Functions:**
-- `chatMessages:send(message, agentId)` → Send to Convex + trigger `sessions_send`
-- `chatMessages:list(agentId)` → Get message history
-- `chatMessages:getSessions()` → List all active chat sessions
-
-**Flow:**
-1. Joy sends message → Convex stores + webhook/trigger
-2. Trigger calls `openclaw sessions send --session <agentKey> --message "..."`
-3. Agent responds via OpenClaw → stored back to Convex
+**Why:**
+- Avoid unbounded growth of Convex documents and bandwidth from streaming deltas.
+- OpenClaw is the source of truth for chat history.
 
 ---
 
