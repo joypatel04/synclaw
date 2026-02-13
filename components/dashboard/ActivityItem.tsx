@@ -44,8 +44,30 @@ export function ActivityItem({ activity }: ActivityItemProps) {
   const Icon = typeIcons[activity.type] ?? Zap;
   const color = typeColors[activity.type] ?? "text-text-muted";
 
+  const meta = activity.metadata as any;
+  const documentId =
+    meta && typeof meta === "object" ? (meta.documentId as string | undefined) : undefined;
+
+  const href =
+    activity.taskId
+      ? `/tasks/${activity.taskId}`
+      : (activity.type === "document_created" || activity.type === "document_updated") &&
+          documentId
+        ? `/documents?docId=${encodeURIComponent(documentId)}`
+        : null;
+
+  const Wrapper: any = href ? Link : "div";
+  const wrapperProps = href ? { href } : {};
+
   return (
-    <div className="group flex gap-3 rounded-lg px-3 py-2.5 transition-smooth hover:bg-bg-hover">
+    <Wrapper
+      {...wrapperProps}
+      className={cn(
+        "group flex gap-3 rounded-lg px-3 py-2.5 transition-smooth",
+        href ? "hover:bg-bg-hover cursor-pointer" : "opacity-90",
+      )}
+      aria-label={href ? "Open activity target" : undefined}
+    >
       <div className={cn("mt-0.5 shrink-0", color)}>
         <Icon className="h-4 w-4" />
       </div>
@@ -55,16 +77,13 @@ export function ActivityItem({ activity }: ActivityItemProps) {
         </p>
         <div className="mt-1 flex items-center gap-2">
           <Timestamp time={activity.createdAt} />
-          {activity.taskId && (
-            <Link
-              href={`/tasks/${activity.taskId}`}
-              className="text-[10px] font-medium text-accent-orange hover:underline"
-            >
-              View task →
-            </Link>
+          {href && (
+            <span className="text-[10px] font-medium text-accent-orange">
+              View →
+            </span>
           )}
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }

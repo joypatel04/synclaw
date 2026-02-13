@@ -149,6 +149,15 @@ export function extractDisplayMessagesFromHistory(
   const messages = pickHistoryMessages(history);
   if (messages.length === 0) return [];
 
+  const joinTextParts = (parts: unknown[]): string | null => {
+    const textParts = parts
+      .filter((p: any) => p && typeof p === "object" && p.type === "text")
+      .map((p: any) => (typeof p.text === "string" ? p.text : ""))
+      .map((t: string) => t.trim())
+      .filter((t: string) => t.length > 0);
+    return textParts.length > 0 ? textParts.join("\n\n") : null;
+  };
+
   const out: HistoryIngestMessage[] = [];
   for (const m of messages) {
     const roleRaw =
@@ -174,6 +183,10 @@ export function extractDisplayMessagesFromHistory(
         .map((p: any) => (typeof p.text === "string" ? p.text : ""))
         .filter((t: string) => t.trim().length > 0);
       text = textParts.length > 0 ? textParts.join("\n") : null;
+    } else if ((role === "user" || role === "system") && Array.isArray(m.content)) {
+      // Some gateways store user/system content as multiple text parts. Prefer joining
+      // them so markdown structure (headers/lists) is preserved.
+      text = joinTextParts(m.content);
     } else {
       text =
         pickText(m.content) ??

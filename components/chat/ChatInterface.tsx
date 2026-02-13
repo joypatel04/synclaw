@@ -113,6 +113,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       .replace(/[ \t]+\n/g, "\n")
       .trim();
 
+  const normalizeForDedupe = (s: string) =>
+    normalizeChatText(s).replace(/\s+/g, " ").trim();
+
+  const richnessScore = (s: string) => {
+    // Prefer content that preserves structure (newlines/code fences), then length.
+    const newlines = (s.match(/\n/g) ?? []).length;
+    const fences = (s.match(/```/g) ?? []).length;
+    return fences * 500 + newlines * 20 + s.length;
+  };
+
+  const preferRicherContent = (a: string, b: string) =>
+    richnessScore(b) > richnessScore(a) ? b : a;
+
   const stateRank = (s: UiChatMessage["state"] | undefined) => {
     // Higher = more "final"/informative.
     switch (s) {
@@ -160,7 +173,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         m.fromUser === last.fromUser;
 
       const sameText =
-        normalizeChatText(m.content) === normalizeChatText(last.content);
+        normalizeForDedupe(m.content) === normalizeForDedupe(last.content);
       const closeInTime =
         Math.abs((m.createdAt ?? 0) - (last.createdAt ?? 0)) <= windowMs;
 
@@ -176,10 +189,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
               ? incoming.state
               : keep.state,
           // Prefer non-empty/longer content (streaming -> final).
-          content:
-            incoming.content.length > keep.content.length
-              ? incoming.content
-              : keep.content,
+          content: preferRicherContent(keep.content, incoming.content),
           errorMessage: incoming.errorMessage ?? keep.errorMessage,
           externalRunId: incoming.externalRunId ?? keep.externalRunId,
           externalMessageId: keep.externalMessageId ?? incoming.externalMessageId,
@@ -192,6 +202,52 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     }
 
     return out;
+  };
+
+  const findDuplicateIndex = (
+    messages: UiChatMessage[],
+    candidate: {
+      role: UiChatMessage["role"];
+      fromUser: boolean;
+      content: string;
+      createdAt?: number;
+      externalRunId?: string;
+    },
+  ) => {
+    // More aggressive than `collapseNearDuplicates`: handle cases where the same
+    // message arrives via WS + history with different IDs, and tool cards may sit
+    // between the duplicates (so they aren't adjacent).
+    const windowMs = 2 * 60_000; // only collapse very near-time duplicates
+    const ts = candidate.createdAt ?? Date.now();
+    const needle = normalizeForDedupe(candidate.content ?? "");
+
+    // Don't attempt to dedupe empty content; also skip tool messages (they already
+    // have stable ids like toolCallId).
+    if (!needle) return undefined;
+    if (candidate.role === "tool") return undefined;
+
+    // If we have a runId for assistant messages, prefer merging by runId first.
+    if (candidate.role === "assistant" && candidate.externalRunId) {
+      const byRun = messages.findIndex(
+        (m) => m.role === "assistant" && m.externalRunId === candidate.externalRunId,
+      );
+      if (byRun !== -1) return byRun;
+    }
+
+    // Scan from the end (most likely duplicates are recent).
+    // Cap the scan to keep this O(1)ish in steady-state.
+    const scanLimit = 250;
+    for (let i = messages.length - 1; i >= 0 && messages.length - i <= scanLimit; i--) {
+      const m = messages[i];
+      if (m.role !== candidate.role) continue;
+      if (m.fromUser !== candidate.fromUser) continue;
+      const mt = m.createdAt ?? 0;
+      if (Math.abs(mt - ts) > windowMs) continue;
+      if (normalizeForDedupe(m.content) !== needle) continue;
+      return i;
+    }
+
+    return undefined;
   };
 
   const upsertLocal = (partial: Omit<UiChatMessage, "id"> & { id?: string }) => {
@@ -221,6 +277,50 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       const now = Date.now();
 
       if (idx === undefined) {
+        // If the same message arrived with a different id (common with WS vs history),
+        // merge into the existing entry instead of adding a duplicate bubble.
+        const dupIdx = findDuplicateIndex(prev, {
+          role: partial.role,
+          fromUser: partial.fromUser,
+          content: partial.content ?? "",
+          createdAt: partial.createdAt,
+          externalRunId: partial.externalRunId,
+        });
+        if (dupIdx !== undefined) {
+          const existingDup = prev[dupIdx];
+        const merged: UiChatMessage = {
+          ...existingDup,
+          ...partial,
+          id: existingDup.id,
+            // Prefer the most advanced state.
+            state:
+              stateRank(partial.state) > stateRank(existingDup.state)
+                ? partial.state
+                : existingDup.state,
+            // Prefer longer content (streaming -> final).
+          content: preferRicherContent(
+            existingDup.content,
+            partial.content ?? "",
+          ),
+            // Promote the canonical ids when we learn them.
+            externalRunId: partial.externalRunId ?? existingDup.externalRunId,
+            externalMessageId:
+              canonicalExternalId ??
+              partial.externalMessageId ??
+              existingDup.externalMessageId,
+            errorMessage: partial.errorMessage ?? existingDup.errorMessage,
+            createdAt: existingDup.createdAt,
+          };
+
+          const next = prev.slice();
+          next[dupIdx] = merged;
+          const collapsed = collapseNearDuplicates(
+            next.slice().sort((a, b) => a.createdAt - b.createdAt),
+          );
+          rebuildIndex(collapsed);
+          return collapsed;
+        }
+
         const nextMsg: UiChatMessage = {
           id: partial.id ?? key,
           fromUser: partial.fromUser,
@@ -245,15 +345,15 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           ? partial.content
           : (partial.content ?? existing.content);
 
-      const updated: UiChatMessage = {
-        ...existing,
-        ...partial,
-        id: existing.id,
-        content: nextContent,
-        createdAt: existing.createdAt,
-        externalMessageId:
-          canonicalExternalId ?? partial.externalMessageId ?? existing.externalMessageId,
-      };
+        const updated: UiChatMessage = {
+          ...existing,
+          ...partial,
+          id: existing.id,
+          content: preferRicherContent(existing.content, nextContent),
+          createdAt: existing.createdAt,
+          externalMessageId:
+            canonicalExternalId ?? partial.externalMessageId ?? existing.externalMessageId,
+        };
       const next = prev.slice();
       next[idx] = updated;
       const collapsed = collapseNearDuplicates(
@@ -272,12 +372,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     // De-dupe only near-real-time echoes (history/WS repeating what the UI already showed).
     // Do not de-dupe across large time spans to avoid hiding legitimate repeats.
     const windowMs = 60_000;
-    const needle = normalizeChatText(content);
+    const needle = normalizeForDedupe(content);
     return localMessagesRef.current.some(
       (m) =>
         m.role === "user" &&
         m.fromUser &&
-        normalizeChatText(m.content) === needle &&
+        normalizeForDedupe(m.content) === needle &&
         Math.abs((m.createdAt ?? 0) - ts) <= windowMs,
     );
   };

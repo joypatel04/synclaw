@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { FileText, Folder, FolderPlus, FolderTree, Globe, Pencil } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type DocType = "deliverable" | "research" | "protocol" | "note" | "journal";
 type DocStatus = "draft" | "final" | "archived";
@@ -65,6 +66,10 @@ const statusClasses: Record<DocStatus, string> = {
 
 function DocumentsContent() {
   const { workspaceId, canEdit } = useWorkspace();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const docIdParam = searchParams.get("docId");
+
   const [docTypeFilter, setDocTypeFilter] = useState<"all" | DocType>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [selectedFolderId, setSelectedFolderId] = useState<Id<"folders"> | null>(null);
@@ -89,6 +94,12 @@ function DocumentsContent() {
     onlyDrafts: viewMode === "drafts" ? true : undefined,
     folderId: viewMode === "folder" && selectedFolderId ? selectedFolderId : undefined,
   }) ?? [];
+
+  const deepLinkedDoc = useQuery(
+    api.documents.getById,
+    docIdParam ? { workspaceId, id: docIdParam as Id<"documents"> } : "skip",
+  );
+
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
   const folders = useQuery(api.folders.list, { workspaceId }) ?? [];
   const upsertDocument = useMutation(api.documents.upsertDocument);
@@ -140,9 +151,12 @@ function DocumentsContent() {
   const closeEditor = () => {
     if (isSaving) return;
     setShowEditor(false);
+    // If this editor was opened via deep-link, clear the URL so it doesn't reopen.
+    if (docIdParam) router.replace("/documents");
   };
 
   const handleSave = async () => {
+    if (!canEdit) return;
     if (!title.trim() || !docAgentId) return;
     setIsSaving(true);
     try {
@@ -164,6 +178,21 @@ function DocumentsContent() {
       setIsSaving(false);
     }
   };
+
+  // Deep-link support: /documents?docId=<id>
+  useEffect(() => {
+    if (!docIdParam) return;
+    if (!deepLinkedDoc) return;
+    // Avoid re-opening if we're already editing this doc.
+    if (editingDocumentId === deepLinkedDoc._id && showEditor) return;
+
+    // Ensure the target doc is visible regardless of current filters.
+    setDocTypeFilter("all");
+    setViewMode("all");
+    setSelectedFolderId(null);
+    setSidebarOpen(false);
+    openEdit(deepLinkedDoc as any);
+  }, [docIdParam, deepLinkedDoc, editingDocumentId, showEditor]);
 
   const handleCreateFolder = async () => {
     if (!canEdit || isCreatingFolder) return;
@@ -438,35 +467,35 @@ function DocumentsContent() {
         </main>
       </div>
 
-      {canEdit && (
-        <Dialog open={showEditor} onOpenChange={(open) => !open && closeEditor()}>
-          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
-            <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
-              <DialogTitle className="text-text-primary flex items-center gap-2">
-                <FileText className="h-4 w-4 text-accent-orange" />
-                {editingDocumentId ? "Edit document" : "New document"}
-              </DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="min-h-0 flex-1 overflow-y-auto px-6">
-              <div className="space-y-4 pb-4 pr-3">
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-                    Title
-                  </p>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Document title"
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                  />
-                </div>
+      <Dialog open={showEditor} onOpenChange={(open) => !open && closeEditor()}>
+        <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
+            <DialogTitle className="text-text-primary flex items-center gap-2">
+              <FileText className="h-4 w-4 text-accent-orange" />
+              {editingDocumentId ? (canEdit ? "Edit document" : "View document") : "New document"}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="min-h-0 flex-1 overflow-y-auto px-6">
+            <div className="space-y-4 pb-4 pr-3">
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  Title
+                </p>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Document title"
+                  disabled={!canEdit}
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim disabled:opacity-70"
+                />
+              </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                       Type
                     </p>
                     <Select value={docType} onValueChange={(v) => setDocType(v as DocType)}>
-                      <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                      <SelectTrigger disabled={!canEdit} className="bg-bg-primary border-border-default text-text-primary h-8 text-xs disabled:opacity-70">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-bg-tertiary border-border-default text-xs">
@@ -483,7 +512,7 @@ function DocumentsContent() {
                       Status
                     </p>
                     <Select value={docStatus} onValueChange={(v) => setDocStatus(v as DocStatus)}>
-                      <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                      <SelectTrigger disabled={!canEdit} className="bg-bg-primary border-border-default text-text-primary h-8 text-xs disabled:opacity-70">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-bg-tertiary border-border-default text-xs">
@@ -506,14 +535,14 @@ function DocumentsContent() {
                         size="sm"
                         onClick={handleCreateFolder}
                         className="h-6 px-2 text-[11px] text-accent-orange hover:bg-accent-orange/10 hover:text-accent-orange"
-                        disabled={isCreatingFolder}
+                        disabled={!canEdit || isCreatingFolder}
                       >
                         <FolderPlus className="mr-1 h-3 w-3" />
                         {isCreatingFolder ? "Creating..." : "New"}
                       </Button>
                     </div>
                     <Select value={docFolderId} onValueChange={setDocFolderId}>
-                      <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                      <SelectTrigger disabled={!canEdit} className="bg-bg-primary border-border-default text-text-primary h-8 text-xs disabled:opacity-70">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-bg-tertiary border-border-default text-xs">
@@ -532,7 +561,7 @@ function DocumentsContent() {
                       Edited by
                     </p>
                     <Select value={docAgentId} onValueChange={setDocAgentId}>
-                      <SelectTrigger className="bg-bg-primary border-border-default text-text-primary h-8 text-xs">
+                      <SelectTrigger disabled={!canEdit} className="bg-bg-primary border-border-default text-text-primary h-8 text-xs disabled:opacity-70">
                         <SelectValue placeholder="Select agent" />
                       </SelectTrigger>
                       <SelectContent className="bg-bg-tertiary border-border-default text-xs">
@@ -551,6 +580,7 @@ function DocumentsContent() {
                     type="checkbox"
                     checked={isGlobalContext}
                     onChange={(e) => setIsGlobalContext(e.target.checked)}
+                    disabled={!canEdit}
                     className="h-3.5 w-3.5 rounded border-border-default bg-bg-primary"
                   />
                   Global Context (inject into all agent runs)
@@ -564,21 +594,23 @@ function DocumentsContent() {
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     rows={8}
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                    disabled={!canEdit}
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim disabled:opacity-70"
                   />
                 </div>
-              </div>
-            </ScrollArea>
-            <DialogFooter className="shrink-0 border-t border-border-default px-6 pb-6 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeEditor}
-                className="border-border-default text-text-secondary"
-                disabled={isSaving}
-              >
-                Cancel
-              </Button>
+            </div>
+          </ScrollArea>
+          <DialogFooter className="shrink-0 border-t border-border-default px-6 pb-6 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeEditor}
+              className="border-border-default text-text-secondary"
+              disabled={isSaving}
+            >
+              {canEdit ? "Cancel" : "Close"}
+            </Button>
+            {canEdit && (
               <Button
                 type="button"
                 onClick={handleSave}
@@ -587,10 +619,10 @@ function DocumentsContent() {
               >
                 {isSaving ? "Saving..." : editingDocumentId ? "Save changes" : "Save document"}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
