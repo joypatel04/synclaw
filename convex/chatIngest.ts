@@ -123,13 +123,14 @@ export const upsertGatewayEvent = mutation({
     if (!args.message) {
       return { deduped: false, eventId: args.eventId, updatedMessage: null };
     }
+    const message = args.message;
 
     const sessionId = `chat:${args.sessionKey}`;
 
     const existingMessage = await ctx.db
       .query("chatMessages")
       .withIndex("byExternalMessageId", (q) =>
-        q.eq("externalMessageId", args.message.externalMessageId),
+        q.eq("externalMessageId", message.externalMessageId),
       )
       .first();
 
@@ -144,23 +145,22 @@ export const upsertGatewayEvent = mutation({
       .take(1);
     const fallbackSequence = (fallbackLast[0]?.sequence ?? 0) + 1;
 
-    const state = args.message.state ?? "streaming";
+    const state = message.state ?? "streaming";
 
     if (existingMessage) {
-      const nextContent = args.message.append
-        ? `${existingMessage.content}${args.message.content ?? ""}`
-        : (args.message.content ?? existingMessage.content);
+      const nextContent = message.append
+        ? `${existingMessage.content}${message.content ?? ""}`
+        : (message.content ?? existingMessage.content);
 
       await ctx.db.patch(existingMessage._id, {
         content: nextContent,
-        role: args.message.role,
-        fromUser: args.message.fromUser,
+        role: message.role,
+        fromUser: message.fromUser,
         state,
-        externalRunId:
-          args.message.externalRunId ?? existingMessage.externalRunId,
-        errorCode: args.message.errorCode,
-        errorMessage: args.message.errorMessage,
-        sequence: args.message.sequence ?? existingMessage.sequence,
+        externalRunId: message.externalRunId ?? existingMessage.externalRunId,
+        errorCode: message.errorCode,
+        errorMessage: message.errorMessage,
+        sequence: message.sequence ?? existingMessage.sequence,
         updatedAt: now,
       });
 
@@ -174,15 +174,15 @@ export const upsertGatewayEvent = mutation({
     const inserted = await ctx.db.insert("chatMessages", {
       workspaceId: args.workspaceId,
       sessionId,
-      fromUser: args.message.fromUser,
-      content: args.message.content ?? "",
-      role: args.message.role,
+      fromUser: message.fromUser,
+      content: message.content ?? "",
+      role: message.role,
       state,
-      externalMessageId: args.message.externalMessageId,
-      externalRunId: args.message.externalRunId,
-      errorCode: args.message.errorCode,
-      errorMessage: args.message.errorMessage,
-      sequence: args.message.sequence ?? fallbackSequence,
+      externalMessageId: message.externalMessageId,
+      externalRunId: message.externalRunId,
+      errorCode: message.errorCode,
+      errorMessage: message.errorMessage,
+      sequence: message.sequence ?? fallbackSequence,
       createdAt: eventTime,
       updatedAt: now,
     });
