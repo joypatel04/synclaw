@@ -144,7 +144,7 @@ CONVEX_DEPLOYMENT=<your-deployment-key>
 NEXT_PUBLIC_CONVEX_AUTH_PROVIDER=github  # or google
 
 # OpenClaw Integration
-OPENCLAW_GATEWAY_URL=https://<your-gateway-url>  # For triggering agents
+# Legacy HTTP trigger path (removed): OPENCLAW_GATEWAY_URL
 
 # Agent Configuration (optional)
 HEARTBEAT_INTERVAL=20  # Default 20 minutes
