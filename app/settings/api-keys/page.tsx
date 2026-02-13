@@ -99,7 +99,7 @@ function ApiKeysContent() {
 
   if (!canAdmin) {
     return (
-      <div className="mx-auto max-w-2xl p-6">
+      <div className="mx-auto max-w-2xl p-3 sm:p-6">
         <div className="flex flex-col items-center justify-center rounded-xl border border-border-default bg-bg-secondary py-16">
           <ShieldAlert className="h-10 w-10 text-text-dim mb-3" />
           <p className="text-sm text-text-muted">
@@ -111,16 +111,16 @@ function ApiKeysContent() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="mx-auto max-w-2xl p-3 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-orange/20">
             <Key className="h-4 w-4 text-accent-orange" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-text-primary">API Keys</h1>
-            <p className="text-xs text-text-muted">
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">API Keys</h1>
+            <p className="text-xs text-text-muted hidden sm:block">
               Server-to-server authentication for agents and integrations
             </p>
           </div>
@@ -128,7 +128,7 @@ function ApiKeysContent() {
         <Button
           onClick={() => setShowCreate(true)}
           size="sm"
-          className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"
+          className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Create Key

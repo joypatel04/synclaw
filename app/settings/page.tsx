@@ -30,16 +30,16 @@ function SettingsContent() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
-      <div className="flex items-center gap-2.5 mb-8">
+    <div className="mx-auto max-w-2xl p-3 sm:p-6">
+      <div className="flex items-center gap-2.5 mb-6 sm:mb-8">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary">
           <Settings className="h-4 w-4 text-text-muted" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-text-primary">
+          <h1 className="text-lg sm:text-xl font-bold text-text-primary">
             Workspace Settings
           </h1>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-muted hidden sm:block">
             Manage your workspace configuration
           </p>
         </div>
@@ -63,7 +63,7 @@ function SettingsContent() {
 
       <div className="space-y-8">
         {/* Workspace Name */}
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Workspace Details
           </h2>
@@ -71,7 +71,7 @@ function SettingsContent() {
             <div className="space-y-2">
               <Label className="text-text-secondary">Workspace Name</Label>
               {canAdmin ? (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -110,7 +110,7 @@ function SettingsContent() {
         </div>
 
         {/* Permissions overview */}
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Role Permissions
           </h2>

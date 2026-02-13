@@ -342,23 +342,23 @@ function AgentsContent() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="mx-auto max-w-4xl p-3 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/20">
             <Bot className="h-4 w-4 text-teal" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-text-primary">Agents</h1>
-            <p className="text-xs text-text-muted">Manage your AI agents</p>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">Agents</h1>
+            <p className="text-xs text-text-muted hidden sm:block">Manage your AI agents</p>
           </div>
         </div>
         {canAdmin && (
           <Button
             onClick={openCreate}
             size="sm"
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"
+            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             Add Agent

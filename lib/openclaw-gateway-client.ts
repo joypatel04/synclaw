@@ -184,11 +184,16 @@ export function extractDisplayMessagesFromHistory(
     if (!text) continue;
 
     const ts = typeof m.timestamp === "number" ? m.timestamp : undefined;
+    const runId = typeof m.runId === "string" ? m.runId : undefined;
     const stableKey = `${ts ?? "na"}:${role}:${text.slice(0, 64)}`;
+    // Normalize assistant IDs by runId when present so WS streaming and history
+    // hydration collide into a single message.
     const externalMessageId =
-      (typeof m.id === "string" && m.id) ||
-      (typeof m.messageId === "string" && m.messageId) ||
-      `hist_${ts ?? Date.now()}_${role}_${hashString(stableKey).slice(0, 8)}`;
+      role === "assistant" && runId
+        ? `${runId}:assistant`
+        : (typeof m.id === "string" && m.id) ||
+          (typeof m.messageId === "string" && m.messageId) ||
+          `hist_${ts ?? Date.now()}_${role}_${hashString(stableKey).slice(0, 8)}`;
 
     out.push({
       externalMessageId,

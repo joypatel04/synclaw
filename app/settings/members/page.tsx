@@ -118,16 +118,16 @@ function MembersContent() {
   const pendingInvites = invites.filter((i) => i.status === "pending");
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
-      <div className="flex items-center gap-2.5 mb-8">
+    <div className="mx-auto max-w-2xl p-3 sm:p-6">
+      <div className="flex items-center gap-2.5 mb-6 sm:mb-8">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary">
           <Settings className="h-4 w-4 text-text-muted" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-text-primary">
+          <h1 className="text-lg sm:text-xl font-bold text-text-primary">
             Workspace Settings
           </h1>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-muted hidden sm:block">
             Manage members and permissions
           </p>
         </div>
@@ -150,8 +150,8 @@ function MembersContent() {
       </div>
 
       {/* Members */}
-      <div className="rounded-xl border border-border-default bg-bg-secondary p-6">
-        <div className="flex items-center justify-between mb-5">
+      <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
             <Users className="h-4 w-4 text-accent-orange" />
             Members ({members.length})
@@ -160,7 +160,7 @@ function MembersContent() {
             <Button
               onClick={() => setShowInvite(true)}
               size="sm"
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"
+              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
             >
               <Plus className="h-3.5 w-3.5" />
               Invite
@@ -299,7 +299,7 @@ function MembersContent() {
 
       {/* Pending Invites */}
       {canManage && pendingInvites.length > 0 && (
-        <div className="mt-6 rounded-xl border border-border-default bg-bg-secondary p-6">
+        <div className="mt-6 rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-4">
             <Mail className="h-4 w-4 text-status-review" />
             Pending Invites ({pendingInvites.length})

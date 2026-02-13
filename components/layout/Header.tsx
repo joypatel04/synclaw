@@ -71,7 +71,7 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-border-default bg-bg-secondary/80 backdrop-blur-xl">
-        <div className="flex h-14 items-center justify-between px-6">
+        <div className="flex h-14 items-center justify-between px-4 sm:px-6">
           {/* Logo + Workspace Switcher */}
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">

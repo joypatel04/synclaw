@@ -23,7 +23,7 @@ function DashboardContent() {
   return (
     <>
       {/* ── Desktop: 3-column layout ── */}
-      <div className="hidden lg:flex h-[calc(100vh-3.5rem)]">
+      <div className="hidden lg:flex h-[calc(100dvh-3.5rem)]">
         {/* Left sidebar: Agents */}
         <div className="w-[280px] border-r border-border-default bg-bg-secondary overflow-hidden">
           <AgentPanel />
@@ -42,11 +42,11 @@ function DashboardContent() {
       </div>
 
       {/* ── Mobile: tab-based single view ── */}
-      <div className="flex flex-col lg:hidden h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-col lg:hidden h-[calc(100dvh-3.5rem)]">
         {/* Content area */}
         <div className="flex-1 overflow-hidden">
           {activeTab === "board" && (
-            <div className="h-full overflow-auto p-4">
+            <div className="h-full overflow-auto p-3">
               <KanbanBoard />
             </div>
           )}
@@ -63,7 +63,7 @@ function DashboardContent() {
         </div>
 
         {/* Bottom tab bar */}
-        <div className="border-t border-border-default bg-bg-secondary">
+        <div className="border-t border-border-default bg-bg-secondary pb-[env(safe-area-inset-bottom)]">
           <div className="flex items-center justify-around">
             {mobileTabs.map((tab) => {
               const isActive = activeTab === tab.id;

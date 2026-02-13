@@ -14,7 +14,9 @@ import {
   OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
-  pickLatestAssistantFromHistory,
+  pickHistoryMessages,
+  pickRunId,
+  pickText,
 } from "@/lib/openclaw-gateway-client";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, type UiChatMessage } from "./ChatMessage";
@@ -278,11 +280,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
     try {
       await ensureDirectGatewayConnected();
-      await gatewayRef.current!.sendChat({
+      const sendResult = await gatewayRef.current!.sendChat({
         sessionKey: agent.sessionKey,
         content,
         clientMessageId: id,
       });
+      const expectedRunId = pickRunId(sendResult);
 
       upsertLocal({
         id,
@@ -326,46 +329,61 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           });
         }
 
-        const display = extractDisplayMessagesFromHistory(history);
-        for (const m of display) {
-          if (!m.externalMessageId) continue;
-          if (m.externalMessageId === id) continue;
+        // Fallback: if WS streaming is not delivering, only hydrate the assistant
+        // message for THIS send's runId (avoid pulling in unrelated prior messages).
+        if (expectedRunId) {
+          const assistantKey = `${expectedRunId}:assistant`;
+          const already = localIndexRef.current.get(assistantKey);
+          const existing = already !== undefined ? localMessagesRef.current[already] : null;
+          if (!existing || existing.state !== "completed") {
+            const historyMessages = pickHistoryMessages(history);
+            const match = historyMessages
+              .slice()
+              .reverse()
+              .find((m) => {
+                const role =
+                  (typeof m.role === "string" && m.role) ||
+                  (typeof m.author === "string" && m.author) ||
+                  "assistant";
+                return role === "assistant" && m.runId === expectedRunId;
+              });
+            if (match) {
+              const text =
+                (Array.isArray(match.content)
+                  ? match.content
+                      .filter(
+                        (p: any) =>
+                          p && typeof p === "object" && p.type === "text",
+                      )
+                      .map((p: any) =>
+                        typeof p.text === "string" ? p.text : "",
+                      )
+                      .filter((t: string) => t.trim().length > 0)
+                      .join("\n")
+                  : null) ||
+                pickText(match.content) ||
+                pickText(match.text) ||
+                pickText(match.message) ||
+                pickText(match.reply);
 
-          // Skip near-real-time duplicates of the user message we already displayed.
-          if (
-            m.role === "user" &&
-            hasSimilarUserMessage(m.content, m.eventAt ?? Date.now())
-          ) {
-            continue;
+              if (text && String(text).trim().length > 0) {
+                const ts =
+                  typeof (match as any).timestamp === "number"
+                    ? (match as any).timestamp
+                    : Date.now();
+                upsertLocal({
+                  id: assistantKey,
+                  externalMessageId: assistantKey,
+                  externalRunId: expectedRunId,
+                  fromUser: false,
+                  role: "assistant",
+                  content: String(text),
+                  state: "completed",
+                  createdAt: ts,
+                });
+              }
+            }
           }
-
-            upsertLocal({
-              id: m.externalMessageId,
-              externalMessageId: m.externalMessageId,
-              fromUser: m.fromUser,
-              role: m.role,
-              content: m.content,
-              state: "completed",
-              createdAt: m.eventAt ?? Date.now(),
-            });
-          }
-
-        // Fallback: if WS streaming is not delivering, at least show the latest assistant.
-        const assistant = pickLatestAssistantFromHistory(history);
-        if (assistant) {
-          const externalMessageId =
-            assistant.messageId ??
-            (assistant.runId ? `${assistant.runId}:assistant` : `${id}:assistant`);
-          upsertLocal({
-            id: externalMessageId,
-            externalMessageId,
-            externalRunId: assistant.runId,
-            fromUser: false,
-            role: "assistant",
-            content: assistant.text,
-            state: "completed",
-            createdAt: Date.now(),
-          });
         }
       }
     } catch (error) {

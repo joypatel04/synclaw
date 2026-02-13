@@ -17,20 +17,45 @@ function BroadcastsContent() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mx-auto max-w-4xl p-3 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-status-review/20"><Radio className="h-4 w-4 text-status-review" /></div>
-          <div><h1 className="text-xl font-bold text-text-primary">Broadcasts</h1><p className="text-xs text-text-muted">Send messages to your agents</p></div>
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">Broadcasts</h1>
+            <p className="text-xs text-text-muted hidden sm:block">Send messages to your agents</p>
+          </div>
         </div>
-        {canEdit && <Button onClick={() => setShowModal(true)} size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"><Plus className="h-4 w-4" />New Broadcast</Button>}
+        {canEdit && (
+          <Button
+            onClick={() => setShowModal(true)}
+            size="sm"
+            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+          >
+            <Plus className="h-4 w-4" />
+            New Broadcast
+          </Button>
+        )}
       </div>
       {broadcasts.length === 0 ? (
         <EmptyState icon={Radio} title="No broadcasts yet" description="Create a broadcast to send messages to your agents">
-          {canEdit && <Button onClick={() => setShowModal(true)} size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"><Plus className="h-4 w-4" />Create First Broadcast</Button>}
+          {canEdit && (
+            <Button
+              onClick={() => setShowModal(true)}
+              size="sm"
+              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+              Create First Broadcast
+            </Button>
+          )}
         </EmptyState>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{broadcasts.map((b) => <BroadcastCard key={b._id} broadcast={b} />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {broadcasts.map((b) => (
+            <BroadcastCard key={b._id} broadcast={b} />
+          ))}
+        </div>
       )}
       <BroadcastModal open={showModal} onOpenChange={setShowModal} />
     </div>

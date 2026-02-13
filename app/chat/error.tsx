@@ -12,8 +12,10 @@ export default function ChatError({
 }) {
   return (
     <AppLayout>
-      <div className="mx-auto max-w-3xl p-6">
-        <h1 className="text-xl font-bold text-text-primary">Chat failed to load</h1>
+      <div className="mx-auto max-w-3xl p-3 sm:p-6">
+        <h1 className="text-lg sm:text-xl font-bold text-text-primary">
+          Chat failed to load
+        </h1>
         <p className="mt-2 text-sm text-text-muted">
           {error?.message || "Unknown error"}
         </p>
@@ -24,4 +26,3 @@ export default function ChatError({
     </AppLayout>
   );
 }
-
