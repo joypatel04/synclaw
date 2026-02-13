@@ -4,7 +4,7 @@ import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { useMemo, useState } from "react";
+import { RunDetails } from "./RunDetails";
 
 interface ChatMessageProps {
   message: Doc<"chatMessages"> & {
@@ -31,23 +31,7 @@ export function ChatMessage({
   const isUser = message.fromUser;
   const state = message.state;
   const errorMessage = message.errorMessage;
-  const [showDetails, setShowDetails] = useState(false);
-
   const runId = message.externalRunId;
-  const details = useMemo(() => {
-    if (!runId) return [];
-    return eventsForSession
-      .filter((e) => {
-        const payload = e.payload as any;
-        const run =
-          payload?.runId ??
-          payload?.payload?.runId ??
-          payload?.payload?.payload?.runId;
-        return run === runId;
-      })
-      .slice()
-      .sort((a, b) => a.receivedAt - b.receivedAt);
-  }, [eventsForSession, runId]);
 
   const statusText =
     state === "queued"
@@ -92,35 +76,8 @@ export function ChatMessage({
         {errorMessage && (
           <p className="mt-1 text-[10px] text-status-blocked">{errorMessage}</p>
         )}
-        {runId && details.length > 0 && (
-          <div className="mt-2">
-            <button
-              type="button"
-              className="text-[10px] text-text-dim hover:text-text-primary underline"
-              onClick={() => setShowDetails((v) => !v)}
-            >
-              {showDetails ? "Hide details" : "Show details"}
-            </button>
-            {showDetails && (
-              <div className="mt-2 rounded-lg border border-border-default bg-bg-secondary p-2">
-                <div className="mb-1 text-[10px] text-text-dim">
-                  Run: {runId}
-                </div>
-                <div className="space-y-1">
-                  {details.map((e) => (
-                    <div
-                      key={e._id}
-                      className="text-[10px] text-text-primary"
-                    >
-                      <span className="text-text-dim">{e.eventType}</span>
-                      <span className="text-text-dim"> · </span>
-                      <span className="font-mono break-all">{e.eventId}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {runId && (
+          <RunDetails runId={runId} eventsForSession={eventsForSession} />
         )}
         <Timestamp time={message.createdAt} className="mt-1 block text-right" />
       </div>
