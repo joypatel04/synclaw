@@ -22,7 +22,7 @@ import { ChatInput } from "./ChatInput";
 import { ChatMessage } from "./ChatMessage";
 
 interface ChatInterfaceProps {
-  agent: Doc<"agents">;
+  agent: Pick<Doc<"agents">, "name" | "emoji" | "role" | "status" | "sessionKey">;
 }
 type ChatMessageRow = Doc<"chatMessages"> & {
   externalMessageId?: string;
