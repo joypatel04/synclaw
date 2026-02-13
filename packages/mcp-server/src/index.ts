@@ -98,6 +98,25 @@ server.tool(
     status: z
       .enum(["idle", "active", "error", "offline"])
       .describe("Current status"),
+    // Back-compat: some agents/tools call with flat fields instead of `telemetry`.
+    // If provided, we map these into `telemetry` below.
+    currentModel: z
+      .string()
+      .optional()
+      .describe("Deprecated: use telemetry.currentModel"),
+    openclawVersion: z
+      .string()
+      .optional()
+      .describe("Deprecated: use telemetry.openclawVersion"),
+    totalTokensUsed: z
+      .number()
+      .optional()
+      .describe("Cumulative tokens used by this agent"),
+    lastRunDurationMs: z
+      .number()
+      .optional()
+      .describe("Duration of last run in milliseconds"),
+    lastRunCost: z.number().optional().describe("Cost of last run in USD"),  
     telemetry: z
       .object({
         currentModel: z
@@ -121,17 +140,29 @@ server.tool(
       .optional()
       .describe("Optional telemetry data"),
   },
-  async ({ agentId, status, telemetry }) => {
+  async ({ agentId, status, telemetry, currentModel, openclawVersion, totalTokensUsed, lastRunDurationMs, lastRunCost }) => {
+    const mergedTelemetry =
+      telemetry || currentModel || openclawVersion || totalTokensUsed || lastRunDurationMs || lastRunCost
+        ? {
+            ...(telemetry ?? {}),
+            ...(currentModel ? { currentModel } : {}),
+            ...(openclawVersion ? { openclawVersion } : {}),
+            ...(totalTokensUsed ? { totalTokensUsed } : {}),
+            ...(lastRunDurationMs ? { lastRunDurationMs } : {}),
+            ...(lastRunCost ? { lastRunCost } : {}),
+          }
+        : undefined;
+
     await client.rawMutation(api.agents.agentPulse, {
       id: agentId,
       status,
-      telemetry,
+      telemetry: mergedTelemetry,
     });
     return {
       content: [
         {
           type: "text",
-          text: `Pulse sent: status=${status}${telemetry ? `, telemetry updated` : ""}`,
+          text: `Pulse sent: status=${status}${mergedTelemetry ? `, telemetry updated` : ""}`,
         },
       ],
     };

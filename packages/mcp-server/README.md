@@ -50,7 +50,7 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 | `sutraha_get_agent_by_session_key` | `sessionKey` | Find agent by session key (use at startup to discover your agentId) |
 | `sutraha_update_agent_status` | `agentId`, `status` | Set agent status (`active`, `idle`, `error`, `offline`) |
 | `sutraha_agent_heartbeat` | `agentId` | Send heartbeat to indicate agent is alive |
-| `sutraha_agent_pulse` | `agentId`, `status`, `telemetry?` | **NEW v0.4.0:** Send pulse with status and telemetry. Updates `lastPulseAt` (dead man's switch). Use at startup or during work. |
+| `sutraha_agent_pulse` | `agentId`, `status`, `telemetry?` | **NEW v0.4.0:** Send pulse with status and telemetry. Updates `lastPulseAt` (dead man's switch). Use at startup or during work. Also accepts deprecated flat fields (`currentModel`, `openclawVersion`) which are mapped into `telemetry`. |
 | `sutraha_start_task_session` | `agentId`, `taskId` | **NEW v0.4.0:** Mark that you've started working on a task. Links you to the task and logs activity. |
 | `sutraha_end_task_session` | `agentId`, `status`, `telemetry?`, `runSummary?` | **NEW v0.4.0:** Mark that you've finished your task session. Clears `currentTaskId`, updates status and telemetry. Call at end of every run. |
 

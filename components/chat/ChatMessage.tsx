@@ -4,9 +4,11 @@ import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { Check, X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import { ToolOutputSheet } from "./ToolOutputSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
 
 interface ChatMessageProps {
   message: Doc<"chatMessages"> & {
@@ -39,6 +41,23 @@ export function ChatMessage({
   const errorMessage = message.errorMessage;
   const role = message.role;
   const isTool = role === "tool";
+  const [copied, setCopied] = useState(false);
+
+  const plainText = useMemo(() => {
+    // Minimal extraction: we store readable text in `content` already.
+    // Tool cards are handled separately above.
+    return typeof message.content === "string" ? message.content : "";
+  }, [message.content]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(plainText);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1000);
+    } catch {
+      // Ignore clipboard failures (permissions, insecure context, etc.)
+    }
+  };
 
   const statusText =
     state === "queued"
@@ -132,12 +151,27 @@ export function ChatMessage({
       )}
       <div
         className={cn(
-          "w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5",
+          "group relative w-full min-w-0 max-w-[44rem] rounded-2xl px-4 py-2.5",
           isUser
             ? "bg-accent-orange/20 rounded-tr-sm"
             : "bg-bg-tertiary rounded-tl-sm",
         )}
       >
+        {!isUser && plainText.trim().length > 0 && (
+          <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="h-7 w-7 text-text-muted hover:text-text-primary"
+              onClick={handleCopy}
+              aria-label="Copy message"
+              title={copied ? "Copied" : "Copy"}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
         <p className="text-xs font-medium text-text-muted mb-0.5">
           {isUser ? "You" : agentName}
         </p>
