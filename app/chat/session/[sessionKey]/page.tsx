@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { useParams } from "next/navigation";
 
 function prettySessionLabel(sessionKey: string): string {
   const parts = sessionKey.split(":");
@@ -18,7 +19,8 @@ function prettySessionLabel(sessionKey: string): string {
 
 function ChatSessionContent({ sessionKey }: { sessionKey: string }) {
   const { workspaceId } = useWorkspace();
-  const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
+  const agents =
+    useQuery(api.agents.list, workspaceId ? { workspaceId } : "skip") ?? [];
   const match = agents.find((a) => a.sessionKey === sessionKey) ?? null;
 
   const agentLike = match ?? {
@@ -32,12 +34,28 @@ function ChatSessionContent({ sessionKey }: { sessionKey: string }) {
   return <ChatInterface agent={agentLike} />;
 }
 
-export default function ChatSessionPage({
-  params,
-}: {
-  params: { sessionKey: string };
-}) {
-  const { sessionKey } = params;
+export default function ChatSessionPage() {
+  const params = useParams();
+  const rawKey = params?.sessionKey;
+  const sessionKey =
+    typeof rawKey === "string"
+      ? rawKey
+      : Array.isArray(rawKey)
+        ? rawKey[0]
+        : null;
+
+  if (!sessionKey) {
+    return (
+      <AppLayout>
+        <div className="mx-auto max-w-3xl p-6">
+          <p className="text-sm text-text-muted">
+            Missing session key in route.
+          </p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const decoded = decodeURIComponent(sessionKey);
   return (
     <AppLayout>
