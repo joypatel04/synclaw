@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -31,6 +31,8 @@ function slugify(input: string): string {
 export function AgentRecipeWizard() {
   const { workspaceId, workspace, canAdmin } = useWorkspace();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const recipeParam = searchParams.get("recipe");
   const agents =
     useQuery(api.agents.list, canAdmin ? { workspaceId, includeArchived: true } : "skip") ??
     [];
@@ -45,6 +47,25 @@ export function AgentRecipeWizard() {
   const [agentEmoji, setAgentEmoji] = useState(recipe.defaultEmoji);
   const [agentRole, setAgentRole] = useState(recipe.defaultRole);
   const [spec, setSpec] = useState("");
+
+  const applyRecipe = useCallback((r: AgentRecipe) => {
+    setSelectedId(r.id);
+    setAgentName(r.title);
+    setAgentEmoji(r.defaultEmoji);
+    setAgentRole(r.defaultRole);
+    setSpec("");
+    setSessionKeyTouched(false);
+  }, []);
+
+  const appliedQueryRef = useRef(false);
+  useEffect(() => {
+    if (appliedQueryRef.current) return;
+    if (!recipeParam) return;
+    const found = AGENT_RECIPES.find((r) => r.id === recipeParam);
+    if (!found) return;
+    appliedQueryRef.current = true;
+    applyRecipe(found);
+  }, [recipeParam, applyRecipe]);
 
   const existingSessionKeys = useMemo(() => {
     return new Set(agents.map((a: any) => a.sessionKey));
@@ -162,14 +183,7 @@ export function AgentRecipeWizard() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => {
-                    setSelectedId(r.id);
-                    setAgentName(r.title);
-                    setAgentEmoji(r.defaultEmoji);
-                    setAgentRole(r.defaultRole);
-                    setSpec("");
-                    setSessionKeyTouched(false);
-                  }}
+                  onClick={() => applyRecipe(r)}
                   className={`text-left rounded-xl border p-4 transition-smooth ${
                     active
                       ? "border-accent-orange bg-bg-tertiary"

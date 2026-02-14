@@ -11,7 +11,63 @@ import {
   buildMcpServerConfigTemplate,
 } from "@/lib/onboardingTemplates";
 import { buildAgentRecipePrompt, AGENT_RECIPES } from "@/lib/agentRecipes";
-import { Check, Copy, LifeBuoy } from "lucide-react";
+import {
+  Check,
+  Copy,
+  LifeBuoy,
+  Sparkles,
+  PlugZap,
+  ClipboardList,
+  FileText,
+  Bot,
+  Rocket,
+  Wrench,
+  Search,
+  Bug,
+  Code,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react";
+
+type UseCase = {
+  id: string;
+  title: string;
+  description: string;
+  icon: typeof LifeBuoy;
+  bullets: string[];
+  ctaHref: string;
+  ctaLabel: string;
+};
+
+function UseCaseCard({ useCase }: { useCase: UseCase }) {
+  return (
+    <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary text-text-primary">
+          <useCase.icon className="h-4 w-4 text-accent-orange" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-text-primary">
+            {useCase.title}
+          </p>
+          <p className="mt-1 text-xs text-text-muted">{useCase.description}</p>
+        </div>
+      </div>
+
+      <ul className="mt-3 list-disc pl-5 space-y-1 text-xs text-text-secondary">
+        {useCase.bullets.map((b) => (
+          <li key={b}>{b}</li>
+        ))}
+      </ul>
+
+      <div className="mt-4">
+        <Button asChild size="sm" className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white">
+          <Link href={useCase.ctaHref}>{useCase.ctaLabel}</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function CopyCard({
   id,
@@ -118,15 +174,212 @@ Definition of done:
         </div>
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-text-primary">
-            Help and setup guide
+            Resources
           </h1>
           <p className="mt-1 text-xs text-text-muted">
-            Step-by-step onboarding, adding agents, and prompt templates.
+            What Sutraha HQ is, what you can build, and the fastest paths to value.
           </p>
         </div>
       </div>
 
       <div className="space-y-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">
+            What is Sutraha HQ?
+          </h2>
+          <p className="mt-2 text-sm text-text-secondary">
+            Sutraha HQ is an operations dashboard for OpenClaw-powered agent systems. It helps you connect your own OpenClaw gateway, register agents, and turn conversations into durable execution artifacts.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-center gap-2">
+                <PlugZap className="h-4 w-4 text-accent-orange" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  Integrations
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-text-muted">
+                Connect OpenClaw via WebSocket and connect agents to Sutraha HQ via MCP tools.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-accent-orange" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  Execution
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-text-muted">
+                Use Tasks, Documents, and Broadcasts as the source of truth instead of scattered chat logs.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-accent-orange" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  Multi-agent
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-text-muted">
+                One workspace usually contains multiple agents (main + specialists) that share a project context.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-accent-orange" />
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  BYO Keys
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-text-muted">
+                Bring your own OpenClaw + model provider keys. Sutraha HQ focuses on orchestration and observability.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">
+            Core workflow
+          </h2>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <p className="text-xs font-semibold text-text-primary">1) Connect</p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Add your OpenClaw gateway URL + token.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+                <Link href="/settings/openclaw">OpenClaw settings</Link>
+              </Button>
+            </div>
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <p className="text-xs font-semibold text-text-primary">2) Register</p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Create the main agent and any specialists.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+                <Link href="/agents/new">Create agent (recipe)</Link>
+              </Button>
+            </div>
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <p className="text-xs font-semibold text-text-primary">3) Prime</p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Give agents a bootstrap prompt with MCP rules.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+                <Link href="/chat">Chat</Link>
+              </Button>
+            </div>
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <p className="text-xs font-semibold text-text-primary">4) Ship</p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Use Tasks + Documents to execute and track progress.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+                <Link href="/documents">Documents</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-accent-orange" />
+            <h2 className="text-sm font-semibold text-text-primary">
+              Use cases (starter recipes)
+            </h2>
+          </div>
+          <p className="mt-2 text-xs text-text-muted">
+            Pick a use case, generate a prompt with a SPEC block, then paste it into OpenClaw.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {([
+              {
+                id: "research",
+                title: "Research a decision",
+                description: "Get a cited brief + recommendation.",
+                icon: Search,
+                bullets: [
+                  "Compare options and tradeoffs",
+                  "Write the long brief to Documents",
+                  "Create tasks for follow-ups",
+                ],
+                ctaHref: "/agents/new?recipe=research",
+                ctaLabel: "Create research agent",
+              },
+              {
+                id: "support",
+                title: "Support triage",
+                description: "Turn issues into reproducible tasks.",
+                icon: Bug,
+                bullets: [
+                  "Collect repro steps + environment details",
+                  "Tag severity and owner",
+                  "Create tasks with acceptance criteria",
+                ],
+                ctaHref: "/agents/new?recipe=support_triage",
+                ctaLabel: "Create triage agent",
+              },
+              {
+                id: "code_review",
+                title: "Code review",
+                description: "Catch bugs and missing tests early.",
+                icon: Code,
+                bullets: [
+                  "Review diffs for risk and regressions",
+                  "Suggest concrete fixes",
+                  "Request missing tests",
+                ],
+                ctaHref: "/agents/new?recipe=code_review",
+                ctaLabel: "Create review agent",
+              },
+              {
+                id: "qa",
+                title: "Release QA",
+                description: "Build a test plan and validate releases.",
+                icon: ShieldCheck,
+                bullets: [
+                  "Critical paths + edge cases",
+                  "Acceptance criteria checklists",
+                  "Rollout/rollback notes",
+                ],
+                ctaHref: "/agents/new?recipe=qa",
+                ctaLabel: "Create QA agent",
+              },
+              {
+                id: "growth",
+                title: "Growth experiments",
+                description: "Define hypotheses and measurable tests.",
+                icon: TrendingUp,
+                bullets: [
+                  "Hypothesis + metric + threshold",
+                  "2-3 focused experiments",
+                  "Write experiment docs + tasks",
+                ],
+                ctaHref: "/agents/new?recipe=growth",
+                ctaLabel: "Create growth agent",
+              },
+              {
+                id: "delivery",
+                title: "Ship a feature (multi-agent)",
+                description: "Orchestrate from spec to shipped.",
+                icon: Rocket,
+                bullets: [
+                  "Main agent creates tasks and delegates",
+                  "Specialists write docs and checklists",
+                  "Broadcast status updates to the team",
+                ],
+                ctaHref: "/settings/openclaw",
+                ctaLabel: "Open multi-agent guide",
+              },
+            ] as UseCase[]).map((uc) => (
+              <UseCaseCard key={uc.id} useCase={uc} />
+            ))}
+          </div>
+        </div>
+
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary">
             Quickstart (10 minutes)
@@ -282,4 +535,3 @@ export default function HelpPage() {
     </AppLayout>
   );
 }
-
