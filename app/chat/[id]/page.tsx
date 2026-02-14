@@ -6,7 +6,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import type { Id } from "@/convex/_generated/dataModel";
-import { use } from "react";
 
 function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId } = useWorkspace();
@@ -18,7 +17,7 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   return <ChatInterface agent={agent} />;
 }
 
-export default function ChatDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ChatDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   return <AppLayout><ChatDetailContent agentId={id as Id<"agents">} /></AppLayout>;
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { use } from "react";
 import { api } from "@/convex/_generated/api";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -36,9 +35,9 @@ function ChatSessionContent({ sessionKey }: { sessionKey: string }) {
 export default function ChatSessionPage({
   params,
 }: {
-  params: Promise<{ sessionKey: string }>;
+  params: { sessionKey: string };
 }) {
-  const { sessionKey } = use(params);
+  const { sessionKey } = params;
   const decoded = decodeURIComponent(sessionKey);
   return (
     <AppLayout>
@@ -46,4 +45,3 @@ export default function ChatSessionPage({
     </AppLayout>
   );
 }
-
