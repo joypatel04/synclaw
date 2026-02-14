@@ -8,6 +8,7 @@ import {
   ChevronDown,
   FileText,
   Key,
+  LifeBuoy,
   LogOut,
   MessageSquare,
   Plus,
@@ -49,6 +50,7 @@ const navItems = [
   { href: "/broadcasts", label: "Broadcasts", icon: Radio },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/help", label: "Help", icon: LifeBuoy },
 ];
 
 export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {

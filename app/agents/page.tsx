@@ -40,6 +40,8 @@ import { useMemo, useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { buildGenericAgentBootstrapMessage } from "@/lib/onboardingTemplates";
+import Link from "next/link";
+import { AgentManifestPanel } from "@/components/agents/AgentManifestPanel";
 
 type AgentFormData = {
   name: string;
@@ -380,15 +382,29 @@ function AgentsContent() {
           </div>
         </div>
         {canAdmin && (
-          <Button
-            onClick={openCreate}
-            size="sm"
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            Add Agent
-          </Button>
+          <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              <Link href="/agents/new">Use recipe</Link>
+            </Button>
+            <Button
+              onClick={openCreate}
+              size="sm"
+              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+              Add Agent
+            </Button>
+          </div>
         )}
+      </div>
+
+      <div className="mb-6">
+        <AgentManifestPanel />
       </div>
 
       {/* Active agents */}
@@ -400,15 +416,20 @@ function AgentsContent() {
             <Bot className="h-10 w-10 text-text-dim mb-3" />
             <p className="text-sm text-text-muted">No active agents</p>
             {canAdmin && (
-              <Button
-                onClick={openCreate}
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-accent-orange"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add your first agent
-              </Button>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/agents/new">Use recipe</Link>
+                </Button>
+                <Button
+                  onClick={openCreate}
+                  variant="ghost"
+                  size="sm"
+                  className="text-accent-orange"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add manually
+                </Button>
+              </div>
             )}
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -737,6 +738,21 @@ export function OnboardingWizard() {
                   </span>
                   .
                 </p>
+              </div>
+
+              <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+                <p className="text-xs text-text-muted">
+                  Next: create specialist agents using{" "}
+                  <span className="font-medium text-text-secondary">
+                    Agents -&gt; Use recipe
+                  </span>
+                  .
+                </p>
+                <div className="mt-3">
+                  <Button asChild variant="outline" size="sm" className="h-8">
+                    <Link href="/agents/new">Create an agent (recipe)</Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

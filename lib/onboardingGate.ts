@@ -4,6 +4,8 @@ export function isAllowedWhileLocked(pathname: string) {
   if (pathname === "/onboarding") return true;
   if (pathname === "/settings") return true;
   if (pathname.startsWith("/settings/")) return true;
+  if (pathname === "/help") return true;
+  if (pathname.startsWith("/help/")) return true;
 
   // Allow the Chat landing page so onboarding can be completed inline.
   // Intentionally does NOT allow /chat/* to keep detail views gated.
@@ -11,4 +13,3 @@ export function isAllowedWhileLocked(pathname: string) {
 
   return false;
 }
-
