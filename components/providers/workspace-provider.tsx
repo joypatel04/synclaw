@@ -12,6 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -67,9 +68,19 @@ function persist(id: string) {
   localStorage.setItem(STORAGE_KEY, id);
 }
 
+function isAllowedWhileLocked(pathname: string) {
+  if (pathname === "/onboarding") return true;
+  if (pathname === "/settings") return true;
+  if (pathname.startsWith("/settings/")) return true;
+  return false;
+}
+
 // ─── Provider ────────────────────────────────────────────────────
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname() || "/";
+
   const workspaces = useQuery(api.workspaces.listMine) as
     | Array<{
         _id: Id<"workspaces">;
@@ -84,6 +95,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const [activeId, setActiveId] = useState<string | null>(loadSaved);
   const [initialised, setInitialised] = useState(false);
+  const [requestedDefault, setRequestedDefault] = useState(false);
 
   // On first load, accept any pending invites
   useEffect(() => {
@@ -95,13 +107,26 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   // Auto-create default workspace if user has none
   useEffect(() => {
-    if (workspaces && workspaces.length === 0) {
-      void getOrCreate().then((id) => {
-        setActiveId(id);
-        persist(id);
-      });
-    }
-  }, [workspaces, getOrCreate]);
+    if (!workspaces) return;
+    if (workspaces.length !== 0) return;
+    if (requestedDefault) return;
+
+    setRequestedDefault(true);
+    void getOrCreate().then((id) => {
+      setActiveId(id);
+      persist(id);
+
+      // New users land on "/" after OAuth; route them directly into onboarding.
+      // (Gating still exists, but this makes the first experience deterministic.)
+      if (!isAllowedWhileLocked(pathname)) {
+        if (pathname === "/") {
+          router.replace("/onboarding");
+        } else {
+          router.replace(`/onboarding?next=${encodeURIComponent(pathname)}`);
+        }
+      }
+    });
+  }, [workspaces, requestedDefault, getOrCreate, pathname, router]);
 
   // Auto-select workspace
   useEffect(() => {

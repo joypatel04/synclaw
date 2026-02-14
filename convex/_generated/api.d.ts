@@ -22,6 +22,7 @@ import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_secretCrypto from "../lib/secretCrypto.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as onboarding from "../onboarding.js";
 import type * as openclaw from "../openclaw.js";
 import type * as tasks from "../tasks.js";
 import type * as workspaces from "../workspaces.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   "lib/secretCrypto": typeof lib_secretCrypto;
   messages: typeof messages;
   notifications: typeof notifications;
+  onboarding: typeof onboarding;
   openclaw: typeof openclaw;
   tasks: typeof tasks;
   workspaces: typeof workspaces;

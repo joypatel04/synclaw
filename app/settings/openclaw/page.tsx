@@ -8,6 +8,7 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,12 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
-import { Settings, ShieldAlert, Activity } from "lucide-react";
+import { Settings, ShieldAlert, Activity, Check, Copy } from "lucide-react";
+import {
+  buildMainAgentBootstrapMessage,
+  buildMcpServerConfigTemplate,
+  MODEL_STRATEGY_PRESETS,
+} from "@/lib/onboardingTemplates";
 
 type Protocol = "req" | "jsonrpc";
 
@@ -60,7 +66,7 @@ function SettingsTabs({ active }: { active: "general" | "members" | "openclaw" }
 }
 
 function OpenClawSettingsContent() {
-  const { workspaceId, canAdmin } = useWorkspace();
+  const { workspaceId, canAdmin, workspace } = useWorkspace();
   const convex = useConvex();
 
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
@@ -96,6 +102,13 @@ function OpenClawSettingsContent() {
     | { status: "error"; message: string }
   >({ status: "idle" });
 
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copy = async (id: string, value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   useEffect(() => {
     if (!summary) return;
     setWsUrl(summary.wsUrl ?? "");
@@ -126,6 +139,23 @@ function OpenClawSettingsContent() {
     if (typeof window === "undefined") return "";
     return window.location.origin;
   }, []);
+
+  const bootstrapPrompt = useMemo(() => {
+    return buildMainAgentBootstrapMessage({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
+
+  const mcpConfigTemplate = useMemo(() => {
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+    const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+    return buildMcpServerConfigTemplate({
+      workspaceId: String(workspaceId),
+      convexUrl,
+      convexSiteUrl,
+    });
+  }, [workspaceId]);
 
   const onSave = async () => {
     if (!canAdmin) return;
@@ -540,6 +570,124 @@ function OpenClawSettingsContent() {
             <p className="mt-1 text-xs text-text-secondary">{testResult.message}</p>
           </div>
         )}
+
+        {summary?.wsUrl ? (
+          <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">
+                  Setup guide
+                </h2>
+                <p className="mt-1 text-xs text-text-muted">
+                  Copy these templates to configure your agents and multi-agent workflow.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="h-8">
+                <Link href="/settings/api-keys">Create API key</Link>
+              </Button>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">
+                Workspace ID:{" "}
+                <span className="font-mono text-text-muted">
+                  {String(workspaceId)}
+                </span>
+              </p>
+            </div>
+
+            {/* Multi-agent bootstrap prompt */}
+            <div className="mt-5 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  Main Agent Bootstrap Prompt
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void copy("bootstrap", bootstrapPrompt)}
+                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                  title={copiedId === "bootstrap" ? "Copied" : "Copy"}
+                >
+                  {copiedId === "bootstrap" ? (
+                    <Check className="h-4 w-4 text-status-active" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                {bootstrapPrompt}
+              </pre>
+            </div>
+
+            {/* MCP config */}
+            <div className="mt-5 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  MCPorter Config (Sutraha HQ MCP Server)
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void copy("mcporter", mcpConfigTemplate)}
+                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                  title={copiedId === "mcporter" ? "Copied" : "Copy"}
+                >
+                  {copiedId === "mcporter" ? (
+                    <Check className="h-4 w-4 text-status-active" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                {mcpConfigTemplate}
+              </pre>
+              <p className="text-[11px] text-text-dim">
+                Note: Sutraha HQ is BYO OpenClaw + BYO model provider. Sutraha HQ does not store LLM provider keys in this setup.
+              </p>
+            </div>
+
+            {/* Model strategy */}
+            <div className="mt-5 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                Model strategy presets
+              </p>
+              {MODEL_STRATEGY_PRESETS.map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-border-default bg-bg-tertiary p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-text-primary">
+                      {p.title}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void copy(`preset:${p.id}`, p.body)}
+                      className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                      title={copiedId === `preset:${p.id}` ? "Copied" : "Copy"}
+                    >
+                      {copiedId === `preset:${p.id}` ? (
+                        <Check className="h-4 w-4 text-status-active" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    readOnly
+                    value={p.body}
+                    className="mt-3 bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                    rows={8}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -552,4 +700,3 @@ export default function OpenClawSettingsPage() {
     </AppLayout>
   );
 }
-

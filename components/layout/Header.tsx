@@ -17,7 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,9 +51,8 @@ const navItems = [
   { href: "/agents", label: "Agents", icon: Bot },
 ];
 
-export function Header() {
+export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { signOut } = useAuthActions();
   const { workspace, workspaces, switchWorkspace, role } = useWorkspace();
   const createWorkspace = useMutation(api.workspaces.create);
@@ -134,31 +133,53 @@ export function Header() {
           </div>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-smooth",
-                    isActive
-                      ? "bg-accent-orange/10 text-accent-orange"
-                      : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {!onboardingLocked && (
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-smooth",
+                      isActive
+                        ? "bg-accent-orange/10 text-accent-orange"
+                        : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
           {/* Theme toggle + User Menu */}
           <div className="flex items-center gap-2">
+            {onboardingLocked && (
+              <>
+                <Button
+                  asChild
+                  size="icon-sm"
+                  className="sm:hidden bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
+                  <Link href="/onboarding" aria-label="Finish setup">
+                    <Settings className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="hidden sm:inline-flex bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
+                  <Link href="/onboarding">Finish setup</Link>
+                </Button>
+              </>
+            )}
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -215,28 +236,30 @@ export function Header() {
         </div>
 
         {/* Mobile nav */}
-        <nav className="flex md:hidden items-center gap-1 px-4 pb-2 overflow-x-auto">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth",
-                  isActive
-                    ? "bg-accent-orange/10 text-accent-orange"
-                    : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
-                )}
-              >
-                <item.icon className="h-3.5 w-3.5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {!onboardingLocked && (
+          <nav className="flex md:hidden items-center gap-1 px-4 pb-2 overflow-x-auto">
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/" && pathname.startsWith(item.href));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth",
+                    isActive
+                      ? "bg-accent-orange/10 text-accent-orange"
+                      : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+                  )}
+                >
+                  <item.icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </header>
 
       {/* Create Workspace Modal */}
