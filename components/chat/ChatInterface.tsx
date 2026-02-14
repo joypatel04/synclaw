@@ -19,6 +19,7 @@ import {
   pickRunId,
   pickText,
 } from "@/lib/openclaw-gateway-client";
+import { clearChatDraft, getChatDraft } from "@/lib/chatDraft";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, type UiChatMessage } from "./ChatMessage";
 
@@ -113,6 +114,21 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const sendQueueRef = useRef<QueueItem[]>([]);
   const sendingRef = useRef(false);
   const [queuedCount, setQueuedCount] = useState(0);
+
+  const draftKey = useMemo(
+    () => `${String(workspaceId)}:${agent.sessionKey}`,
+    [workspaceId, agent.sessionKey],
+  );
+  const [draft, setDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(
+      getChatDraft({
+        workspaceId: String(workspaceId),
+        sessionKey: agent.sessionKey,
+      }),
+    );
+  }, [draftKey, workspaceId, agent.sessionKey]);
 
   const rebuildIndex = (next: UiChatMessage[]) => {
     const map = new Map<string, number>();
@@ -795,6 +811,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   const handleSend = async (content: string) => {
     await enqueueOrSend(content);
+    clearChatDraft({ workspaceId: String(workspaceId), sessionKey: agent.sessionKey });
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {
@@ -940,9 +957,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
       <div className="sticky bottom-0 border-t border-border-default bg-bg-secondary pb-[env(safe-area-inset-bottom)]">
         <ChatInput
+          key={draftKey}
           onSend={handleSend}
           placeholder={`Message ${agent.name}...`}
           disabled={!canChat}
+          initialValue={draft ?? undefined}
+          initialValueKey={draftKey}
           statusText={
             queuedCount > 0
               ? `Queued: ${queuedCount} (will send after the agent finishes)`

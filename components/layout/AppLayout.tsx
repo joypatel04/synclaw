@@ -10,16 +10,10 @@ import {
 } from "@/components/providers/workspace-provider";
 import { api } from "@/convex/_generated/api";
 import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
+import { isAllowedWhileLocked as isAllowedWhileLockedRoute } from "@/lib/onboardingGate";
 
 interface AppLayoutProps {
   children: React.ReactNode;
-}
-
-function isAllowedWhileLocked(pathname: string) {
-  if (pathname === "/onboarding") return true;
-  if (pathname === "/settings") return true;
-  if (pathname.startsWith("/settings/")) return true;
-  return false;
 }
 
 function AuthedShell({ children }: { children: React.ReactNode }) {
@@ -27,7 +21,7 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
   const { workspaceId, canAdmin } = useWorkspace();
   const status = useQuery(api.onboarding.getStatus, { workspaceId });
 
-  const allowed = isAllowedWhileLocked(pathname);
+  const allowed = isAllowedWhileLockedRoute(pathname);
 
   // Hide nav until we know onboarding is complete (prevents "flash of nav").
   const onboardingLocked = canAdmin && (status === undefined || !status.isComplete);

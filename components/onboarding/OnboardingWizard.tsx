@@ -23,6 +23,7 @@ import {
   buildMcpServerConfigTemplate,
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
+import { setChatDraft } from "@/lib/chatDraft";
 import { Check, Copy, Settings2, Zap } from "lucide-react";
 
 type Protocol = "req" | "jsonrpc";
@@ -282,19 +283,6 @@ export function OnboardingWizard() {
   const [creatingAgent, setCreatingAgent] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const redirectAfterComplete = (mainAgentId: string) => {
-    const dest = isSafeNextPath(next) ? next : `/chat/${mainAgentId}`;
-    router.replace(dest);
-  };
-
-  // Auto-redirect as soon as onboarding becomes complete.
-  useEffect(() => {
-    if (!canAdmin) return;
-    if (!status || !status.isComplete || !status.mainAgentId) return;
-    redirectAfterComplete(String(status.mainAgentId));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAdmin, status?.isComplete, status?.mainAgentId]);
-
   const bootstrapPrompt = useMemo(() => {
     return buildMainAgentBootstrapMessage({
       workspaceName: workspace.name,
@@ -311,6 +299,24 @@ export function OnboardingWizard() {
       convexSiteUrl,
     });
   }, [workspaceId]);
+
+  const redirectAfterComplete = (mainAgentId: string) => {
+    const dest = isSafeNextPath(next) ? next : `/chat/${mainAgentId}`;
+    router.replace(dest);
+  };
+
+  // Auto-redirect as soon as onboarding becomes complete.
+  useEffect(() => {
+    if (!canAdmin) return;
+    if (!status || !status.isComplete || !status.mainAgentId) return;
+    setChatDraft({
+      workspaceId: String(workspaceId),
+      sessionKey: "agent:main:main",
+      content: bootstrapPrompt,
+    });
+    redirectAfterComplete(String(status.mainAgentId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAdmin, status?.isComplete, status?.mainAgentId, bootstrapPrompt, workspaceId]);
 
   if (!canAdmin) {
     return (
@@ -635,6 +641,11 @@ export function OnboardingWizard() {
                           emoji: mainEmoji.trim() || "🦊",
                           sessionKey: "agent:main:main",
                           externalAgentId: "agent:main:main",
+                        });
+                        setChatDraft({
+                          workspaceId: String(workspaceId),
+                          sessionKey: "agent:main:main",
+                          content: bootstrapPrompt,
                         });
                         redirectAfterComplete(String(id));
                       } catch (e) {

@@ -8,6 +8,7 @@ import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,8 @@ import {
   Archive,
   ArchiveRestore,
   Bot,
+  Check,
+  Copy,
   ExternalLink,
   Pencil,
   Plus,
@@ -33,9 +36,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { buildGenericAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 
 type AgentFormData = {
   name: string;
@@ -56,7 +60,7 @@ const emptyForm: AgentFormData = {
 };
 
 function AgentsContent() {
-  const { workspaceId, canAdmin, canManage } = useWorkspace();
+  const { workspaceId, workspace, canAdmin, canManage } = useWorkspace();
   const agents =
     useQuery(api.agents.list, { workspaceId, includeArchived: canAdmin }) ?? [];
   const tasks = useQuery(api.tasks.list, { workspaceId }) ?? [];
@@ -75,9 +79,30 @@ function AgentsContent() {
   } | null>(null);
   const [form, setForm] = useState<AgentFormData>(emptyForm);
   const [showArchived, setShowArchived] = useState(false);
+  const [copiedBootstrap, setCopiedBootstrap] = useState(false);
 
   const activeAgents = agents.filter((a) => !a.isArchived);
   const archivedAgents = agents.filter((a) => a.isArchived);
+
+  const effectiveSessionKey = useMemo(() => {
+    const raw = form.sessionKey.trim();
+    if (raw) return raw;
+    const slug =
+      form.name.trim().length > 0
+        ? form.name.trim().toLowerCase().replace(/\s+/g, "-")
+        : "new-agent";
+    return `agent:${slug}:main`;
+  }, [form.sessionKey, form.name]);
+
+  const bootstrapPrompt = useMemo(() => {
+    return buildGenericAgentBootstrapMessage({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+      agentName: form.name.trim() || "New agent",
+      agentRole: form.role.trim() || "Agent",
+      sessionKey: effectiveSessionKey,
+    });
+  }, [workspace.name, workspaceId, form.name, form.role, effectiveSessionKey]);
 
   const handleStatusChange = async (
     agentId: Id<"agents">,
@@ -420,6 +445,7 @@ function AgentsContent() {
               setShowCreate(false);
               setEditingId(null);
               setForm(emptyForm);
+              setCopiedBootstrap(false);
             }
           }}
         >
@@ -503,6 +529,43 @@ function AgentsContent() {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-text-secondary">
+                    Bootstrap prompt (copy into OpenClaw)
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    onClick={() => {
+                      void (async () => {
+                        await navigator.clipboard.writeText(bootstrapPrompt);
+                        setCopiedBootstrap(true);
+                        setTimeout(() => setCopiedBootstrap(false), 1500);
+                      })();
+                    }}
+                    title={copiedBootstrap ? "Copied" : "Copy"}
+                  >
+                    {copiedBootstrap ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <Textarea
+                  readOnly
+                  value={bootstrapPrompt}
+                  rows={8}
+                  className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                />
+                <p className="text-[11px] text-text-dim">
+                  This is a suggested system prompt/instructions for the agent you are creating. Sutraha HQ does not store it; paste it into OpenClaw.
+                </p>
+              </div>
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -511,6 +574,7 @@ function AgentsContent() {
                     setShowCreate(false);
                     setEditingId(null);
                     setForm(emptyForm);
+                    setCopiedBootstrap(false);
                   }}
                   className="border-border-default text-text-secondary"
                 >

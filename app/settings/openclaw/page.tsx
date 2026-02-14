@@ -3,6 +3,7 @@
 import { useConvex, useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,13 @@ import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
 import { Settings, ShieldAlert, Activity, Check, Copy } from "lucide-react";
 import {
   buildMainAgentBootstrapMessage,
+  buildSpecialistAgentBootstrapMessage,
   buildMcpServerConfigTemplate,
+  CANONICAL_AGENT_TEMPLATES,
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
+import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
+import { setChatDraft } from "@/lib/chatDraft";
 
 type Protocol = "req" | "jsonrpc";
 
@@ -68,9 +73,14 @@ function SettingsTabs({ active }: { active: "general" | "members" | "openclaw" }
 function OpenClawSettingsContent() {
   const { workspaceId, canAdmin, workspace } = useWorkspace();
   const convex = useConvex();
+  const router = useRouter();
 
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
+  const agents =
+    useQuery(api.agents.list, canAdmin ? { workspaceId, includeArchived: true } : "skip") ??
+    [];
   const upsert = useMutation(api.openclaw.upsertConfig);
+  const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
   const [protocol, setProtocol] = useState<Protocol>("req");
@@ -156,6 +166,68 @@ function OpenClawSettingsContent() {
       convexSiteUrl,
     });
   }, [workspaceId]);
+
+  const canonicalSpecialists = useMemo(() => {
+    return CANONICAL_AGENT_TEMPLATES.filter((a) => a.id !== "main");
+  }, []);
+
+  const existingSessionKeys = useMemo(() => {
+    return new Set(agents.map((a: any) => a.sessionKey));
+  }, [agents]);
+
+  const mainAgent = useMemo(() => {
+    return agents.find((a: any) => a.sessionKey === "agent:main:main") ?? null;
+  }, [agents]);
+
+  const missingSpecialists = useMemo(() => {
+    return canonicalSpecialists.filter((a) => !existingSessionKeys.has(a.sessionKey));
+  }, [canonicalSpecialists, existingSessionKeys]);
+
+  const specialistPrompts = useMemo(() => {
+    return canonicalSpecialists.map((agent) => {
+      return {
+        id: `bootstrap:${agent.id}`,
+        title: `${agent.name} Bootstrap Prompt (${agent.sessionKey})`,
+        value: buildSpecialistAgentBootstrapMessage({
+          workspaceName: workspace.name,
+          workspaceId: String(workspaceId),
+          agent,
+        }),
+      };
+    });
+  }, [canonicalSpecialists, workspace.name, workspaceId]);
+
+  const [creatingSquad, setCreatingSquad] = useState(false);
+  const [squadError, setSquadError] = useState<string | null>(null);
+  const [squadOk, setSquadOk] = useState(false);
+
+  const onCreateSquad = async () => {
+    if (!canAdmin) return;
+    if (creatingSquad) return;
+    if (missingSpecialists.length === 0) return;
+
+    setCreatingSquad(true);
+    setSquadError(null);
+    setSquadOk(false);
+    try {
+      for (const agent of missingSpecialists) {
+        await createAgent({
+          workspaceId,
+          name: agent.name,
+          role: agent.role,
+          emoji: agent.emoji,
+          sessionKey: agent.sessionKey,
+          externalAgentId: agent.sessionKey,
+        });
+      }
+      setSquadOk(true);
+      setTimeout(() => setSquadOk(false), 2000);
+    } catch (e) {
+      setSquadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCreatingSquad(false);
+    }
+  };
 
   const onSave = async () => {
     if (!canAdmin) return;
@@ -602,23 +674,151 @@ function OpenClawSettingsContent() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
                   Main Agent Bootstrap Prompt
                 </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void copy("bootstrap", bootstrapPrompt)}
-                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                  title={copiedId === "bootstrap" ? "Copied" : "Copy"}
-                >
-                  {copiedId === "bootstrap" ? (
-                    <Check className="h-4 w-4 text-status-active" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    disabled={!mainAgent?._id}
+                    title={
+                      mainAgent?._id
+                        ? "Open the main agent chat with the bootstrap prompt prefilled"
+                        : "Create the main agent first"
+                    }
+                    onClick={() => {
+                      if (!mainAgent?._id) return;
+                      setChatDraft({
+                        workspaceId: String(workspaceId),
+                        sessionKey: "agent:main:main",
+                        content: bootstrapPrompt,
+                      });
+                      router.push(`/chat/${mainAgent._id}`);
+                    }}
+                  >
+                    Open chat
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copy("bootstrap", bootstrapPrompt)}
+                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    title={copiedId === "bootstrap" ? "Copied" : "Copy"}
+                  >
+                    {copiedId === "bootstrap" ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
                 {bootstrapPrompt}
               </pre>
+            </div>
+
+            {/* Recommended squad */}
+            <div className="mt-5 rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                    Recommended squad (optional)
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    One workspace should usually contain multiple agents (main + specialists). Create a separate workspace only when you need isolation (different OpenClaw deployment, members, or permissions).
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  disabled={creatingSquad || missingSpecialists.length === 0}
+                  onClick={() => void onCreateSquad()}
+                  title={
+                    missingSpecialists.length === 0
+                      ? "All recommended agents already exist"
+                      : "Create missing agents"
+                  }
+                >
+                  {creatingSquad
+                    ? "Creating..."
+                    : missingSpecialists.length === 0
+                      ? "Squad ready"
+                      : `Create ${missingSpecialists.length} agent(s)`}
+                </Button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {canonicalSpecialists.map((a) => {
+                  const exists = existingSessionKeys.has(a.sessionKey);
+                  return (
+                    <div
+                      key={a.sessionKey}
+                      className="rounded-lg border border-border-default bg-bg-secondary px-3 py-2"
+                    >
+                      <p className="text-xs font-semibold text-text-primary">
+                        {a.emoji} {a.name}
+                      </p>
+                      <p className="mt-0.5 text-[11px] font-mono text-text-dim">
+                        {a.sessionKey}
+                      </p>
+                      <p
+                        className={`mt-1 text-[11px] ${
+                          exists ? "text-status-active" : "text-text-muted"
+                        }`}
+                      >
+                        {exists ? "Created" : "Not created"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {squadOk ? (
+                <p className="mt-3 text-xs text-status-active">
+                  Squad created.
+                </p>
+              ) : null}
+              {squadError ? (
+                <p className="mt-3 text-xs text-status-blocked">
+                  {squadError}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Specialist prompts */}
+            <div className="mt-5 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                Specialist bootstrap prompts
+              </p>
+              {specialistPrompts.map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-border-default bg-bg-secondary p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-dim">
+                      {p.title}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void copy(p.id, p.value)}
+                      className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                      title={copiedId === p.id ? "Copied" : "Copy"}
+                    >
+                      {copiedId === p.id ? (
+                        <Check className="h-4 w-4 text-status-active" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <pre className="mt-3 max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                    {p.value}
+                  </pre>
+                </div>
+              ))}
             </div>
 
             {/* MCP config */}
@@ -688,6 +888,8 @@ function OpenClawSettingsContent() {
             </div>
           </div>
         ) : null}
+
+        <LocalOpenClawConfigEditor />
       </div>
     </div>
   );

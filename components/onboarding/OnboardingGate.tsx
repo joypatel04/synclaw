@@ -2,13 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-
-function isAllowedWhileLocked(pathname: string) {
-  if (pathname === "/onboarding") return true;
-  if (pathname === "/settings") return true;
-  if (pathname.startsWith("/settings/")) return true;
-  return false;
-}
+import { isAllowedWhileLocked } from "@/lib/onboardingGate";
 
 export function OnboardingGate({ shouldRedirect }: { shouldRedirect: boolean }) {
   const router = useRouter();

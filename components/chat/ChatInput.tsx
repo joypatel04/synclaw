@@ -3,13 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => Promise<void>;
   disabled?: boolean;
   placeholder?: string;
   statusText?: string;
+  initialValue?: string;
+  initialValueKey?: string;
 }
 
 export function ChatInput({
@@ -17,11 +19,24 @@ export function ChatInput({
   disabled = false,
   placeholder = "Type a message...",
   statusText,
+  initialValue,
+  initialValueKey,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const sendingRef = useRef(false);
+  const appliedInitialRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!initialValue || !initialValue.trim()) return;
+    const key = initialValueKey ?? "__default__";
+    if (appliedInitialRef.current === key) return;
+    appliedInitialRef.current = key;
+
+    // Only apply when the input is empty to avoid stomping user input.
+    setContent((prev) => (prev.trim().length === 0 ? initialValue : prev));
+  }, [initialValue, initialValueKey]);
 
   const doSend = async () => {
     if (!content.trim() || isSending) return;

@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { isAllowedWhileLocked as isAllowedWhileLockedRoute } from "@/lib/onboardingGate";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -68,13 +69,6 @@ function persist(id: string) {
   localStorage.setItem(STORAGE_KEY, id);
 }
 
-function isAllowedWhileLocked(pathname: string) {
-  if (pathname === "/onboarding") return true;
-  if (pathname === "/settings") return true;
-  if (pathname.startsWith("/settings/")) return true;
-  return false;
-}
-
 // ─── Provider ────────────────────────────────────────────────────
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
@@ -118,7 +112,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       // New users land on "/" after OAuth; route them directly into onboarding.
       // (Gating still exists, but this makes the first experience deterministic.)
-      if (!isAllowedWhileLocked(pathname)) {
+      if (!isAllowedWhileLockedRoute(pathname)) {
         if (pathname === "/") {
           router.replace("/onboarding");
         } else {

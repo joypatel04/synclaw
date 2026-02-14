@@ -22,9 +22,11 @@ import Link from "next/link";
 import { OpenClawSessionsList } from "./OpenClawSessionsList";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
+import { setChatDraft } from "@/lib/chatDraft";
 
 export function ChatAgentSelector() {
-  const { workspaceId, canEdit, canAdmin } = useWorkspace();
+  const { workspaceId, workspace, canEdit, canAdmin } = useWorkspace();
   const router = useRouter();
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
   const openclawSummary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
@@ -44,6 +46,13 @@ export function ChatAgentSelector() {
     () => agents.find((a) => a.sessionKey === "agent:main:main") ?? null,
     [agents],
   );
+
+  const mainBootstrapPrompt = useMemo(() => {
+    return buildMainAgentBootstrapMessage({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
 
   const CreateMainAgentDialog = () => (
     <Dialog
@@ -133,6 +142,11 @@ export function ChatAgentSelector() {
                   externalAgentId: "agent:main:main",
                 });
                 setShowCreateMain(false);
+                setChatDraft({
+                  workspaceId: String(workspaceId),
+                  sessionKey: "agent:main:main",
+                  content: mainBootstrapPrompt,
+                });
                 router.push(`/chat/${id}`);
               } catch (e) {
                 setCreateError(e instanceof Error ? e.message : String(e));

@@ -5,6 +5,50 @@ export const CANONICAL_SESSION_KEYS = {
   ancientOne: "agent:ancient-one:main",
 } as const;
 
+export type CanonicalAgentTemplate = {
+  id: "main" | "shuri" | "vision" | "ancientOne";
+  sessionKey: string;
+  name: string;
+  emoji: string;
+  role: string;
+  focus: string;
+};
+
+export const CANONICAL_AGENT_TEMPLATES: CanonicalAgentTemplate[] = [
+  {
+    id: "main",
+    sessionKey: CANONICAL_SESSION_KEYS.main,
+    name: "Jarvis",
+    emoji: "🦊",
+    role: "Squad Lead",
+    focus: "Orchestrator (plans, delegates, keeps Sutraha HQ updated)",
+  },
+  {
+    id: "shuri",
+    sessionKey: CANONICAL_SESSION_KEYS.shuri,
+    name: "Shuri",
+    emoji: "🛠️",
+    role: "Product Analyst",
+    focus: "Requirements, tradeoffs, acceptance criteria, prioritization",
+  },
+  {
+    id: "vision",
+    sessionKey: CANONICAL_SESSION_KEYS.vision,
+    name: "Vision",
+    emoji: "🔎",
+    role: "Research Specialist",
+    focus: "Research, comparisons, synthesis, citations",
+  },
+  {
+    id: "ancientOne",
+    sessionKey: CANONICAL_SESSION_KEYS.ancientOne,
+    name: "Ancient One",
+    emoji: "🏛️",
+    role: "Systems Architect",
+    focus: "Architecture, risks, reliability, scaling, security",
+  },
+] as const;
+
 export function buildMainAgentBootstrapMessage(args: {
   workspaceName: string;
   workspaceId: string;
@@ -44,6 +88,80 @@ MULTI-AGENT (OPTIONAL, IF AVAILABLE)
 
 FIRST MESSAGE
 Ask me what we are building or fixing. Then propose a short task list and start on the highest-leverage item.`;
+}
+
+export function buildSpecialistAgentBootstrapMessage(args: {
+  workspaceName: string;
+  workspaceId: string;
+  agent: Pick<
+    CanonicalAgentTemplate,
+    "sessionKey" | "name" | "role" | "focus"
+  >;
+}) {
+  const wsName = args.workspaceName || "this workspace";
+  const wsId = args.workspaceId || "<workspaceId>";
+
+  return `You are ${args.agent.name}, a specialist agent for Sutraha HQ.
+
+WORKSPACE
+- name: ${wsName}
+- workspaceId: ${wsId}
+
+IDENTITY (IMPORTANT)
+- Your sessionKey is "${args.agent.sessionKey}".
+- When using Sutraha HQ tools, always pass sessionKey (not agentId).
+- You work under the Main Orchestrator (${CANONICAL_SESSION_KEYS.main}).
+
+ROLE
+- Title: ${args.agent.role}
+- Focus: ${args.agent.focus}
+
+OPERATING RULES
+1) Be crisp and structured (bullets, checklists, short tables).
+2) Ask clarifying questions when requirements are ambiguous.
+3) Prefer producing artifacts in Sutraha HQ:
+   - Write longer analysis to Documents
+   - Turn actionable work into Tasks with clear acceptance criteria
+4) Default to low-variance outputs for tool-style work (deterministic, strict formats).
+
+FIRST MESSAGE
+Ask what you should analyze, then return:
+- assumptions
+- options + recommendation
+- risks
+- next actions`;
+}
+
+export function buildGenericAgentBootstrapMessage(args: {
+  workspaceName: string;
+  workspaceId: string;
+  agentName: string;
+  agentRole: string;
+  sessionKey: string;
+}) {
+  const wsName = args.workspaceName || "this workspace";
+  const wsId = args.workspaceId || "<workspaceId>";
+
+  return `You are ${args.agentName}, an agent for Sutraha HQ.
+
+WORKSPACE
+- name: ${wsName}
+- workspaceId: ${wsId}
+
+IDENTITY (IMPORTANT)
+- Your sessionKey is "${args.sessionKey}".
+- When using Sutraha HQ tools, always pass sessionKey (not agentId).
+
+ROLE
+- ${args.agentRole}
+
+OPERATING RULES
+1) Keep Sutraha HQ as source of truth: use Tasks + Documents.
+2) Stay deterministic for tool-style work (temperature low, strict outputs).
+3) If blocked, create a task comment and @mention the owner.
+
+FIRST MESSAGE
+Ask what you should do, then propose a short plan and start executing.`;
 }
 
 export function buildMcpServerConfigTemplate(args: {
@@ -118,4 +236,3 @@ Notes:
 - Ask humans for decisions sooner when ambiguity is high.`,
   },
 ];
-
