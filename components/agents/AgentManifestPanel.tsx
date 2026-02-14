@@ -12,9 +12,14 @@ import {
   parseAgentManifest,
   type AgentManifestAgent,
 } from "@/lib/agentManifest";
+import { buildAgentsMd } from "@/lib/agentDocs";
 
-function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+function downloadText(
+  filename: string,
+  content: string,
+  mime: string = "text/plain;charset=utf-8",
+) {
+  const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -24,7 +29,7 @@ function downloadText(filename: string, content: string) {
 }
 
 export function AgentManifestPanel() {
-  const { workspaceId, canAdmin } = useWorkspace();
+  const { workspaceId, workspace, canAdmin } = useWorkspace();
   const agents =
     useQuery(api.agents.list, canAdmin ? { workspaceId, includeArchived: true } : "skip") ??
     [];
@@ -46,6 +51,22 @@ export function AgentManifestPanel() {
   const manifestText = useMemo(() => {
     return JSON.stringify(manifestObj, null, 2);
   }, [manifestObj]);
+
+  const agentsMd = useMemo(() => {
+    return buildAgentsMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+      agents: agents
+        .filter((a: any) => !a.isArchived)
+        .map((a: any) => ({
+          name: a.name,
+          sessionKey: a.sessionKey,
+          role: a.role,
+          emoji: a.emoji,
+          agentId: a._id as string,
+        })),
+    });
+  }, [agents, workspace.name, workspaceId]);
 
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -137,19 +158,36 @@ export function AgentManifestPanel() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-2"
-            onClick={() =>
-              downloadText(
-                `sutraha.agents.${String(workspaceId).slice(0, 6)}.json`,
-                manifestText,
-              )
-            }
-          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={() =>
+                downloadText(
+                  `sutraha.agents.${String(workspaceId).slice(0, 6)}.json`,
+                  manifestText,
+                  "application/json;charset=utf-8",
+                )
+              }
+            >
+              <Download className="h-4 w-4" />
+              Export
+          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={() =>
+                downloadText(
+                  `AGENTS.${String(workspaceId).slice(0, 6)}.md`,
+                  agentsMd,
+                  "text/markdown;charset=utf-8",
+                )
+              }
+              title="Export a human-readable AGENTS.md template"
+            >
             <Download className="h-4 w-4" />
-            Export
+            AGENTS.md
           </Button>
           <Button
             variant="ghost"
@@ -245,4 +283,3 @@ export function AgentManifestPanel() {
     </div>
   );
 }
-

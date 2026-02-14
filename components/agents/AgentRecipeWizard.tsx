@@ -11,10 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Check, Copy, Sparkles } from "lucide-react";
+import { Check, Copy, Download, Sparkles } from "lucide-react";
 import {
   AGENT_RECIPES,
   buildAgentRecipePrompt,
+  buildCronPrompt,
+  buildHeartbeatMd,
   type AgentRecipe,
 } from "@/lib/agentRecipes";
 import { setChatDraft } from "@/lib/chatDraft";
@@ -26,6 +28,16 @@ function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
+}
+
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function AgentRecipeWizard() {
@@ -103,11 +115,52 @@ export function AgentRecipeWizard() {
     spec,
   ]);
 
+  const cronPrompt = useMemo(() => {
+    return buildCronPrompt({
+      sessionKey: sessionKey.trim() || defaultSessionKey,
+    });
+  }, [sessionKey, defaultSessionKey]);
+
+  const heartbeatMd = useMemo(() => {
+    return buildHeartbeatMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+      agentName: agentName.trim() || recipe.title,
+      sessionKey: sessionKey.trim() || defaultSessionKey,
+      agentRole: agentRole.trim() || recipe.defaultRole,
+      recommendedMinutes: recipe.recommendedHeartbeatMinutes,
+    });
+  }, [
+    workspace.name,
+    workspaceId,
+    agentName,
+    sessionKey,
+    defaultSessionKey,
+    agentRole,
+    recipe.defaultRole,
+    recipe.recommendedHeartbeatMinutes,
+    recipe.title,
+  ]);
+
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     await navigator.clipboard.writeText(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const [copiedHeartbeat, setCopiedHeartbeat] = useState(false);
+  const copyHeartbeat = async () => {
+    await navigator.clipboard.writeText(heartbeatMd);
+    setCopiedHeartbeat(true);
+    setTimeout(() => setCopiedHeartbeat(false), 1500);
+  };
+
+  const [copiedCron, setCopiedCron] = useState(false);
+  const copyCron = async () => {
+    await navigator.clipboard.writeText(cronPrompt);
+    setCopiedCron(true);
+    setTimeout(() => setCopiedCron(false), 1500);
   };
 
   const collision = sessionKey.trim().length > 0 && existingSessionKeys.has(sessionKey.trim());
@@ -312,6 +365,115 @@ export function AgentRecipeWizard() {
                 Tip: One workspace should usually contain multiple agents. Use a new workspace only for isolation (different OpenClaw deployment or members).
               </p>
             )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                4) Heartbeat kit (recommended)
+              </p>
+              <p className="mt-1 text-xs text-text-muted">
+                Create a lightweight <span className="font-mono">HEARTBEAT.md</span> inside this agent's OpenClaw workspace and schedule a cron run every{" "}
+                <span className="font-medium text-text-secondary">
+                  {recipe.recommendedHeartbeatMinutes} minutes
+                </span>
+                .
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4">
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                    Cron prompt (paste into OpenClaw cron)
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    This keeps cron runs using the correct Sutraha sessionKey.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-2"
+                    onClick={() =>
+                      downloadText(
+                        `cron-prompt.${(sessionKey.trim() || defaultSessionKey).replace(/[:]/g, "_")}.txt`,
+                        cronPrompt,
+                      )
+                    }
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copyCron()}
+                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    title={copiedCron ? "Copied" : "Copy"}
+                  >
+                    {copiedCron ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <pre className="mt-3 max-h-[160px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                {cronPrompt}
+              </pre>
+            </div>
+
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                    HEARTBEAT.md (put in the agent's OpenClaw workspace)
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    Keep this file short and stable. Agents should follow it on every scheduled run.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-2"
+                    onClick={() =>
+                      downloadText(
+                        `HEARTBEAT.${(sessionKey.trim() || defaultSessionKey).replace(/[:]/g, "_")}.md`,
+                        heartbeatMd,
+                      )
+                    }
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copyHeartbeat()}
+                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    title={copiedHeartbeat ? "Copied" : "Copy"}
+                  >
+                    {copiedHeartbeat ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <pre className="mt-3 max-h-[320px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                {heartbeatMd}
+              </pre>
+            </div>
           </div>
         </div>
       </div>

@@ -244,39 +244,59 @@ Definition of done:
             Core workflow
           </h2>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+            <div className="min-w-0 rounded-xl border border-border-default bg-bg-tertiary p-4 flex flex-col">
               <p className="text-xs font-semibold text-text-primary">1) Connect</p>
               <p className="mt-1 text-[11px] text-text-muted">
                 Add your OpenClaw gateway URL + token.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="mt-4 w-full whitespace-normal h-auto py-2 leading-tight"
+              >
                 <Link href="/settings/openclaw">OpenClaw settings</Link>
               </Button>
             </div>
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+            <div className="min-w-0 rounded-xl border border-border-default bg-bg-tertiary p-4 flex flex-col">
               <p className="text-xs font-semibold text-text-primary">2) Register</p>
               <p className="mt-1 text-[11px] text-text-muted">
                 Create the main agent and any specialists.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="mt-4 w-full whitespace-normal h-auto py-2 leading-tight"
+              >
                 <Link href="/agents/new">Create agent (recipe)</Link>
               </Button>
             </div>
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+            <div className="min-w-0 rounded-xl border border-border-default bg-bg-tertiary p-4 flex flex-col">
               <p className="text-xs font-semibold text-text-primary">3) Prime</p>
               <p className="mt-1 text-[11px] text-text-muted">
                 Give agents a bootstrap prompt with MCP rules.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="mt-4 w-full whitespace-normal h-auto py-2 leading-tight"
+              >
                 <Link href="/chat">Chat</Link>
               </Button>
             </div>
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+            <div className="min-w-0 rounded-xl border border-border-default bg-bg-tertiary p-4 flex flex-col">
               <p className="text-xs font-semibold text-text-primary">4) Ship</p>
               <p className="mt-1 text-[11px] text-text-muted">
                 Use Tasks + Documents to execute and track progress.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-3 h-8">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="mt-4 w-full whitespace-normal h-auto py-2 leading-tight"
+              >
                 <Link href="/documents">Documents</Link>
               </Button>
             </div>

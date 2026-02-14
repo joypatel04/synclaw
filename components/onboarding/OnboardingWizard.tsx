@@ -24,6 +24,7 @@ import {
   buildMcpServerConfigTemplate,
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
+import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
 import { setChatDraft } from "@/lib/chatDraft";
 import { Check, Copy, Settings2, Zap } from "lucide-react";
 
@@ -300,6 +301,22 @@ export function OnboardingWizard() {
       convexSiteUrl,
     });
   }, [workspaceId]);
+
+  const mainCronPrompt = useMemo(() => {
+    return buildCronPrompt({ sessionKey: "agent:main:main" });
+  }, []);
+
+  const mainHeartbeatMd = useMemo(() => {
+    return buildHeartbeatMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+      agentName: mainName.trim() || "Jarvis",
+      sessionKey: "agent:main:main",
+      agentRole: mainRole.trim() || "Squad Lead",
+      // Orchestrator doesn't need to run every 15m by default.
+      recommendedMinutes: 720,
+    });
+  }, [workspace.name, workspaceId, mainName, mainRole]);
 
   const redirectAfterComplete = (mainAgentId: string) => {
     const dest = isSafeNextPath(next) ? next : `/chat/${mainAgentId}`;
@@ -687,6 +704,22 @@ export function OnboardingWizard() {
                 id="mcporter"
                 title="MCPorter Config (Sutraha HQ MCP Server)"
                 value={mcpConfigTemplate}
+                copiedId={copiedId}
+                onCopy={copy}
+              />
+
+              <CopyBlock
+                id="main-cron"
+                title='Cron Prompt (OpenClaw) — "Read HEARTBEAT.md"'
+                value={mainCronPrompt}
+                copiedId={copiedId}
+                onCopy={copy}
+              />
+
+              <CopyBlock
+                id="main-heartbeat"
+                title="HEARTBEAT.md Template (Main Agent)"
+                value={mainHeartbeatMd}
                 copiedId={copiedId}
                 onCopy={copy}
               />
