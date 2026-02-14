@@ -19,8 +19,10 @@ import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as lib_apiAuth from "../lib/apiAuth.js";
 import type * as lib_permissions from "../lib/permissions.js";
+import type * as lib_secretCrypto from "../lib/secretCrypto.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as openclaw from "../openclaw.js";
 import type * as tasks from "../tasks.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -42,8 +44,10 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/apiAuth": typeof lib_apiAuth;
   "lib/permissions": typeof lib_permissions;
+  "lib/secretCrypto": typeof lib_secretCrypto;
   messages: typeof messages;
   notifications: typeof notifications;
+  openclaw: typeof openclaw;
   tasks: typeof tasks;
   workspaces: typeof workspaces;
 }>;
