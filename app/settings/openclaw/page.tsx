@@ -27,6 +27,7 @@ import {
   CANONICAL_AGENT_TEMPLATES,
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
+import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
 
@@ -152,6 +153,13 @@ function OpenClawSettingsContent() {
 
   const bootstrapPrompt = useMemo(() => {
     return buildMainAgentBootstrapMessage({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
+
+  const protocolMd = useMemo(() => {
+    return buildSutrahaProtocolMd({
       workspaceName: workspace.name,
       workspaceId: String(workspaceId),
     });
@@ -716,6 +724,34 @@ function OpenClawSettingsContent() {
               <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
                 {bootstrapPrompt}
               </pre>
+            </div>
+
+            {/* Protocol file */}
+            <div className="mt-5 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  {SUTRAHA_PROTOCOL_FILENAME} (copy into OpenClaw workspaces)
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void copy("protocol", protocolMd)}
+                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                  title={copiedId === "protocol" ? "Copied" : "Copy"}
+                >
+                  {copiedId === "protocol" ? (
+                    <Check className="h-4 w-4 text-status-active" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                {protocolMd}
+              </pre>
+              <p className="text-[11px] text-text-dim">
+                Tip: Put the same protocol file in each agent&apos;s OpenClaw workspace to keep prompts short and consistent.
+              </p>
             </div>
 
             {/* Recommended squad */}

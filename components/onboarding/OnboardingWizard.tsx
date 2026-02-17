@@ -25,6 +25,7 @@ import {
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
 import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
+import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import { setChatDraft } from "@/lib/chatDraft";
 import { Check, Copy, Settings2, Zap } from "lucide-react";
 
@@ -317,6 +318,13 @@ export function OnboardingWizard() {
       recommendedMinutes: 720,
     });
   }, [workspace.name, workspaceId, mainName, mainRole]);
+
+  const protocolMd = useMemo(() => {
+    return buildSutrahaProtocolMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
 
   const redirectAfterComplete = (mainAgentId: string) => {
     const dest = isSafeNextPath(next) ? next : `/chat/${mainAgentId}`;
@@ -720,6 +728,14 @@ export function OnboardingWizard() {
                 id="main-heartbeat"
                 title="HEARTBEAT.md Template (Main Agent)"
                 value={mainHeartbeatMd}
+                copiedId={copiedId}
+                onCopy={copy}
+              />
+
+              <CopyBlock
+                id="protocol"
+                title={`${SUTRAHA_PROTOCOL_FILENAME} Template`}
+                value={protocolMd}
                 copiedId={copiedId}
                 onCopy={copy}
               />

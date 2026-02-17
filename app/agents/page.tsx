@@ -24,6 +24,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  HeartPulse,
   Pencil,
   Plus,
 } from "lucide-react";
@@ -42,7 +43,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { buildGenericAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
+import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AgentManifestPanel } from "@/components/agents/AgentManifestPanel";
 
 type AgentFormData = {
@@ -75,6 +78,7 @@ function downloadText(filename: string, content: string) {
 
 function AgentsContent() {
   const { workspaceId, workspace, canAdmin, canManage } = useWorkspace();
+  const router = useRouter();
   const agents =
     useQuery(api.agents.list, { workspaceId, includeArchived: canAdmin }) ?? [];
   const tasks = useQuery(api.tasks.list, { workspaceId }) ?? [];
@@ -96,6 +100,7 @@ function AgentsContent() {
   const [copiedBootstrap, setCopiedBootstrap] = useState(false);
   const [copiedCron, setCopiedCron] = useState(false);
   const [copiedHeartbeat, setCopiedHeartbeat] = useState(false);
+  const [copiedProtocol, setCopiedProtocol] = useState(false);
   const [heartbeatMinutes, setHeartbeatMinutes] = useState("60");
 
   const activeAgents = agents.filter((a) => !a.isArchived);
@@ -136,6 +141,13 @@ function AgentsContent() {
       recommendedMinutes: minutes,
     });
   }, [workspace.name, workspaceId, form.name, form.role, effectiveSessionKey, heartbeatMinutes]);
+
+  const protocolMd = useMemo(() => {
+    return buildSutrahaProtocolMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
 
   const handleStatusChange = async (
     agentId: Id<"agents">,
@@ -190,7 +202,7 @@ function AgentsContent() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
-    await createAgent({
+    const id = await createAgent({
       workspaceId,
       name: form.name.trim(),
       role: form.role.trim(),
@@ -202,6 +214,7 @@ function AgentsContent() {
     });
     setForm(emptyForm);
     setShowCreate(false);
+    router.push(`/agents/${id}/setup`);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -298,6 +311,13 @@ function AgentsContent() {
                   <SelectItem value="offline">Offline</SelectItem>
                 </SelectContent>
               </Select>
+            )}
+
+            {/* Setup wizard — owner only */}
+            {canAdmin && !isArchived && (
+              <Button asChild variant="outline" size="sm" className="h-8">
+                <Link href={`/agents/${agent._id}/setup`}>Setup</Link>
+              </Button>
             )}
 
             {/* Edit — owner only */}
@@ -425,6 +445,18 @@ function AgentsContent() {
               <Link href="/agents/new">Use recipe</Link>
             </Button>
             <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto gap-2"
+              title="Connectivity and heartbeat freshness"
+            >
+              <Link href="/agents/health">
+                <HeartPulse className="h-4 w-4" />
+                Health
+              </Link>
+            </Button>
+            <Button
               onClick={openCreate}
               size="sm"
               className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
@@ -502,6 +534,7 @@ function AgentsContent() {
               setCopiedBootstrap(false);
               setCopiedCron(false);
               setCopiedHeartbeat(false);
+              setCopiedProtocol(false);
               setHeartbeatMinutes("60");
             }
           }}
@@ -749,6 +782,61 @@ function AgentsContent() {
                     className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-dim">
+                      {SUTRAHA_PROTOCOL_FILENAME}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-2"
+                        onClick={() =>
+                          downloadText(
+                            `SUTRAHA_PROTOCOL.${String(workspaceId).slice(0, 6)}.md`,
+                            protocolMd,
+                          )
+                        }
+                        title="Download protocol file (shared rules)"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                        onClick={() => {
+                          void (async () => {
+                            await navigator.clipboard.writeText(protocolMd);
+                            setCopiedProtocol(true);
+                            setTimeout(() => setCopiedProtocol(false), 1500);
+                          })();
+                        }}
+                        title={copiedProtocol ? "Copied" : "Copy"}
+                      >
+                        {copiedProtocol ? (
+                          <Check className="h-4 w-4 text-status-active" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <Textarea
+                    readOnly
+                    value={protocolMd}
+                    rows={10}
+                    className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                  />
+                  <p className="text-[11px] text-text-dim">
+                    Put the same protocol file in each agent&apos;s OpenClaw workspace to keep prompts short.
+                  </p>
+                </div>
               </div>
 
               <DialogFooter>
@@ -762,6 +850,7 @@ function AgentsContent() {
                     setCopiedBootstrap(false);
                     setCopiedCron(false);
                     setCopiedHeartbeat(false);
+                    setCopiedProtocol(false);
                     setHeartbeatMinutes("60");
                   }}
                   className="border-border-default text-text-secondary"

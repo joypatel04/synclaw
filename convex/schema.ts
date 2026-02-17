@@ -135,7 +135,8 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byStatus", ["status"])
-    .index("bySessionKey", ["sessionKey"]),
+    .index("bySessionKey", ["sessionKey"])
+    .index("byWorkspaceAndSessionKey", ["workspaceId", "sessionKey"]),
 
   tasks: defineTable({
     workspaceId: v.id("workspaces"),

@@ -19,6 +19,7 @@ import {
   buildHeartbeatMd,
   type AgentRecipe,
 } from "@/lib/agentRecipes";
+import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import { setChatDraft } from "@/lib/chatDraft";
 
 function slugify(input: string): string {
@@ -142,6 +143,13 @@ export function AgentRecipeWizard() {
     recipe.title,
   ]);
 
+  const protocolMd = useMemo(() => {
+    return buildSutrahaProtocolMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
+
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     await navigator.clipboard.writeText(prompt);
@@ -161,6 +169,13 @@ export function AgentRecipeWizard() {
     await navigator.clipboard.writeText(cronPrompt);
     setCopiedCron(true);
     setTimeout(() => setCopiedCron(false), 1500);
+  };
+
+  const [copiedProtocol, setCopiedProtocol] = useState(false);
+  const copyProtocol = async () => {
+    await navigator.clipboard.writeText(protocolMd);
+    setCopiedProtocol(true);
+    setTimeout(() => setCopiedProtocol(false), 1500);
   };
 
   const collision = sessionKey.trim().length > 0 && existingSessionKeys.has(sessionKey.trim());
@@ -190,7 +205,7 @@ export function AgentRecipeWizard() {
         sessionKey: sessionKey.trim() || defaultSessionKey,
         content: prompt,
       });
-      router.push(`/chat/${id}`);
+      router.push(`/agents/${id}/setup`);
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -356,7 +371,7 @@ export function AgentRecipeWizard() {
               disabled={creating || !agentName.trim() || !sessionKey.trim() || collision}
               title={collision ? "Session key must be unique" : "Create agent in Sutraha HQ"}
             >
-              {creating ? "Creating..." : "Create agent and open chat"}
+              {creating ? "Creating..." : "Create agent and open setup"}
             </Button>
             {createError ? (
               <p className="text-xs text-status-blocked">{createError}</p>
@@ -472,6 +487,51 @@ export function AgentRecipeWizard() {
               </div>
               <pre className="mt-3 max-h-[320px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
                 {heartbeatMd}
+              </pre>
+            </div>
+
+            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+                    {SUTRAHA_PROTOCOL_FILENAME} (shared rules)
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    Put the same protocol file in each agent&apos;s OpenClaw workspace so your prompts stay short.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-2"
+                    onClick={() =>
+                      downloadText(
+                        `SUTRAHA_PROTOCOL.${String(workspaceId).slice(0, 6)}.md`,
+                        protocolMd,
+                      )
+                    }
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copyProtocol()}
+                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    title={copiedProtocol ? "Copied" : "Copy"}
+                  >
+                    {copiedProtocol ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <pre className="mt-3 max-h-[320px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+                {protocolMd}
               </pre>
             </div>
           </div>

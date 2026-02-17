@@ -11,6 +11,7 @@ import {
   buildMcpServerConfigTemplate,
 } from "@/lib/onboardingTemplates";
 import { buildAgentRecipePrompt, AGENT_RECIPES } from "@/lib/agentRecipes";
+import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import {
   Check,
   Copy,
@@ -136,6 +137,13 @@ function HelpContent() {
       convexSiteUrl,
     });
   }, [workspaceId]);
+
+  const protocolMd = useMemo(() => {
+    return buildSutrahaProtocolMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
 
   const agentPromptSkeleton = useMemo(() => {
     const recipe = AGENT_RECIPES[0];
@@ -326,11 +334,11 @@ Definition of done:
                   "Write the long brief to Documents",
                   "Create tasks for follow-ups",
                 ],
-                ctaHref: "/agents/new?recipe=research",
-                ctaLabel: "Create research agent",
+                ctaHref: "/help/playbooks/research",
+                ctaLabel: "Open playbook",
               },
               {
-                id: "support",
+                id: "support_triage",
                 title: "Support triage",
                 description: "Turn issues into reproducible tasks.",
                 icon: Bug,
@@ -339,8 +347,8 @@ Definition of done:
                   "Tag severity and owner",
                   "Create tasks with acceptance criteria",
                 ],
-                ctaHref: "/agents/new?recipe=support_triage",
-                ctaLabel: "Create triage agent",
+                ctaHref: "/help/playbooks/support_triage",
+                ctaLabel: "Open playbook",
               },
               {
                 id: "code_review",
@@ -352,8 +360,8 @@ Definition of done:
                   "Suggest concrete fixes",
                   "Request missing tests",
                 ],
-                ctaHref: "/agents/new?recipe=code_review",
-                ctaLabel: "Create review agent",
+                ctaHref: "/help/playbooks/code_review",
+                ctaLabel: "Open playbook",
               },
               {
                 id: "qa",
@@ -365,8 +373,8 @@ Definition of done:
                   "Acceptance criteria checklists",
                   "Rollout/rollback notes",
                 ],
-                ctaHref: "/agents/new?recipe=qa",
-                ctaLabel: "Create QA agent",
+                ctaHref: "/help/playbooks/qa",
+                ctaLabel: "Open playbook",
               },
               {
                 id: "growth",
@@ -378,8 +386,8 @@ Definition of done:
                   "2-3 focused experiments",
                   "Write experiment docs + tasks",
                 ],
-                ctaHref: "/agents/new?recipe=growth",
-                ctaLabel: "Create growth agent",
+                ctaHref: "/help/playbooks/growth",
+                ctaLabel: "Open playbook",
               },
               {
                 id: "delivery",
@@ -391,8 +399,8 @@ Definition of done:
                   "Specialists write docs and checklists",
                   "Broadcast status updates to the team",
                 ],
-                ctaHref: "/settings/openclaw",
-                ctaLabel: "Open multi-agent guide",
+                ctaHref: "/help/playbooks/delivery",
+                ctaLabel: "Open playbook",
               },
             ] as UseCase[]).map((uc) => (
               <UseCaseCard key={uc.id} useCase={uc} />
@@ -440,6 +448,14 @@ Definition of done:
           id="mcporter"
           title="MCPorter config template (Sutraha HQ MCP Server)"
           value={mcporterConfig}
+          copiedId={copiedId}
+          onCopy={copy}
+        />
+
+        <CopyCard
+          id="protocol"
+          title={`${SUTRAHA_PROTOCOL_FILENAME} (copy into each agent workspace)`}
+          value={protocolMd}
           copiedId={copiedId}
           onCopy={copy}
         />

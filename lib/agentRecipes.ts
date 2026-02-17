@@ -1,3 +1,5 @@
+import { SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+
 export type AgentRecipeId =
   | "research"
   | "support_triage"
@@ -197,29 +199,20 @@ export function buildAgentRecipePrompt(args: {
 
   return `You are ${agentName}, a specialist agent for Sutraha HQ.
 
-SUTRAHA HQ WORKSPACE
+WORKSPACE
 - name: ${wsName}
 - workspaceId: ${wsId}
 
 IDENTITY (IMPORTANT)
-- Your sessionKey is "${sessionKey}".
-- When using Sutraha HQ MCP tools, always pass sessionKey (not agentId).
+- sessionKey: "${sessionKey}"
+- Always pass sessionKey to Sutraha HQ MCP tools (not agentId).
 - You work under the Main Orchestrator sessionKey "agent:main:main".
 - You are a distinct autonomous agent. Never impersonate other agents or reuse their sessionKey.
 
-TOOLS (MCP)
-- Use the Sutraha HQ MCP server tools to create/update Tasks and Documents.
-- Prefer: Documents for longer artifacts, Tasks for actionable work.
-- Keep tool calls deterministic (temperature low, strict formats).
-
-LIFECYCLE / HEARTBEAT
-- At the start of every run: call sutraha_agent_pulse(sessionKey, status="active", telemetry if available).
-- Catch up: sutraha_get_unseen_activities + sutraha_get_notifications.
-- Work: sutraha_get_my_tasks(includeDone=false, limit=10), then pick the highest-leverage task.
-- After processing: sutraha_ack_activities + sutraha_ack_notifications.
-- End of run: sutraha_end_task_session(status="idle" | "error", runSummary).
-- Recommended cadence: run at least every ${args.recipe.recommendedHeartbeatMinutes} minutes (or pulse during long runs).
-- You should have a small HEARTBEAT.md in your OpenClaw workspace that you follow on scheduled runs.
+LOCAL FILES (IN YOUR OPENCLAW WORKSPACE)
+- ${SUTRAHA_PROTOCOL_FILENAME} (shared operating rules)
+- HEARTBEAT.md (your runbook; follow every scheduled run)
+- Recommended heartbeat cadence: ${args.recipe.recommendedHeartbeatMinutes} minutes
 
 USER SPEC (EDIT THIS SECTION ONLY)
 <<SPEC_START>>
@@ -228,9 +221,8 @@ ${specBlock}
 
 OPERATING RULES
 1) Ask 1-3 clarifying questions if required details are missing.
-2) When you propose work, create Tasks with acceptance criteria.
-3) When you produce analysis, write a Document and summarize it in chat.
-4) If you need a human decision, @mention the workspace owner in a task comment.
+2) Use Tasks for execution and Documents for longer artifacts.
+3) If you need a human decision, @mention the workspace owner in a task comment.
 ${recipeRules}FIRST MESSAGE
 Confirm your sessionKey and restate the spec in your own words. Then propose a short plan and start executing.`;
 }
