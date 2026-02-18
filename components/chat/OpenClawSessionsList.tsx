@@ -231,7 +231,7 @@ export function OpenClawSessionsList({
 
     const scopes = (
       process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES ??
-      "operator.read,operator.write,operator.admin"
+      "operator.read,operator.write"
     )
       .split(",")
       .map((s) => s.trim())
