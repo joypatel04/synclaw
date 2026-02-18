@@ -68,7 +68,7 @@ function CopyBlock({
   );
 }
 
-export default function PlaybookPage() {
+function PlaybookPageInner() {
   const params = useParams<{ id?: string }>();
   const { workspaceId, workspace } = useWorkspace();
   const playbook = getPlaybook(params?.id);
@@ -108,23 +108,20 @@ export default function PlaybookPage() {
 
   if (!playbook) {
     return (
-      <AppLayout>
-        <EmptyState
-          icon={LifeBuoy}
-          title="Playbook not found"
-          description="This playbook id does not exist."
-        >
-          <Button asChild variant="outline">
-            <Link href="/help">Back to resources</Link>
-          </Button>
-        </EmptyState>
-      </AppLayout>
+      <EmptyState
+        icon={LifeBuoy}
+        title="Playbook not found"
+        description="This playbook id does not exist."
+      >
+        <Button asChild variant="outline">
+          <Link href="/help">Back to resources</Link>
+        </Button>
+      </EmptyState>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="mx-auto max-w-3xl p-3 sm:p-6">
+    <div className="mx-auto max-w-3xl p-3 sm:p-6">
         <div className="flex items-start justify-between gap-3 mb-6">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-orange/15 glow-orange">
@@ -259,6 +256,15 @@ export default function PlaybookPage() {
           </div>
         </div>
       </div>
+  );
+}
+
+export const dynamic = 'force-dynamic';
+
+export default function PlaybookPage() {
+  return (
+    <AppLayout>
+      <PlaybookPageInner />
     </AppLayout>
   );
 }

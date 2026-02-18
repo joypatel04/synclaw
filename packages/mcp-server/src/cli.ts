@@ -28,7 +28,7 @@ Sutraha HQ CLI
 Usage: sutraha-cli <resource> <action> [options]
 
 Resources:
-  agents     list | get --id <id> | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
+  agents     list | get --id <id> | create --name <n> --role <r> [--emoji <e>] [--session-key <sk>] [--external-agent-id <id>] | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
   tasks      list | get --id <id> | create --title <t> | update-status --id <id> --status <s>
   messages   list --task-id <id> | send --task-id <id> --agent-id <id> --content <msg>
   chat       send --session-id <sid> --message <msg>
@@ -84,6 +84,23 @@ async function main() {
               id: requireArg(rest, "--id", "agentId"),
             });
             break;
+          case "create": {
+            const name = requireArg(rest, "--name", "name");
+            const role = requireArg(rest, "--role", "role");
+            const emoji = getArg(rest, "--emoji") ?? "🤖";
+            const sessionKey =
+              getArg(rest, "--session-key") ??
+              `agent:${name.toLowerCase().replace(/\s+/g, "-")}:main`;
+            const externalAgentId = getArg(rest, "--external-agent-id");
+            result = await client.mutation(api.agents.create, {
+              name: name.trim(),
+              role: role.trim(),
+              emoji,
+              sessionKey,
+              externalAgentId: sessionKey.trim(),
+            });
+            break;
+          }
           case "heartbeat":
             await client.mutation(api.agents.updateHeartbeat, {
               id: requireArg(rest, "--id", "agentId"),
