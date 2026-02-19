@@ -28,6 +28,13 @@ function isMentionActivity(a: Doc<"activities">): boolean {
   return Array.isArray(ids) && ids.length > 0;
 }
 
+function isStatusNoiseActivity(a: Doc<"activities">): boolean {
+  if (a.type !== "agent_status") return false;
+  const msg = a.message.toLowerCase();
+  // Remove low-signal heartbeat/presence chatter from dashboard live feed.
+  return msg.includes("idle") || msg.includes("connected");
+}
+
 const categories: {
   id: CategoryId;
   label: string;
@@ -61,9 +68,13 @@ export function LiveFeed() {
   );
   const [query, setQuery] = useState("");
 
+  const visibleActivities = useMemo(() => {
+    return activities.filter((a) => !isStatusNoiseActivity(a));
+  }, [activities]);
+
   const countsByCategory = useMemo(() => {
     const result: Record<CategoryId, number> = {
-      all: activities.length,
+      all: visibleActivities.length,
       tasks: 0,
       docs: 0,
       comments: 0,
@@ -71,7 +82,7 @@ export function LiveFeed() {
       broadcasts: 0,
       mentions: 0,
     };
-    for (const a of activities) {
+    for (const a of visibleActivities) {
       if (a.type === "task_created" || a.type === "task_updated") result.tasks++;
       if (a.type === "document_created" || a.type === "document_updated") result.docs++;
       if (a.type === "message_sent") result.comments++;
@@ -80,30 +91,30 @@ export function LiveFeed() {
       if (isMentionActivity(a)) result.mentions++;
     }
     return result;
-  }, [activities]);
+  }, [visibleActivities]);
 
   const countsByAgent = useMemo(() => {
     const pred = categories.find((c) => c.id === category)?.predicate ?? (() => true);
     const counts = new Map<string, number>();
-    for (const a of activities) {
+    for (const a of visibleActivities) {
       if (!pred(a)) continue;
       if (!a.agentId) continue;
       const key = String(a.agentId);
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
     return counts;
-  }, [activities, category]);
+  }, [visibleActivities, category]);
 
   const filtered = useMemo(() => {
     const pred = categories.find((c) => c.id === category)?.predicate ?? (() => true);
     const q = query.trim().toLowerCase();
-    return activities.filter((a) => {
+    return visibleActivities.filter((a) => {
       if (!pred(a)) return false;
       if (selectedAgentId !== "all" && a.agentId !== selectedAgentId) return false;
       if (q && !a.message.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [activities, category, selectedAgentId, query]);
+  }, [visibleActivities, category, selectedAgentId, query]);
 
   return (
     <div className="flex flex-col h-full">
