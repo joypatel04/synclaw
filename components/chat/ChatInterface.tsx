@@ -2,17 +2,25 @@
 
 import { useQuery } from "convex/react";
 import { ChevronDown, MessageSquare } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
   type OpenClawConnectionStatus,
+  type OpenClawModelInfo,
   OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -43,8 +51,16 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const connectRef = useRef<Promise<void> | null>(null);
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
   const [gatewayBlock, setGatewayBlock] = useState<OpenClawConnectionStatus | null>(null);
+  const [showGatewayPanel, setShowGatewayPanel] = useState(false);
+  const [availableModels, setAvailableModels] = useState<OpenClawModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [gatewayChannels, setGatewayChannels] = useState<string[]>([]);
+  const [gatewayAgentCount, setGatewayAgentCount] = useState<number | null>(null);
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
+  const modelsLoadRef = useRef<Promise<void> | null>(null);
 
   // Direct WS is now mandatory for chat.
   const useDirectWs = true;
@@ -70,6 +86,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
     [openclawConfig],
   );
+  const hasModels = availableModels.length > 0;
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const el = viewportRef.current;
@@ -116,8 +133,39 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     void gatewayRef.current?.disconnect();
     gatewayRef.current = null;
     connectRef.current = null;
+    modelsLoadRef.current = null;
+    setAvailableModels([]);
+    setModelsError(null);
+    setSelectedModelId("");
+    setGatewayChannels([]);
+    setGatewayAgentCount(null);
     setGatewayBlock(null);
   }, [gatewayConfigKey]);
+
+  const parseRecord = (value: unknown): Record<string, unknown> | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    return value as Record<string, unknown>;
+  };
+
+  const loadGatewayModels = useCallback(async () => {
+    if (!gatewayRef.current) return;
+    setModelsLoading(true);
+    setModelsError(null);
+    try {
+      const models = await gatewayRef.current.listModels();
+      setAvailableModels(models);
+      setSelectedModelId((prev) => {
+        if (!prev) return "";
+        return models.some((m) => m.id === prev) ? prev : "";
+      });
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Could not load models";
+      setModelsError(msg);
+    } finally {
+      setModelsLoading(false);
+    }
+  }, []);
 
   const makeClientMessageId = () =>
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -452,6 +500,29 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           subscribeMethod: openclawConfig.subscribeMethod,
         },
         async (event) => {
+          if (
+            (event as any)?.type === "event" &&
+            (event as any)?.event === "health"
+          ) {
+            const payload = parseRecord((event as any)?.payload);
+            if (payload) {
+              const channelOrder = Array.isArray(payload.channelOrder)
+                ? payload.channelOrder.filter((v): v is string => typeof v === "string")
+                : [];
+              const labelsRec = parseRecord(payload.channelLabels);
+              if (channelOrder.length > 0 && labelsRec) {
+                const labels = channelOrder.map((id) => {
+                  const label = labelsRec[id];
+                  return typeof label === "string" ? label : id;
+                });
+                setGatewayChannels(labels);
+              }
+              if (Array.isArray(payload.agents)) {
+                setGatewayAgentCount(payload.agents.length);
+              }
+            }
+          }
+
           // Render streaming deltas locally (no Convex writes).
           const mapped = mapGatewayEventForIngest(event, makeClientMessageId());
           if (!mapped?.message) return;
@@ -509,6 +580,11 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     const status = gatewayRef.current?.getConnectionStatus() ?? null;
     if (status?.state === "CONNECTED") {
       setGatewayBlock(null);
+      if (!modelsLoadRef.current && availableModels.length === 0) {
+        modelsLoadRef.current = loadGatewayModels().finally(() => {
+          modelsLoadRef.current = null;
+        });
+      }
     } else if (status) {
       setGatewayBlock(status);
     }
@@ -534,6 +610,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         sessionKey: agent.sessionKey,
         content,
         clientMessageId: id,
+        modelId: selectedModelId || undefined,
       });
       const expectedRunId = pickRunId(sendResult);
 
@@ -873,6 +950,31 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     }
   };
 
+  const gatewayFeatures = useMemo(() => {
+    const features = ["Live stream", "History hydration", "Abort run"];
+    if (includeCron) features.push("Cron mirroring");
+    if (historyPollMs >= 1000) {
+      features.push(`Recovery ${historyPollMs}ms`);
+    }
+    if (gatewayAgentCount && gatewayAgentCount > 0) {
+      features.push(`${gatewayAgentCount} agents`);
+    }
+    if (gatewayChannels.length > 0) {
+      features.push(`Channels: ${gatewayChannels.join(", ")}`);
+    }
+    if (hasModels) {
+      features.push(`Model switching (${availableModels.length})`);
+    }
+    return features;
+  }, [
+    includeCron,
+    historyPollMs,
+    gatewayAgentCount,
+    gatewayChannels,
+    hasModels,
+    availableModels.length,
+  ]);
+
   return (
     <div className="flex flex-col min-h-0 overflow-hidden h-[calc(100dvh-3.5rem)]">
       <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6 sm:py-3">
@@ -886,6 +988,16 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           <p className="text-xs text-text-muted hidden sm:block">{agent.role}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
+          {canChatBase && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setShowGatewayPanel((v) => !v)}
+            >
+              OpenClaw
+            </Button>
+          )}
           {activeRun?.externalRunId && canChat && (
             <Button
               variant="outline"
@@ -904,6 +1016,55 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           </span>
         </div>
       </div>
+      {showGatewayPanel && canChatBase && (
+        <div className="border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-text-muted">Model</span>
+              {modelsLoading ? (
+                <span className="text-xs text-text-muted">Loading models...</span>
+              ) : (
+                <Select
+                  value={selectedModelId || "__default__"}
+                  onValueChange={(value) =>
+                    setSelectedModelId(value === "__default__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger size="sm" className="h-7 min-w-[180px] text-xs">
+                    <SelectValue placeholder="Gateway default model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">Gateway default model</SelectItem>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name ? `${model.name} (${model.id})` : model.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {modelsError && (
+                <span className="text-xs text-status-blocked">
+                  Model list unavailable
+                </span>
+              )}
+              {!modelsLoading && !modelsError && availableModels.length === 0 && (
+                <span className="text-xs text-text-muted">No model list from gateway</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {gatewayFeatures.map((feature) => (
+                <span
+                  key={feature}
+                  className="rounded-full border border-border-default bg-bg-tertiary px-2 py-0.5 text-[11px] text-text-secondary"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="relative flex-1 min-h-0">
         <ScrollArea className="h-full bg-bg-secondary" viewportRef={viewportRef}>
           <div className="space-y-3 p-3 sm:space-y-4 sm:p-6">

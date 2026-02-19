@@ -24,6 +24,16 @@ function parseScopesCsv(input: string): string[] {
     .filter(Boolean);
 }
 
+function isPairingRequiredMessage(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("not_paired") ||
+    lower.includes("pairing required") ||
+    lower.includes("device identity mismatch") ||
+    lower.includes("device signature invalid")
+  );
+}
+
 function StepHeader({
   step,
   title,
@@ -122,6 +132,8 @@ export function OnboardingWizard() {
 
   const step1Done = Boolean(status?.openclawConfigured);
   const step2Done = Boolean(status?.mainAgentId);
+  const pairingHintVisible =
+    testResult.status === "error" && isPairingRequiredMessage(testResult.message);
 
   const onTestAndSave = async () => {
     setTesting(true);
@@ -347,6 +359,27 @@ export function OnboardingWizard() {
                 </div>
               ) : null}
             </div>
+
+            {pairingHintVisible ? (
+              <div className="rounded-xl border border-accent-orange/30 bg-accent-orange/5 p-3">
+                <p className="text-xs font-semibold text-accent-orange">
+                  Pairing approval needed
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  This browser device is not paired yet. Approve it in OpenClaw, then rotate scopes.
+                </p>
+                <div className="mt-2 space-y-1.5 font-mono text-[11px] text-text-secondary">
+                  <p>openclaw devices list</p>
+                  <p>openclaw devices approve &lt;requestId&gt;</p>
+                  <p>
+                    openclaw devices rotate --device &lt;deviceId&gt; --scope operator.read --scope operator.write --scope operator.admin
+                  </p>
+                </div>
+                <p className="mt-2 text-[11px] text-text-dim">
+                  After approval and scope rotation, click <span className="font-semibold">Test &amp; Save</span> again.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 

@@ -567,6 +567,15 @@ export type HistoryIngestMessage = {
   eventAt?: number;
 };
 
+export type OpenClawModelInfo = {
+  id: string;
+  name?: string;
+  provider?: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  input?: string[];
+};
+
 export function extractDisplayMessagesFromHistory(
   history: unknown,
 ): HistoryIngestMessage[] {
@@ -1893,12 +1902,53 @@ export class OpenClawBrowserGatewayClient {
     sessionKey: string;
     content: string;
     clientMessageId: string;
+    modelId?: string;
   }) {
-    return await this.request("chat.send", {
+    const base = {
       sessionKey: params.sessionKey,
       message: params.content,
       idempotencyKey: params.clientMessageId,
+    };
+    if (!params.modelId) {
+      return await this.request("chat.send", base);
+    }
+
+    // Best effort model override. Some gateways accept one of these shapes,
+    // others reject unknown fields; we retry without override in that case.
+    const candidates: Array<Record<string, unknown>> = [
+      { ...base, model: params.modelId },
+      { ...base, options: { model: params.modelId } },
+      { ...base, modelId: params.modelId },
+    ];
+
+    let lastError: unknown = null;
+    for (const candidate of candidates) {
+      try {
+        return await this.request("chat.send", candidate);
+      } catch (error) {
+        lastError = error;
+        const msg = error instanceof Error ? error.message : String(error);
+        const lower = msg.toLowerCase();
+        if (
+          !(
+            lower.includes("unknown") ||
+            lower.includes("invalid") ||
+            lower.includes("model") ||
+            lower.includes("params")
+          )
+        ) {
+          throw error;
+        }
+      }
+    }
+
+    // Final fallback: send without model override to keep chat working.
+    this.log("chat.send.model_override_fallback", {
+      modelId: params.modelId,
+      error:
+        lastError instanceof Error ? lastError.message : String(lastError),
     });
+    return await this.request("chat.send", base);
   }
 
   async abortChat(params: {
@@ -1936,5 +1986,48 @@ export class OpenClawBrowserGatewayClient {
       });
       throw error;
     }
+  }
+
+  async listModels(): Promise<OpenClawModelInfo[]> {
+    const candidates = ["models.list", "model.list", "models", "gateway.models"];
+    for (const method of candidates) {
+      try {
+        const raw = await this.request(method, {});
+        const rows = this.parseModelsResponse(raw);
+        if (rows.length > 0) return rows;
+      } catch {
+        // try next method
+      }
+    }
+    return [];
+  }
+
+  private parseModelsResponse(raw: unknown): OpenClawModelInfo[] {
+    const root = asRecord(raw);
+    const payload = root ? asRecord(root.payload) : null;
+    const direct = root && Array.isArray(root.models) ? root.models : null;
+    const nested = payload && Array.isArray(payload.models) ? payload.models : null;
+    const list = (direct ?? nested ?? []) as unknown[];
+    if (!Array.isArray(list)) return [];
+
+    const out: OpenClawModelInfo[] = [];
+    for (const row of list) {
+      const obj = asRecord(row);
+      if (!obj) continue;
+      const id = typeof obj.id === "string" ? obj.id : "";
+      if (!id) continue;
+      out.push({
+        id,
+        name: typeof obj.name === "string" ? obj.name : undefined,
+        provider: typeof obj.provider === "string" ? obj.provider : undefined,
+        contextWindow:
+          typeof obj.contextWindow === "number" ? obj.contextWindow : undefined,
+        reasoning: typeof obj.reasoning === "boolean" ? obj.reasoning : undefined,
+        input: Array.isArray(obj.input)
+          ? obj.input.filter((v): v is string => typeof v === "string")
+          : undefined,
+      });
+    }
+    return out;
   }
 }
