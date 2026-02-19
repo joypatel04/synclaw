@@ -22,6 +22,34 @@ type GatewayClientConfig = {
   subscribeMethod: string;
 };
 
+function isGatewayDebugEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const flag = window.localStorage.getItem("sutraha:gatewayDebug");
+    if (flag === "1" || flag === "true") return true;
+  } catch {}
+  return false;
+}
+
+function redactForLog(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((v) => redactForLog(v));
+  if (!value || typeof value !== "object") return value;
+  const input = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input)) {
+    if (
+      k.toLowerCase().includes("token") ||
+      k.toLowerCase().includes("password") ||
+      k.toLowerCase().includes("secret")
+    ) {
+      out[k] = v ? "[REDACTED]" : v;
+    } else {
+      out[k] = redactForLog(v);
+    }
+  }
+  return out;
+}
+
 function normalizeScopes(scopes: string[], role: string): string[] {
   const out = new Set(scopes.map((s) => s.trim()).filter(Boolean));
   if (out.size === 0) {
@@ -552,6 +580,8 @@ export class OpenClawBrowserGatewayClient {
   private ws: WebSocket | null = null;
   private nextId = 1;
   private pending = new Map<string, PendingRequest>();
+  private lastCloseReason: string | null = null;
+  private debug = isGatewayDebugEnabled();
 
   constructor(
     private config: GatewayClientConfig,
@@ -570,6 +600,15 @@ export class OpenClawBrowserGatewayClient {
       JSON.stringify(errObj);
 
     return code ? `${code}: ${message}` : message;
+  }
+
+  private log(event: string, details?: unknown) {
+    if (!this.debug) return;
+    if (details !== undefined) {
+      console.info("[OpenClawGateway]", event, redactForLog(details));
+      return;
+    }
+    console.info("[OpenClawGateway]", event);
   }
 
   private buildConnectAttempts(): Array<{
@@ -652,102 +691,168 @@ export class OpenClawBrowserGatewayClient {
     ];
   }
 
-  async connect(): Promise<void> {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-
-    await new Promise<void>((resolve, reject) => {
+  private async openSocket(): Promise<WebSocket> {
+    this.log("ws.open.start", { wsUrl: this.config.wsUrl });
+    return await new Promise<WebSocket>((resolve, reject) => {
       const ws = new WebSocket(this.config.wsUrl);
-      this.ws = ws;
+      let settled = false;
+      let timedOut = false;
+
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        if (settled) return;
+        settled = true;
+        try {
+          ws.close();
+        } catch {}
+        reject(new Error("Gateway WebSocket open timeout"));
+      }, 10_000);
 
       ws.addEventListener("open", () => {
-        void (async () => {
-          try {
-            const attempts = this.buildConnectAttempts();
-            let lastError: unknown = null;
-            let connected = false;
-
-            for (const attempt of attempts) {
-              try {
-                await this.request(attempt.method, attempt.params);
-                connected = true;
-                break;
-              } catch (error) {
-                lastError = error;
-              }
-            }
-
-            if (!connected) {
-              const message =
-                lastError instanceof Error ? lastError.message : String(lastError);
-              throw new Error(`Gateway connect failed: ${message}`);
-            }
-
-            if (this.config.subscribeOnConnect) {
-              try {
-                await this.request(this.config.subscribeMethod, {});
-              } catch (error) {
-                const message =
-                  error instanceof Error ? error.message : String(error);
-                if (!message.includes("unknown method")) throw error;
-              }
-            }
-
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        })();
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        this.lastCloseReason = null;
+        this.log("ws.open.ok");
+        resolve(ws);
       });
 
-      ws.addEventListener("message", (event) => {
-        void (async () => {
-          try {
-            const parsed = JSON.parse(String(event.data)) as GatewayMessage;
-            const responseId =
-              typeof parsed.id === "string"
-                ? parsed.id
-                : typeof parsed.id === "number"
-                  ? String(parsed.id)
-                  : null;
-
-            if (
-              responseId &&
-              (parsed.result !== undefined ||
-                parsed.error !== undefined ||
-                parsed.ok !== undefined)
-            ) {
-              const pending = this.pending.get(responseId);
-              if (!pending) return;
-              clearTimeout(pending.timeout);
-              this.pending.delete(responseId);
-
-              if (parsed.error || parsed.ok === false) {
-                pending.reject(
-                  new Error(this.formatGatewayError(parsed.error)),
-                );
-              } else {
-                pending.resolve(parsed.result ?? parsed);
-              }
-              return;
-            }
-
-            await this.onEvent(parsed);
-          } catch (error) {
-            console.warn("Gateway event parse/handler error:", error);
-          }
-        })();
+      ws.addEventListener("error", () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        this.log("ws.open.error");
+        reject(new Error("Gateway WebSocket error during handshake"));
       });
 
-      ws.addEventListener("error", () => reject(new Error("WS connection error")));
-      ws.addEventListener("close", () => {
-        this.ws = null;
-        for (const [id, pending] of this.pending.entries()) {
-          clearTimeout(pending.timeout);
-          pending.reject(new Error(`Gateway socket closed (request ${id})`));
-        }
-        this.pending.clear();
+      ws.addEventListener("close", (event) => {
+        const detail = `code=${event.code}${event.reason ? ` reason=${event.reason}` : ""}`;
+        this.lastCloseReason = detail;
+        this.log("ws.open.closed_before_ready", { detail });
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (timedOut) return;
+        reject(new Error(`Gateway WebSocket closed before open (${detail})`));
       });
     });
+  }
+
+  private attachSocketListeners(ws: WebSocket) {
+    ws.addEventListener("message", (event) => {
+      void (async () => {
+        try {
+          const parsed = JSON.parse(String(event.data)) as GatewayMessage;
+          this.log("ws.message", parsed);
+          const responseId =
+            typeof parsed.id === "string"
+              ? parsed.id
+              : typeof parsed.id === "number"
+                ? String(parsed.id)
+                : null;
+
+          if (
+            responseId &&
+            (parsed.result !== undefined ||
+              parsed.error !== undefined ||
+              parsed.ok !== undefined)
+          ) {
+            const pending = this.pending.get(responseId);
+            if (!pending) return;
+            clearTimeout(pending.timeout);
+            this.pending.delete(responseId);
+
+            if (parsed.error || parsed.ok === false) {
+              pending.reject(
+                new Error(this.formatGatewayError(parsed.error)),
+              );
+            } else {
+              pending.resolve(parsed.result ?? parsed);
+            }
+            return;
+          }
+
+          await this.onEvent(parsed);
+        } catch (error) {
+          this.log("ws.message.parse_error", {
+            error: error instanceof Error ? error.message : String(error),
+            raw: String(event.data),
+          });
+          console.warn("Gateway event parse/handler error:", error);
+        }
+      })();
+    });
+
+    ws.addEventListener("close", (event) => {
+      this.ws = null;
+      const detail = `code=${event.code}${event.reason ? ` reason=${event.reason}` : ""}`;
+      this.lastCloseReason = detail;
+      this.log("ws.closed", { detail });
+      for (const [id, pending] of this.pending.entries()) {
+        clearTimeout(pending.timeout);
+        pending.reject(
+          new Error(`Gateway socket closed (request ${id}, ${detail})`),
+        );
+      }
+      this.pending.clear();
+    });
+  }
+
+  async connect(): Promise<void> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    const attempts = this.buildConnectAttempts();
+    let lastError: unknown = null;
+    this.log("connect.start", {
+      wsUrl: this.config.wsUrl,
+      protocol: this.config.protocol,
+      attempts: attempts.map((a) => ({ method: a.method, params: a.params })),
+    });
+
+    for (let i = 0; i < attempts.length; i++) {
+      const attempt = attempts[i];
+      try {
+        this.log("connect.attempt.start", { index: i + 1, method: attempt.method });
+        const ws = await this.openSocket();
+        this.ws = ws;
+        this.attachSocketListeners(ws);
+
+        await this.request(attempt.method, attempt.params);
+        this.log("connect.attempt.ok", { index: i + 1, method: attempt.method });
+
+        if (this.config.subscribeOnConnect) {
+          try {
+            await this.request(this.config.subscribeMethod, {});
+            this.log("connect.subscribe.ok", {
+              method: this.config.subscribeMethod,
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            if (!message.includes("unknown method")) throw error;
+            this.log("connect.subscribe.unknown_method_ignored", {
+              method: this.config.subscribeMethod,
+              message,
+            });
+          }
+        }
+        this.log("connect.done");
+        return;
+      } catch (error) {
+        lastError = error;
+        this.log("connect.attempt.error", {
+          index: i + 1,
+          method: attempt.method,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        await this.disconnect().catch(() => {});
+      }
+    }
+
+    const message =
+      lastError instanceof Error ? lastError.message : String(lastError);
+    const suffix = this.lastCloseReason ? ` [last-close: ${this.lastCloseReason}]` : "";
+    this.log("connect.failed", { message, lastCloseReason: this.lastCloseReason });
+    throw new Error(`Gateway connect failed: ${message}${suffix}`);
   }
 
   async disconnect(): Promise<void> {
@@ -760,7 +865,8 @@ export class OpenClawBrowserGatewayClient {
 
   async request(method: string, params: Record<string, unknown>) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("Gateway socket not connected");
+      const detail = this.lastCloseReason ? ` (${this.lastCloseReason})` : "";
+      throw new Error(`Gateway socket not connected${detail}`);
     }
 
     const id = String(this.nextId++);
@@ -768,6 +874,7 @@ export class OpenClawBrowserGatewayClient {
       this.config.protocol === "jsonrpc"
         ? { jsonrpc: "2.0", id, method, params }
         : { type: "req", id, method, params };
+    this.log("request.send", { id, method, payload });
 
     return await new Promise<unknown>((resolve, reject) => {
       const timeout = setTimeout(() => {
