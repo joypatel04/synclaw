@@ -12,6 +12,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
+  type OpenClawConnectionStatus,
   OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -41,6 +42,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
+  const [gatewayBlock, setGatewayBlock] = useState<OpenClawConnectionStatus | null>(null);
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
 
@@ -54,7 +56,16 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const includeCron = openclawConfig?.includeCron ?? false;
   const historyPollMs = openclawConfig?.historyPollMs ?? 0;
 
-  const canChat = Boolean(canEdit && openclawConfig && openclawConfig.wsUrl);
+  const canChatBase = Boolean(canEdit && openclawConfig && openclawConfig.wsUrl);
+  const gatewayBlocked = Boolean(
+    gatewayBlock &&
+      gatewayBlock.state !== "CONNECTED" &&
+      (gatewayBlock.state === "PAIRING_REQUIRED" ||
+        gatewayBlock.state === "PAIRING_PENDING" ||
+        gatewayBlock.state === "SCOPES_INSUFFICIENT" ||
+        gatewayBlock.state === "INVALID_CONFIG"),
+  );
+  const canChat = canChatBase && !gatewayBlocked;
   const gatewayConfigKey = useMemo(
     () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
     [openclawConfig],
@@ -105,6 +116,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     void gatewayRef.current?.disconnect();
     gatewayRef.current = null;
     connectRef.current = null;
+    setGatewayBlock(null);
   }, [gatewayConfigKey]);
 
   const makeClientMessageId = () =>
@@ -487,11 +499,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
     if (!connectRef.current) {
       connectRef.current = gatewayRef.current.connect().catch((error) => {
+        const status = gatewayRef.current?.getConnectionStatus() ?? null;
+        if (status) setGatewayBlock(status);
         gatewayRef.current = null;
         throw error;
       });
     }
     await connectRef.current;
+    const status = gatewayRef.current?.getConnectionStatus() ?? null;
+    if (status?.state === "CONNECTED") {
+      setGatewayBlock(null);
+    } else if (status) {
+      setGatewayBlock(status);
+    }
   };
 
   const sendDirect = async (content: string, clientMessageId?: string) => {
@@ -905,6 +925,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
               >
                 <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
                   <Link href="/settings/openclaw">Open Settings</Link>
+                </Button>
+              </EmptyState>
+            ) : gatewayBlocked ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="OpenClaw setup required"
+                description={
+                  gatewayBlock?.message ??
+                  "Connection is blocked. Complete pairing and scope setup in OpenClaw settings."
+                }
+              >
+                <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+                  <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
                 </Button>
               </EmptyState>
             ) : localMessages.length === 0 ? (

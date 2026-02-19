@@ -10,21 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import {
   OpenClawBrowserGatewayClient,
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
   clearOpenClawLocalAuthState,
   isOpenClawDeviceAuthEnabled,
+  type OpenClawConnectionStatus,
   openClawDeviceTokenStorageKey,
-  setOpenClawDeviceAuthEnabled,
 } from "@/lib/openclaw-gateway-client";
 import { Settings, ShieldAlert, Activity, Check, Copy } from "lucide-react";
 import {
@@ -37,8 +30,9 @@ import {
 import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
+import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
 
-type Protocol = "req" | "jsonrpc";
+type Protocol = "req";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -119,6 +113,8 @@ function OpenClawSettingsContent() {
     | { status: "ok"; message: string }
     | { status: "error"; message: string }
   >({ status: "idle" });
+  const [testStatus, setTestStatus] = useState<OpenClawConnectionStatus | null>(null);
+  const [diagnosticsText, setDiagnosticsText] = useState("");
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [localAuthRev, setLocalAuthRev] = useState(0);
@@ -177,6 +173,8 @@ function OpenClawSettingsContent() {
       return { hasDeviceIdentity: false, hasDeviceToken: false };
     }
   }, [wsUrl, role, localAuthRev]);
+
+  const localIdentity = useMemo(() => readStoredDeviceIdentityV2(), [localAuthRev]);
 
   const deviceAuthEnabled = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -307,6 +305,9 @@ function OpenClawSettingsContent() {
   const onTest = async () => {
     setTesting(true);
     setTestResult({ status: "idle" });
+    setTestStatus(null);
+    setDiagnosticsText("");
+    let client: OpenClawBrowserGatewayClient | null = null;
     try {
       const cfg = await convex.query(api.openclaw.getClientConfig, { workspaceId });
       if (!cfg) {
@@ -321,7 +322,7 @@ function OpenClawSettingsContent() {
         return;
       }
 
-      const client = new OpenClawBrowserGatewayClient(
+      client = new OpenClawBrowserGatewayClient(
         {
           wsUrl: cfg.wsUrl,
           protocol: cfg.protocol,
@@ -340,26 +341,20 @@ function OpenClawSettingsContent() {
 
       try {
         await client.connect();
-        const candidates = ["health.get", "health", "gateway.health"];
-        for (const method of candidates) {
-          try {
-            await client.request(method, {});
-            setTestResult({ status: "ok", message: `Connected. Health OK (${method}).` });
-            return;
-          } catch {
-            // try next method
-          }
-        }
-        setTestResult({
-          status: "ok",
-          message:
-            "Connected. (Health method not detected, but connect succeeded.)",
-        });
+        const status = client.getConnectionStatus();
+        setTestStatus(status);
+        setDiagnosticsText(JSON.stringify(client.getDiagnostics(), null, 2));
+        setTestResult({ status: "ok", message: status?.message ?? "Connected." });
       } finally {
         await client.disconnect().catch(() => {});
       }
     } catch (e) {
-      setTestResult({ status: "error", message: e instanceof Error ? e.message : String(e) });
+      const message = e instanceof Error ? e.message : String(e);
+      setTestResult({ status: "error", message });
+      if (client) {
+        setTestStatus(client.getConnectionStatus());
+        setDiagnosticsText(JSON.stringify(client.getDiagnostics(), null, 2));
+      }
     } finally {
       setTesting(false);
     }
@@ -435,15 +430,11 @@ function OpenClawSettingsContent() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-text-secondary">Protocol</Label>
-                <Select value={protocol} onValueChange={(v) => setProtocol(v as Protocol)}>
-                  <SelectTrigger className="bg-bg-primary border-border-default text-text-primary">
-                    <SelectValue placeholder="Select protocol" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-bg-tertiary border-border-default">
-                    <SelectItem value="req">req</SelectItem>
-                    <SelectItem value="jsonrpc">jsonrpc</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  value="req"
+                  readOnly
+                  className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
+                />
               </div>
 
               <div className="space-y-2">
@@ -666,7 +657,7 @@ function OpenClawSettingsContent() {
             className="gap-2"
           >
             <Activity className="h-4 w-4" />
-            {testing ? "Testing..." : "Test connection"}
+            {testing ? "Testing..." : "Initiate pairing handshake / Test"}
           </Button>
         </div>
 
@@ -685,13 +676,16 @@ function OpenClawSettingsContent() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary">
-            First-time OpenClaw checklist
+            Pairing-first checklist
           </h2>
           <p className="mt-1 text-xs text-text-muted">
-            Each user brings their own OpenClaw. Complete these on your OpenClaw side before chat works.
+            Use this exact order for strict device-auth setup.
           </p>
 
           <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
+            <li>
+              Save gateway URL + token, then click <span className="font-medium">Initiate pairing handshake</span> (Test connection).
+            </li>
             <li>
               Add this Sutraha origin to OpenClaw allowed origins:
               <div className="mt-1 flex items-center gap-2">
@@ -715,15 +709,14 @@ function OpenClawSettingsContent() {
               </div>
             </li>
             <li>
-              Approve/pair this device in OpenClaw device list (if your gateway enforces device auth).
+              Approve this device in OpenClaw:
               <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
 {`openclaw devices list
 openclaw devices approve <requestId>`}
               </pre>
             </li>
             <li>
-              Ensure your OpenClaw policy grants required scopes (including{" "}
-              <span className="font-mono">operator.admin</span>) for subscribe/history/chat methods.
+              Rotate required scopes for this exact device id:
               <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
 {`openclaw devices rotate \\
   --device <deviceId> \\
@@ -733,16 +726,50 @@ openclaw devices approve <requestId>`}
   --scope operator.admin`}
               </pre>
             </li>
+            <li>
+              Verify read + admin access by clicking <span className="font-medium">Test connection</span> again.
+            </li>
           </ol>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Local device id (v2)</p>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="truncate rounded bg-bg-primary px-2 py-1 font-mono text-[11px] text-text-primary">
+                  {localIdentity?.deviceId ?? "Not generated yet"}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={!localIdentity?.deviceId}
+                  title={copiedId === "device-id" ? "Copied" : "Copy device id"}
+                  onClick={() =>
+                    localIdentity?.deviceId && void copy("device-id", localIdentity.deviceId)
+                  }
+                >
+                  {copiedId === "device-id" ? (
+                    <Check className="h-4 w-4 text-status-active" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Connection status</p>
+              <p className="mt-1 text-xs text-text-primary">
+                {testStatus?.state ?? "Not verified"}
+                {testStatus?.missingScope ? ` (${testStatus.missingScope})` : ""}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">
-            Local device auth cache
-          </h2>
+          <h2 className="text-sm font-semibold text-text-primary">Local auth state</h2>
           <p className="mt-1 text-xs text-text-muted">
-            OpenClaw device identity and device token are stored in this browser for this gateway.
-            You usually do not need to edit anything.
+            Diagnostics for this browser session.
           </p>
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -790,19 +817,6 @@ openclaw devices approve <requestId>`}
               size="sm"
               className="h-8"
               onClick={() => {
-                setOpenClawDeviceAuthEnabled(!deviceAuthEnabled);
-                setLocalAuthRev((v) => v + 1);
-              }}
-            >
-              {deviceAuthEnabled
-                ? "Disable device-auth pairing"
-                : "Enable device-auth pairing"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => {
                 clearOpenClawLocalAuthState(
                   wsUrl.trim() || undefined,
                   role.trim() || "operator",
@@ -810,7 +824,7 @@ openclaw devices approve <requestId>`}
                 setLocalAuthRev((v) => v + 1);
               }}
             >
-              Clear current gateway cache
+              Clear current gateway token cache
             </Button>
             <Button
               variant="outline"
@@ -821,8 +835,25 @@ openclaw devices approve <requestId>`}
                 setLocalAuthRev((v) => v + 1);
               }}
             >
-              Clear all OpenClaw device cache
+              Reset local OpenClaw identity (v2)
             </Button>
+          </div>
+
+          <div className="mt-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-text-primary">Diagnostics</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!diagnosticsText}
+                onClick={() => void copy("diagnostics", diagnosticsText)}
+              >
+                {copiedId === "diagnostics" ? "Copied" : "Copy diagnostics"}
+              </Button>
+            </div>
+            <pre className="mt-2 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+              {diagnosticsText || "Run Test connection to generate diagnostics."}
+            </pre>
           </div>
         </div>
 

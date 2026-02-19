@@ -1,3 +1,10 @@
+import {
+  buildDeviceProofV3,
+  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V1,
+  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2,
+  readStoredDeviceIdentityV2,
+} from "@/lib/openclaw/device-auth-v3";
+
 export type GatewayProtocol = "req" | "jsonrpc";
 type GatewayWireProtocol = GatewayProtocol | "raw";
 
@@ -22,6 +29,45 @@ type GatewayClientConfig = {
   subscribeOnConnect: boolean;
   subscribeMethod: string;
 };
+
+export type OpenClawConnectionState =
+  | "PAIRING_REQUIRED"
+  | "PAIRING_PENDING"
+  | "SCOPES_INSUFFICIENT"
+  | "CONNECTED"
+  | "INVALID_CONFIG";
+
+export type OpenClawReasonCode =
+  | "DEVICE_IDENTITY_MISMATCH"
+  | "DEVICE_SIGNATURE_INVALID"
+  | "MISSING_SCOPE"
+  | "PAIRING_APPROVAL_REQUIRED"
+  | "INVALID_CONNECT_PARAMS"
+  | "UNAUTHORIZED"
+  | "INVALID_HANDSHAKE"
+  | "UNKNOWN";
+
+export type OpenClawConnectionStatus = {
+  state: OpenClawConnectionState;
+  phase:
+    | "ws_open"
+    | "challenge"
+    | "sign"
+    | "connect"
+    | "verify_read"
+    | "verify_admin";
+  result: "ok" | "fail";
+  reasonCode?: OpenClawReasonCode;
+  message: string;
+  missingScope?: string;
+  deviceId?: string;
+  lastCloseReason?: string | null;
+};
+
+export function isOpenClawLegacyClientEnabled(): boolean {
+  if (typeof process === "undefined") return false;
+  return process.env.NEXT_PUBLIC_OPENCLAW_LEGACY_CLIENT === "1";
+}
 
 function buildClientModeAttempts(clientMode: string, role: string): string[] {
   const out: string[] = [];
@@ -92,7 +138,9 @@ type ConnectChallenge = {
 };
 
 export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY =
-  "sutraha:openclaw:deviceIdentity:v1";
+  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2;
+export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_LEGACY =
+  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V1;
 export const OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX =
   "sutraha:openclaw:deviceToken:";
 export const OPENCLAW_DEVICE_AUTH_ENABLED_KEY =
@@ -106,6 +154,7 @@ export function clearOpenClawLocalAuthState(wsUrl?: string, role?: string) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY);
+    window.localStorage.removeItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_LEGACY);
     if (wsUrl && role) {
       window.localStorage.removeItem(openClawDeviceTokenStorageKey(wsUrl, role));
     } else {
@@ -215,6 +264,108 @@ function normalizeScopes(scopes: string[], role: string): string[] {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
+}
+
+function parseMissingScope(message: string): string | undefined {
+  const match = message.match(/missing scope:\s*([a-z0-9._-]+)/i);
+  return match?.[1];
+}
+
+function classifyConnectionFailure(
+  phase: OpenClawConnectionStatus["phase"],
+  message: string,
+  lastCloseReason: string | null,
+  deviceId?: string,
+): OpenClawConnectionStatus {
+  const lower = message.toLowerCase();
+  const missingScope = parseMissingScope(message);
+  if (missingScope) {
+    return {
+      state: "SCOPES_INSUFFICIENT",
+      phase,
+      result: "fail",
+      reasonCode: "MISSING_SCOPE",
+      message,
+      missingScope,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  if (lower.includes("device identity mismatch")) {
+    return {
+      state: "PAIRING_REQUIRED",
+      phase,
+      result: "fail",
+      reasonCode: "DEVICE_IDENTITY_MISMATCH",
+      message,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  if (lower.includes("device signature invalid")) {
+    return {
+      state: "PAIRING_REQUIRED",
+      phase,
+      result: "fail",
+      reasonCode: "DEVICE_SIGNATURE_INVALID",
+      message,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  if (lower.includes("pair") && (lower.includes("pending") || lower.includes("approve"))) {
+    return {
+      state: "PAIRING_PENDING",
+      phase,
+      result: "fail",
+      reasonCode: "PAIRING_APPROVAL_REQUIRED",
+      message,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  if (lower.includes("invalid connect params")) {
+    return {
+      state: "INVALID_CONFIG",
+      phase,
+      result: "fail",
+      reasonCode: "INVALID_CONNECT_PARAMS",
+      message,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  if (lower.includes("unauthorized") || lower.includes("token mismatch")) {
+    return {
+      state: "INVALID_CONFIG",
+      phase,
+      result: "fail",
+      reasonCode: "UNAUTHORIZED",
+      message,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  if (lower.includes("invalid handshake")) {
+    return {
+      state: "INVALID_CONFIG",
+      phase,
+      result: "fail",
+      reasonCode: "INVALID_HANDSHAKE",
+      message,
+      deviceId,
+      lastCloseReason,
+    };
+  }
+  return {
+    state: "INVALID_CONFIG",
+    phase,
+    result: "fail",
+    reasonCode: "UNKNOWN",
+    message,
+    deviceId,
+    lastCloseReason,
+  };
 }
 
 export function pickText(value: unknown): string | null {
@@ -734,6 +885,8 @@ export class OpenClawBrowserGatewayClient {
   private debug = isGatewayDebugEnabled();
   private latestChallenge: ConnectChallenge | null = null;
   private challengeWaiters: Array<(value: ConnectChallenge | null) => void> = [];
+  private lastStatus: OpenClawConnectionStatus | null = null;
+  private lastDeviceId: string | undefined;
 
   constructor(
     private config: GatewayClientConfig,
@@ -761,6 +914,25 @@ export class OpenClawBrowserGatewayClient {
       return;
     }
     console.info("[OpenClawGateway]", event);
+  }
+
+  getConnectionStatus(): OpenClawConnectionStatus | null {
+    return this.lastStatus;
+  }
+
+  getDiagnostics() {
+    const localIdentity = readStoredDeviceIdentityV2();
+    return {
+      status: this.lastStatus,
+      lastCloseReason: this.lastCloseReason,
+      wsUrl: this.config.wsUrl,
+      role: this.config.role,
+      clientMode: this.config.clientMode,
+      clientId: this.config.clientId,
+      deviceId: this.lastDeviceId,
+      localIdentity: localIdentity ? { deviceId: localIdentity.deviceId } : null,
+      legacyMode: isOpenClawLegacyClientEnabled(),
+    };
   }
 
   private tokenStorageKey(): string {
@@ -1291,6 +1463,129 @@ export class OpenClawBrowserGatewayClient {
   }
 
   async connect(): Promise<void> {
+    if (isOpenClawLegacyClientEnabled()) {
+      return this.connectLegacy();
+    }
+    return this.connectStrict();
+  }
+
+  private async connectStrict(): Promise<void> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    this.lastStatus = null;
+    this.lastDeviceId = undefined;
+    this.log("connect.start", {
+      wsUrl: this.config.wsUrl,
+      protocol: "req",
+      legacyMode: false,
+    });
+    let phase: OpenClawConnectionStatus["phase"] = "ws_open";
+    try {
+      this.log("phase", { phase: "ws_open", result: "ok" });
+      const ws = await this.openSocket();
+      this.ws = ws;
+      this.attachSocketListeners(ws);
+
+      phase = "challenge";
+      const challenge = await this.waitForChallenge(3_000);
+      if (!challenge?.nonce) {
+        throw new Error("invalid handshake: missing connect.challenge");
+      }
+      this.log("phase", {
+        phase: "challenge",
+        result: "ok",
+        nonce: challenge.nonce,
+      });
+
+      phase = "sign";
+      this.log("phase", { phase: "sign", result: "ok" });
+      const proof = await buildDeviceProofV3(challenge.nonce);
+      if (!proof) {
+        throw new Error("device auth unavailable: secure context + WebCrypto required");
+      }
+      this.lastDeviceId = proof.device.id;
+      this.log("connect.device.attached", {
+        deviceId: proof.device.id,
+      });
+
+      const scopes = normalizeScopes(this.config.scopes, this.config.role);
+      const connectParams = {
+        minProtocol: 3,
+        maxProtocol: 3,
+        client: {
+          id: this.config.clientId,
+          version: "0.1.0",
+          mode: this.config.clientMode || "webchat",
+          platform: this.config.clientPlatform,
+        },
+        role: this.config.role,
+        locale: "en-US",
+        scopes,
+        auth: {
+          token: this.config.authToken,
+          password: this.config.password,
+        },
+        device: proof.device,
+      };
+
+      phase = "connect";
+      const connectResult = await this.requestWithWireProtocol(
+        "connect",
+        connectParams,
+        "req",
+      );
+      const resultObj = asRecord(connectResult);
+      const resultPayload = resultObj ? asRecord(resultObj.payload) : null;
+      const authObj = resultPayload ? asRecord(resultPayload.auth) : null;
+      const deviceToken =
+        authObj && typeof authObj.deviceToken === "string"
+          ? authObj.deviceToken
+          : null;
+      if (deviceToken) this.saveStoredDeviceToken(deviceToken);
+      this.log("phase", { phase: "connect", result: "ok" });
+
+      // Verify read-capable access.
+      phase = "verify_read";
+      await this.request("health.get", {});
+      this.log("phase", { phase: "verify_read", result: "ok" });
+
+      // Verify admin-capable access via subscription method.
+      phase = "verify_admin";
+      const adminMethod = this.config.subscribeMethod || "chat.subscribe";
+      await this.request(adminMethod, {});
+      this.log("phase", { phase: "verify_admin", result: "ok" });
+
+      this.lastStatus = {
+        state: "CONNECTED",
+        phase: "verify_admin",
+        result: "ok",
+        message: "Connected and verified read/admin scopes.",
+        deviceId: this.lastDeviceId,
+        lastCloseReason: this.lastCloseReason,
+      };
+      this.log("connect.done", this.lastStatus);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      const status = classifyConnectionFailure(
+        phase,
+        message,
+        this.lastCloseReason,
+        this.lastDeviceId,
+      );
+      this.lastStatus = status;
+      this.log("phase", {
+        phase: status.phase,
+        result: "fail",
+        reasonCode: status.reasonCode,
+        message: status.message,
+      });
+      await this.disconnect().catch(() => {});
+      const suffix = this.lastCloseReason ? ` [last-close: ${this.lastCloseReason}]` : "";
+      throw new Error(`Gateway connect failed: ${message}${suffix}`);
+    }
+  }
+
+  private async connectLegacy(): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
     const attempts = this.buildConnectAttempts();
     let lastError: unknown = null;

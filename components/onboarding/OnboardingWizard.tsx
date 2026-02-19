@@ -15,7 +15,7 @@ import { Check, Settings2, Zap } from "lucide-react";
 import { setChatDraft } from "@/lib/chatDraft";
 import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 
-type Protocol = "req" | "jsonrpc";
+type Protocol = "req";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -308,7 +308,7 @@ export function OnboardingWizard() {
             </div>
 
             <div className="hidden">
-              <Input value={protocol} onChange={(e) => setProtocol(e.target.value as Protocol)} />
+              <Input value="req" readOnly />
               <Input value={clientId} onChange={(e) => setClientId(e.target.value)} />
               <Input value={clientMode} onChange={(e) => setClientMode(e.target.value)} />
               <Input value={clientPlatform} onChange={(e) => setClientPlatform(e.target.value)} />
