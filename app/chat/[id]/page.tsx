@@ -8,9 +8,14 @@ import { ChatInterface } from "@/components/chat/ChatInterface";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams } from "next/navigation";
 import { ChatSetupRail } from "@/components/chat/ChatSetupRail";
+import { ListChecks } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useState } from "react";
 
 function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, canAdmin } = useWorkspace();
+  const [setupOpen, setSetupOpen] = useState(false);
   const agent = useQuery(
     api.agents.getById,
     workspaceId ? { workspaceId, id: agentId } : "skip",
@@ -26,12 +31,30 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
 
   return (
     <div className="mx-auto max-w-7xl p-3 sm:p-6">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <ChatSetupRail selectedAgentId={agentId} />
-        <div className="min-w-0">
-          <ChatInterface agent={agent} />
+      <div className="min-w-0">
+        <div className="mb-3 flex items-center justify-end">
+          {canAdmin ? (
+            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => setSetupOpen(true)}>
+              <ListChecks className="h-4 w-4" />
+              Setup Guide
+            </Button>
+          ) : null}
         </div>
+        <ChatInterface agent={agent} />
       </div>
+
+      {canAdmin ? (
+        <Sheet open={setupOpen} onOpenChange={setSetupOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-bg-primary border-border-default p-0">
+            <SheetHeader className="border-b border-border-default">
+              <SheetTitle className="text-text-primary">Setup Guide</SheetTitle>
+            </SheetHeader>
+            <div className="p-4">
+              <ChatSetupRail selectedAgentId={agentId} className="border-0 bg-transparent p-0 shadow-none" />
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 }

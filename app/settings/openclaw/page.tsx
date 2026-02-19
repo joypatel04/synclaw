@@ -802,11 +802,11 @@ openclaw devices approve <requestId>`}
                   Setup guide
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Open Chat setup rail for the canonical workflow. Templates below are minimal references.
+                  Open Chat setup guide for the canonical workflow. Templates below are minimal references.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href="/chat?setup=1">Open chat setup</Link>
+                <Link href="/chat">Open chat setup</Link>
               </Button>
             </div>
 

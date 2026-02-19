@@ -82,7 +82,7 @@ export function ChatAgentSelector() {
         <div className="flex flex-col gap-3">
           {agents.map((agent) => {
             return (
-              <Link key={agent._id} href={`/chat/${agent._id}?setup=1`} className="block">
+              <Link key={agent._id} href={`/chat/${agent._id}`} className="block">
                 <div className="group flex items-center gap-4 rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth hover:border-border-hover hover:bg-bg-tertiary">
                   <AgentAvatar emoji={agent.emoji} name={agent.name} size="lg" status={agent.status} />
                   <div className="flex-1 min-w-0">

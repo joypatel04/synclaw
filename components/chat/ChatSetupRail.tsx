@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -19,12 +20,14 @@ import { Check, Copy } from "lucide-react";
 
 type ChatSetupRailProps = {
   selectedAgentId?: Id<"agents"> | null;
+  className?: string;
 };
 
 function CopyBlock({
   title,
   where,
   value,
+  onChange,
   onConfirm,
   confirmLabel,
   confirmed,
@@ -32,6 +35,7 @@ function CopyBlock({
   title: string;
   where: string;
   value: string;
+  onChange?: (next: string) => void;
   onConfirm?: () => void;
   confirmLabel?: string;
   confirmed?: boolean;
@@ -61,9 +65,14 @@ function CopyBlock({
           {copied ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
         </Button>
       </div>
-      <pre className="mt-2 max-h-[180px] overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-        {value}
-      </pre>
+      <Textarea
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="mt-2 min-h-[140px] resize-y bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-[11px]"
+      />
+      <p className="mt-1 text-[11px] text-text-dim">
+        Editable: customize this content before copying.
+      </p>
       {onConfirm && confirmLabel ? (
         <div className="mt-2">
           <Button
@@ -81,7 +90,7 @@ function CopyBlock({
   );
 }
 
-export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
+export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRailProps) {
   const { workspaceId, workspace, canAdmin } = useWorkspace();
 
   const onboarding = useQuery(
@@ -125,7 +134,7 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
     return buildGenericAgentBootstrapMessage({
       workspaceName: workspace.name,
       workspaceId: String(workspaceId),
-      agentName: activeAgent.name,
+      agentName: "Specialist Agent",
       agentRole: activeAgent.role,
       sessionKey: activeAgent.sessionKey,
     });
@@ -141,7 +150,7 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
     return buildHeartbeatMd({
       workspaceName: workspace.name,
       workspaceId: String(workspaceId),
-      agentName: activeAgent.name,
+      agentName: "Agent",
       sessionKey: activeAgent.sessionKey,
       agentRole: activeAgent.role,
       recommendedMinutes: activeAgent.sessionKey === "agent:main:main" ? 720 : 60,
@@ -157,15 +166,36 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
     [workspace.name, workspaceId],
   );
 
+  const [bootstrapDraft, setBootstrapDraft] = useState("");
+  const [heartbeatDraft, setHeartbeatDraft] = useState("");
+  const [cronPromptDraft, setCronPromptDraft] = useState("");
+  const [protocolDraft, setProtocolDraft] = useState("");
+
+  useEffect(() => {
+    setBootstrapDraft(bootstrap);
+  }, [bootstrap]);
+
+  useEffect(() => {
+    setHeartbeatDraft(heartbeatMd);
+  }, [heartbeatMd]);
+
+  useEffect(() => {
+    setCronPromptDraft(cronPrompt);
+  }, [cronPrompt]);
+
+  useEffect(() => {
+    setProtocolDraft(protocolMd);
+  }, [protocolMd]);
+
   if (!canAdmin) {
     return null;
   }
 
   if (onboarding === undefined || agents === undefined) {
     return (
-      <aside className="rounded-xl border border-border-default bg-bg-secondary p-4">
+      <div className={`rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
-      </aside>
+      </div>
     );
   }
 
@@ -173,7 +203,7 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
 
   if (!isOnboardingComplete) {
     return (
-      <aside className="space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4">
+      <div className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
         <h2 className="text-sm font-semibold text-text-primary">Workspace setup</h2>
         <SetupStepCard
           title="A) OpenClaw connected"
@@ -193,24 +223,24 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
             window.location.href = "/onboarding";
           }}
         />
-      </aside>
+      </div>
     );
   }
 
   if (!activeAgent) {
     return (
-      <aside className="space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4">
+      <div className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
         <h2 className="text-sm font-semibold text-text-primary">Agent setup</h2>
         <p className="text-xs text-text-muted">Create/select an agent to continue required setup.</p>
         <Button asChild size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white">
           <Link href="/agents/new">Create agent (recipe)</Link>
         </Button>
-      </aside>
+      </div>
     );
   }
 
   return (
-    <aside className="space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4">
+    <div className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
       <div>
         <h2 className="text-sm font-semibold text-text-primary">Setup checklist</h2>
         <p className="mt-1 text-xs text-text-muted">
@@ -280,7 +310,8 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
       <CopyBlock
         title="Bootstrap"
         where="OpenClaw agent prompt (or first chat message)."
-        value={bootstrap}
+        value={bootstrapDraft}
+        onChange={setBootstrapDraft}
         onConfirm={() =>
           void markStep({
             workspaceId,
@@ -295,7 +326,8 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
       <CopyBlock
         title="HEARTBEAT.md"
         where="~/.openclaw/workspace-<agent>/HEARTBEAT.md"
-        value={heartbeatMd}
+        value={heartbeatDraft}
+        onChange={setHeartbeatDraft}
         onConfirm={() =>
           void markStep({
             workspaceId,
@@ -310,7 +342,8 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
       <CopyBlock
         title="Cron prompt"
         where="OpenClaw cron job prompt field."
-        value={cronPrompt}
+        value={cronPromptDraft}
+        onChange={setCronPromptDraft}
         onConfirm={() =>
           void markStep({
             workspaceId,
@@ -329,15 +362,17 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
         <p className="mt-2 text-[11px] text-text-muted">
           Where to paste: copy into each OpenClaw workspace root.
         </p>
-        <pre className="mt-2 max-h-[180px] overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-          {protocolMd}
-        </pre>
+        <Textarea
+          value={protocolDraft}
+          onChange={(e) => setProtocolDraft(e.target.value)}
+          className="mt-2 min-h-[140px] resize-y bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-[11px]"
+        />
         <div className="mt-2 flex gap-2">
           <Button
             size="sm"
             variant="outline"
             className="h-8"
-            onClick={() => void navigator.clipboard.writeText(protocolMd)}
+            onClick={() => void navigator.clipboard.writeText(protocolDraft)}
           >
             Copy protocol
           </Button>
@@ -368,7 +403,7 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
             setChatDraft({
               workspaceId: String(workspaceId),
               sessionKey: activeAgent.sessionKey,
-              content: bootstrap,
+              content: bootstrapDraft,
             });
           }}
         >
@@ -378,6 +413,6 @@ export function ChatSetupRail({ selectedAgentId = null }: ChatSetupRailProps) {
           <Link href="/agents/health">Open health</Link>
         </Button>
       </div>
-    </aside>
+    </div>
   );
 }
