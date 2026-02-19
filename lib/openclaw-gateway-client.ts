@@ -80,6 +80,12 @@ type DeviceIdentity = {
   privateKey: CryptoKey;
 };
 
+type DeviceProfileVariant =
+  | "legacy_web_id_b64u"
+  | "sha64_b64u"
+  | "sha64_b64"
+  | "sha32_b64u";
+
 type ConnectChallenge = {
   nonce: string;
   ts?: number;
@@ -158,6 +164,23 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
+}
+
+function fromBase64Url(input: string): Uint8Array {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = base64.length % 4 === 0 ? "" : "=".repeat(4 - (base64.length % 4));
+  const binary = atob(base64 + pad);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
@@ -909,6 +932,7 @@ export class OpenClawBrowserGatewayClient {
   private async buildSignedDevice(
     challenge: ConnectChallenge,
     variant: "nonce" | "nonce_signedAt" | "json",
+    profile: DeviceProfileVariant,
   ): Promise<Record<string, unknown> | null> {
     const identity = await this.loadOrCreateDeviceIdentity();
     if (!identity) return null;
@@ -927,9 +951,19 @@ export class OpenClawBrowserGatewayClient {
             toArrayBuffer(message),
           );
     const signature = toBase64Url(new Uint8Array(signatureBuf));
+    const spkiBytes = fromBase64Url(identity.publicKeyB64u);
+    const sha64 = await sha256Hex(spkiBytes);
+    const publicKey =
+      profile === "sha64_b64" ? toBase64(spkiBytes) : identity.publicKeyB64u;
+    const deviceId =
+      profile === "sha64_b64u" || profile === "sha64_b64"
+        ? sha64
+        : profile === "sha32_b64u"
+          ? sha64.slice(0, 32)
+          : identity.deviceId;
     return {
-      id: identity.deviceId,
-      publicKey: identity.publicKeyB64u,
+      id: deviceId,
+      publicKey,
       signedAt,
       nonce: challenge.nonce,
       signature,
@@ -966,6 +1000,7 @@ export class OpenClawBrowserGatewayClient {
     wireProtocol: GatewayWireProtocol;
     withDeviceChallenge: boolean;
     deviceVariant: "nonce" | "nonce_signedAt" | "json";
+    deviceProfile: DeviceProfileVariant;
     clientMode: string;
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
@@ -992,14 +1027,52 @@ export class OpenClawBrowserGatewayClient {
     const challengeModes: Array<{
       withDeviceChallenge: boolean;
       deviceVariant: "nonce" | "nonce_signedAt" | "json";
+      deviceProfile: DeviceProfileVariant;
     }> = deviceAuthEnabled
       ? [
-          { withDeviceChallenge: true, deviceVariant: "nonce" },
-          { withDeviceChallenge: true, deviceVariant: "nonce_signedAt" },
-          { withDeviceChallenge: true, deviceVariant: "json" },
-          { withDeviceChallenge: false, deviceVariant: "nonce" },
+          {
+            withDeviceChallenge: true,
+            deviceVariant: "nonce",
+            deviceProfile: "legacy_web_id_b64u",
+          },
+          {
+            withDeviceChallenge: true,
+            deviceVariant: "nonce_signedAt",
+            deviceProfile: "legacy_web_id_b64u",
+          },
+          {
+            withDeviceChallenge: true,
+            deviceVariant: "json",
+            deviceProfile: "legacy_web_id_b64u",
+          },
+          {
+            withDeviceChallenge: true,
+            deviceVariant: "nonce",
+            deviceProfile: "sha64_b64u",
+          },
+          {
+            withDeviceChallenge: true,
+            deviceVariant: "nonce",
+            deviceProfile: "sha64_b64",
+          },
+          {
+            withDeviceChallenge: true,
+            deviceVariant: "nonce",
+            deviceProfile: "sha32_b64u",
+          },
+          {
+            withDeviceChallenge: false,
+            deviceVariant: "nonce",
+            deviceProfile: "legacy_web_id_b64u",
+          },
         ]
-      : [{ withDeviceChallenge: false, deviceVariant: "nonce" }];
+      : [
+          {
+            withDeviceChallenge: false,
+            deviceVariant: "nonce",
+            deviceProfile: "legacy_web_id_b64u",
+          },
+        ];
 
     const mk = (
       method: string,
@@ -1007,6 +1080,7 @@ export class OpenClawBrowserGatewayClient {
       params: Record<string, unknown>,
       withDeviceChallenge: boolean,
       deviceVariant: "nonce" | "nonce_signedAt" | "json",
+      deviceProfile: DeviceProfileVariant,
       clientMode: string,
     ) => ({
       method,
@@ -1014,6 +1088,7 @@ export class OpenClawBrowserGatewayClient {
       params,
       withDeviceChallenge,
       deviceVariant,
+      deviceProfile,
       clientMode,
     });
 
@@ -1023,6 +1098,7 @@ export class OpenClawBrowserGatewayClient {
       wireProtocol: GatewayWireProtocol;
       withDeviceChallenge: boolean;
       deviceVariant: "nonce" | "nonce_signedAt" | "json";
+      deviceProfile: DeviceProfileVariant;
       clientMode: string;
     }> = [];
 
@@ -1048,6 +1124,7 @@ export class OpenClawBrowserGatewayClient {
             { ...base, scopes, auth: authBase },
             mode.withDeviceChallenge,
             mode.deviceVariant,
+            mode.deviceProfile,
             clientMode,
           ),
         );
@@ -1080,6 +1157,7 @@ export class OpenClawBrowserGatewayClient {
           },
           false,
           "nonce",
+          "legacy_web_id_b64u",
           clientModes[0] ?? this.config.clientMode,
         ),
       );
@@ -1223,6 +1301,7 @@ export class OpenClawBrowserGatewayClient {
         method: a.method,
         wireProtocol: a.wireProtocol,
         clientMode: a.clientMode,
+        deviceProfile: a.deviceProfile,
         params: a.params,
       })),
     });
@@ -1236,6 +1315,7 @@ export class OpenClawBrowserGatewayClient {
           wireProtocol: attempt.wireProtocol,
           withDeviceChallenge: attempt.withDeviceChallenge,
           deviceVariant: attempt.deviceVariant,
+          deviceProfile: attempt.deviceProfile,
           clientMode: attempt.clientMode,
         });
         const ws = await this.openSocket();
@@ -1250,6 +1330,7 @@ export class OpenClawBrowserGatewayClient {
           const device = await this.buildSignedDevice(
             challenge,
             attempt.deviceVariant,
+            attempt.deviceProfile,
           );
           if (device) {
             params.device = device;
@@ -1257,6 +1338,7 @@ export class OpenClawBrowserGatewayClient {
               index: i + 1,
               deviceId: (device as any).id,
               deviceVariant: attempt.deviceVariant,
+              deviceProfile: attempt.deviceProfile,
             });
           }
         }
@@ -1281,6 +1363,7 @@ export class OpenClawBrowserGatewayClient {
           method: attempt.method,
           wireProtocol: attempt.wireProtocol,
           clientMode: attempt.clientMode,
+          deviceProfile: attempt.deviceProfile,
         });
 
         if (this.config.subscribeOnConnect) {
@@ -1308,6 +1391,7 @@ export class OpenClawBrowserGatewayClient {
           method: attempt.method,
           wireProtocol: attempt.wireProtocol,
           clientMode: attempt.clientMode,
+          deviceProfile: attempt.deviceProfile,
           error: error instanceof Error ? error.message : String(error),
         });
         await this.disconnect().catch(() => {});
