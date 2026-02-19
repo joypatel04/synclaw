@@ -14,6 +14,10 @@ import { z } from "zod";
 import { api } from "./api.js";
 import { createClientFromEnv } from "./convex-client.js";
 
+const MCP_SERVER_VERSION = "0.6.0";
+const MCP_PROTOCOL_VERSION = "0.1.0";
+const MCP_SESSION_KEY_MODE = "sessionKey_preferred";
+
 const client = createClientFromEnv();
 
 async function resolveAgentId(input: {
@@ -47,12 +51,41 @@ async function resolveAgentId(input: {
 
 const server = new McpServer({
   name: "sutraha-hq",
-  version: "0.1.0",
+  version: MCP_SERVER_VERSION,
 });
 
 // ═══════════════════════════════════════════════════════════
 //  Agent Tools
 // ═══════════════════════════════════════════════════════════
+
+server.tool(
+  "sutraha_get_server_info",
+  "Get Sutraha MCP server compatibility info (version, protocol, and feature flags). Call this once at startup to detect mismatches.",
+  {},
+  async () => {
+    const info = {
+      serverName: "sutraha-hq",
+      mcpServerVersion: MCP_SERVER_VERSION,
+      protocolVersion: MCP_PROTOCOL_VERSION,
+      identityMode: MCP_SESSION_KEY_MODE,
+      deprecatedInputFields: ["agentId"],
+      capabilities: {
+        supportsSessionKey: true,
+        supportsAgentPulse: true,
+        supportsHeartbeat: true,
+        supportsStartEndTaskSession: true,
+      },
+      recommendations: {
+        pinNpxVersion: true,
+        preferSessionKey: true,
+        keepLocalFiles: ["SUTRAHA_PROTOCOL.md", "HEARTBEAT.md"],
+      },
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(info, null, 2) }],
+    };
+  },
+);
 
 server.tool(
   "sutraha_list_agents",
@@ -88,6 +121,49 @@ server.tool(
     });
     return {
       content: [{ type: "text", text: JSON.stringify(agent, null, 2) }],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_create_agent",
+  "Create a new agent in the workspace. Requires workspace owner. Use this to register an agent so it can identify via sessionKey (e.g. agent:main:main) and send heartbeats/pulses.",
+  {
+    name: z.string().describe("Display name for the agent"),
+    role: z.string().describe("Short role description (e.g. 'Backend engineer', 'Code reviewer')"),
+    emoji: z
+      .string()
+      .optional()
+      .describe("Emoji for the agent (default: 🤖)"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe(
+        "Unique session key (e.g. agent:main:main). Defaults to agent:<slug(name)>:main",
+      ),
+    externalAgentId: z
+      .string()
+      .optional()
+      .describe("External system agent ID for linking"),
+  },
+  async ({ name, role, emoji, sessionKey, externalAgentId }) => {
+    const trimmedName = name.trim();
+    const trimmedRole = role.trim();
+    const defaultSessionKey = `agent:${trimmedName.toLowerCase().replace(/\s+/g, "-")}:main`;
+    const id = await client.mutation(api.agents.create, {
+      name: trimmedName,
+      role: trimmedRole,
+      emoji: emoji ?? "🤖",
+      sessionKey: sessionKey ?? defaultSessionKey,
+      ...(externalAgentId ? { externalAgentId: externalAgentId.trim() } : {}),
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Agent created with ID: ${id}. Use sessionKey "${sessionKey ?? defaultSessionKey}" to identify this agent in other tools.`,
+        },
+      ],
     };
   },
 );

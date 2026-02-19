@@ -133,6 +133,8 @@ NEXT_PUBLIC_CONVEX_AUTH_PROVIDER=github  # or google
 
 # OpenClaw Integration
 # Legacy HTTP trigger path (removed): OPENCLAW_GATEWAY_URL
+# Secrets-at-rest encryption key (Convex env var)
+OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 
 # Agent Configuration (optional)
 HEARTBEAT_INTERVAL=20  # Default 20 minutes
@@ -163,9 +165,10 @@ npx convex deploy
 ```
 
 ### 3. OpenClaw Integration
-- Configure OpenClaw Gateway URL in Convex
-- Set up webhook triggers for chat messages
-- (Optional) Configure CORS for Convex → OpenClaw calls
+- Configure OpenClaw Gateway settings per workspace in Sutraha HQ:
+  - Settings -> OpenClaw (`/settings/openclaw`)
+  - Stored in Convex table: `openclawGatewayConfigs`
+- Ensure the Sutraha HQ origin is allowed by OpenClaw (`gateway.controlUi.allowedOrigins`)
 
 ---
 

@@ -9,6 +9,13 @@ interface TimestampProps {
 }
 
 export function Timestamp({ time, className, showFull = false }: TimestampProps) {
+  if (!Number.isFinite(time) || time <= 0) {
+    return (
+      <span className={cn("font-mono text-xs text-text-muted", className)}>
+        Never
+      </span>
+    );
+  }
   return (
     <time
       className={cn("font-mono text-xs text-text-muted", className)}

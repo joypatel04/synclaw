@@ -76,6 +76,32 @@ export default defineSchema({
     .index("byWorkspace", ["workspaceId"])
     .index("byKeyHash", ["keyHash"]),
 
+  // ─── OpenClaw Gateway Config (workspace-scoped) ─────────────────
+  //
+  // Stores OpenClaw Gateway connection settings per workspace.
+  // NOTE: authToken/password are encrypted at rest in Convex.
+  openclawGatewayConfigs: defineTable({
+    workspaceId: v.id("workspaces"),
+    wsUrl: v.string(),
+    protocol: v.union(v.literal("req"), v.literal("jsonrpc")),
+    clientId: v.string(),
+    clientMode: v.string(),
+    clientPlatform: v.string(),
+    role: v.string(),
+    scopes: v.array(v.string()),
+    subscribeOnConnect: v.boolean(),
+    subscribeMethod: v.string(),
+    includeCron: v.boolean(),
+    historyPollMs: v.number(),
+    authTokenCiphertextHex: v.optional(v.string()),
+    authTokenIvHex: v.optional(v.string()),
+    passwordCiphertextHex: v.optional(v.string()),
+    passwordIvHex: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  }).index("byWorkspace", ["workspaceId"]),
+
   // ─── Domain tables (all workspace-scoped) ───────────────────────
 
   agents: defineTable({
@@ -109,7 +135,24 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byStatus", ["status"])
-    .index("bySessionKey", ["sessionKey"]),
+    .index("bySessionKey", ["sessionKey"])
+    .index("byWorkspaceAndSessionKey", ["workspaceId", "sessionKey"]),
+
+  // ─── Agent setup progress (workspace-scoped, owner-managed) ────
+  agentSetupProgress: defineTable({
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    bootstrapPrimedAt: v.optional(v.number()),
+    heartbeatConfirmedAt: v.optional(v.number()),
+    cronConfirmedAt: v.optional(v.number()),
+    protocolConfirmedAt: v.optional(v.number()),
+    localFilesWrittenAt: v.optional(v.number()),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byAgent", ["agentId"])
+    .index("byWorkspaceAndAgent", ["workspaceId", "agentId"]),
 
   tasks: defineTable({
     workspaceId: v.id("workspaces"),

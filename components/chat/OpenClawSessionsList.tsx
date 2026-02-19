@@ -1,11 +1,15 @@
 "use client";
 
+import { useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Activity, RefreshCw } from "lucide-react";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { EmptyState } from "@/components/shared/EmptyState";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { api } from "@/convex/_generated/api";
 import {
   extractDisplayMessagesFromHistory,
   extractContextSizeFromHistory,
@@ -132,6 +136,7 @@ export function OpenClawSessionsList({
     emoji: string;
   }>;
 }) {
+  const { workspaceId, canEdit } = useWorkspace();
   const [sessions, setSessions] = useState<OpenClawSessionRow[]>([]);
   const [detailsByKey, setDetailsByKey] = useState<Record<string, SessionDetails>>({});
   const [status, setStatus] = useState<
@@ -140,8 +145,15 @@ export function OpenClawSessionsList({
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<OpenClawBrowserGatewayClient | null>(null);
 
-  const includeCron =
-    process.env.NEXT_PUBLIC_OPENCLAW_INCLUDE_CRON === "true";
+  const openclawConfig = useQuery(
+    api.openclaw.getClientConfig,
+    canEdit ? { workspaceId } : "skip",
+  );
+  const includeCron = openclawConfig?.includeCron ?? false;
+  const gatewayConfigKey = useMemo(
+    () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
+    [openclawConfig],
+  );
 
   const knownAgentSessionKeys = useMemo(() => {
     return new Set(agents.map((a) => a.sessionKey));
@@ -219,6 +231,17 @@ export function OpenClawSessionsList({
     setSessions([]);
     setDetailsByKey({});
 
+    if (!openclawConfig) {
+      setStatus("error");
+      setError("OpenClaw is not configured for this workspace.");
+      return;
+    }
+    if (!openclawConfig.wsUrl) {
+      setStatus("error");
+      setError("OpenClaw wsUrl is missing.");
+      return;
+    }
+
     if (clientRef.current) {
       try {
         await clientRef.current.disconnect();
@@ -229,42 +252,22 @@ export function OpenClawSessionsList({
       }
     }
 
-    const scopes = (
-      process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES ??
-      "operator.read,operator.write,operator.admin"
-    )
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const wsUrl = process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_WS_URL ?? "";
-    if (!wsUrl) {
-      setStatus("error");
-      setError("Missing NEXT_PUBLIC_OPENCLAW_GATEWAY_WS_URL");
-      return;
-    }
+    const scopes = openclawConfig.scopes;
+    const wsUrl = openclawConfig.wsUrl;
 
     const client = new OpenClawBrowserGatewayClient(
       {
         wsUrl,
-        protocol:
-          process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_PROTOCOL === "jsonrpc"
-            ? "jsonrpc"
-            : "req",
-        authToken: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_AUTH_TOKEN,
-        password: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_PASSWORD,
-        clientId: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_ID ?? "cli",
-        clientMode:
-          process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_MODE ?? "webchat",
-        clientPlatform:
-          process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_PLATFORM ?? "web",
-        role: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_ROLE ?? "operator",
+        protocol: openclawConfig.protocol,
+        authToken: openclawConfig.authToken,
+        password: openclawConfig.password,
+        clientId: openclawConfig.clientId,
+        clientMode: openclawConfig.clientMode,
+        clientPlatform: openclawConfig.clientPlatform,
+        role: openclawConfig.role,
         scopes,
-        subscribeOnConnect:
-          process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CHAT_SUBSCRIBE === "true",
-        subscribeMethod:
-          process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SUBSCRIBE_METHOD ??
-          "chat.subscribe",
+        subscribeOnConnect: openclawConfig.subscribeOnConnect,
+        subscribeMethod: openclawConfig.subscribeMethod,
       },
       async (event) => {
         // We intentionally do not mirror these events into Convex on the /chat page.
@@ -305,13 +308,14 @@ export function OpenClawSessionsList({
   };
 
   useEffect(() => {
+    if (!canEdit) return;
+    if (!openclawConfig) return;
     void connect();
     return () => {
       void clientRef.current?.disconnect();
       clientRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canEdit, gatewayConfigKey]);
 
   // Best-effort: fetch a useful "last message" snippet per session (for the top N).
   useEffect(() => {
@@ -326,7 +330,7 @@ export function OpenClawSessionsList({
     const missing = keys.filter((k) => !detailsByKey[k]);
     if (missing.length === 0) return;
 
-    const run = async () => {
+  const run = async () => {
       // Concurrency limiter to avoid hammering the gateway.
       const concurrency = 4;
       let idx = 0;
@@ -374,6 +378,62 @@ export function OpenClawSessionsList({
       cancelled = true;
     };
   }, [status, visibleSessions, detailsByKey]);
+
+  if (!canEdit) {
+    return (
+      <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-text-muted" />
+          <p className="text-sm font-semibold text-text-primary">Other Sessions</p>
+        </div>
+        <EmptyState
+          icon={Activity}
+          title="Sessions require member access"
+          description="Ask the workspace owner to upgrade your role."
+          className="py-8"
+        />
+      </div>
+    );
+  }
+
+  if (openclawConfig === undefined) {
+    return (
+      <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-text-muted" />
+          <p className="text-sm font-semibold text-text-primary">Other Sessions</p>
+        </div>
+        <div className="flex items-center justify-center py-10">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
+
+  if (openclawConfig === null) {
+    return (
+      <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-text-muted" />
+          <p className="text-sm font-semibold text-text-primary">Other Sessions</p>
+        </div>
+        <EmptyState
+          icon={Activity}
+          title="OpenClaw is not configured"
+          description="Set your gateway URL and token in Settings to enable session browsing."
+          className="py-8"
+        >
+          <Button
+            asChild
+            size="sm"
+            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+          >
+            <Link href="/settings/openclaw">Open Settings</Link>
+          </Button>
+        </EmptyState>
+      </div>
+    );
+  }
 
   if (status === "error") {
     return (

@@ -6,15 +6,72 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { OpenClawSessionsList } from "./OpenClawSessionsList";
 
 export function ChatAgentSelector() {
-  const { workspaceId } = useWorkspace();
+  const { workspaceId, canEdit, canAdmin } = useWorkspace();
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
+  const openclawSummary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
 
-  if (agents.length === 0) return <EmptyState icon={MessageSquare} title="No agents available" description="Configure agents first" />;
+  const hasOpenClaw = Boolean(openclawSummary && openclawSummary.wsUrl);
+
+  if (!canEdit) {
+    return (
+      <EmptyState
+        icon={MessageSquare}
+        title="Chat requires member access"
+        description="Ask the workspace owner to upgrade your role."
+      />
+    );
+  }
+
+  if (openclawSummary === undefined) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!hasOpenClaw) {
+    return (
+      <EmptyState
+        icon={Settings2}
+        title="Connect OpenClaw to start chatting"
+        description="Configure your OpenClaw gateway URL and token in Settings."
+      >
+        <Button
+          asChild
+          className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+        >
+          <Link href="/settings/openclaw">Open Settings</Link>
+        </Button>
+      </EmptyState>
+    );
+  }
+
+  if (agents.length === 0) {
+    return (
+      <EmptyState
+        icon={MessageSquare}
+        title="No agents yet"
+        description="Create your first agent using recipe flow, then continue setup in Chat."
+      >
+        {canAdmin ? (
+          <Button className="bg-accent-orange hover:bg-accent-orange/90 text-white" asChild>
+            <Link href="/agents/new">Create agent (recipe)</Link>
+          </Button>
+        ) : (
+          <Button asChild variant="outline">
+            <Link href="/settings">Ask owner to create an agent</Link>
+          </Button>
+        )}
+      </EmptyState>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

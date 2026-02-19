@@ -8,6 +8,7 @@ import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,9 +20,12 @@ import {
   Archive,
   ArchiveRestore,
   Bot,
+  Check,
+  Copy,
+  Download,
   ExternalLink,
+  HeartPulse,
   Pencil,
-  Plus,
 } from "lucide-react";
 import {
   Dialog,
@@ -33,9 +37,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { buildGenericAgentBootstrapMessage } from "@/lib/onboardingTemplates";
+import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
+import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AgentManifestPanel } from "@/components/agents/AgentManifestPanel";
 
 type AgentFormData = {
   name: string;
@@ -55,8 +65,19 @@ const emptyForm: AgentFormData = {
   externalAgentId: "",
 };
 
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function AgentsContent() {
-  const { workspaceId, canAdmin, canManage } = useWorkspace();
+  const { workspaceId, workspace, canAdmin, canManage } = useWorkspace();
+  const router = useRouter();
   const agents =
     useQuery(api.agents.list, { workspaceId, includeArchived: canAdmin }) ?? [];
   const tasks = useQuery(api.tasks.list, { workspaceId }) ?? [];
@@ -75,9 +96,57 @@ function AgentsContent() {
   } | null>(null);
   const [form, setForm] = useState<AgentFormData>(emptyForm);
   const [showArchived, setShowArchived] = useState(false);
+  const [copiedBootstrap, setCopiedBootstrap] = useState(false);
+  const [copiedCron, setCopiedCron] = useState(false);
+  const [copiedHeartbeat, setCopiedHeartbeat] = useState(false);
+  const [copiedProtocol, setCopiedProtocol] = useState(false);
+  const [heartbeatMinutes, setHeartbeatMinutes] = useState("60");
 
   const activeAgents = agents.filter((a) => !a.isArchived);
   const archivedAgents = agents.filter((a) => a.isArchived);
+
+  const effectiveSessionKey = useMemo(() => {
+    const raw = form.sessionKey.trim();
+    if (raw) return raw;
+    const slug =
+      form.name.trim().length > 0
+        ? form.name.trim().toLowerCase().replace(/\s+/g, "-")
+        : "new-agent";
+    return `agent:${slug}:main`;
+  }, [form.sessionKey, form.name]);
+
+  const bootstrapPrompt = useMemo(() => {
+    return buildGenericAgentBootstrapMessage({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+      agentName: form.name.trim() || "New agent",
+      agentRole: form.role.trim() || "Agent",
+      sessionKey: effectiveSessionKey,
+    });
+  }, [workspace.name, workspaceId, form.name, form.role, effectiveSessionKey]);
+
+  const cronPrompt = useMemo(() => {
+    return buildCronPrompt({ sessionKey: effectiveSessionKey });
+  }, [effectiveSessionKey]);
+
+  const heartbeatMd = useMemo(() => {
+    const minutes = Math.max(1, Math.floor(Number(heartbeatMinutes) || 60));
+    return buildHeartbeatMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+      agentName: form.name.trim() || "New agent",
+      sessionKey: effectiveSessionKey,
+      agentRole: form.role.trim() || "Agent",
+      recommendedMinutes: minutes,
+    });
+  }, [workspace.name, workspaceId, form.name, form.role, effectiveSessionKey, heartbeatMinutes]);
+
+  const protocolMd = useMemo(() => {
+    return buildSutrahaProtocolMd({
+      workspaceName: workspace.name,
+      workspaceId: String(workspaceId),
+    });
+  }, [workspace.name, workspaceId]);
 
   const handleStatusChange = async (
     agentId: Id<"agents">,
@@ -113,6 +182,7 @@ function AgentsContent() {
 
   const openCreate = () => {
     setForm(emptyForm);
+    setHeartbeatMinutes("60");
     setShowCreate(true);
   };
 
@@ -124,13 +194,14 @@ function AgentsContent() {
       sessionKey: agent.sessionKey,
       externalAgentId: agent.externalAgentId ?? "",
     });
+    setHeartbeatMinutes("60");
     setEditingId(agent._id);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
-    await createAgent({
+    const id = await createAgent({
       workspaceId,
       name: form.name.trim(),
       role: form.role.trim(),
@@ -142,6 +213,7 @@ function AgentsContent() {
     });
     setForm(emptyForm);
     setShowCreate(false);
+    router.push(`/agents/${id}/setup`);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -238,6 +310,13 @@ function AgentsContent() {
                   <SelectItem value="offline">Offline</SelectItem>
                 </SelectContent>
               </Select>
+            )}
+
+            {/* Setup wizard — owner only */}
+            {canAdmin && !isArchived && (
+              <Button asChild variant="outline" size="sm" className="h-8">
+                <Link href={`/chat/${agent._id}?setup=1`}>Continue setup</Link>
+              </Button>
             )}
 
             {/* Edit — owner only */}
@@ -355,15 +434,36 @@ function AgentsContent() {
           </div>
         </div>
         {canAdmin && (
-          <Button
-            onClick={openCreate}
-            size="sm"
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            Add Agent
-          </Button>
+          <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              <Link href="/agents/new">Use recipe</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto gap-2"
+              title="Connectivity and heartbeat freshness"
+            >
+              <Link href="/agents/health">
+                <HeartPulse className="h-4 w-4" />
+                Health
+              </Link>
+            </Button>
+            <Button asChild size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto">
+              <Link href="/agents/new">Create agent</Link>
+            </Button>
+          </div>
         )}
+      </div>
+
+      <div className="mb-6">
+        <AgentManifestPanel />
       </div>
 
       {/* Active agents */}
@@ -375,15 +475,11 @@ function AgentsContent() {
             <Bot className="h-10 w-10 text-text-dim mb-3" />
             <p className="text-sm text-text-muted">No active agents</p>
             {canAdmin && (
-              <Button
-                onClick={openCreate}
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-accent-orange"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add your first agent
-              </Button>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/agents/new">Use recipe</Link>
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -420,10 +516,15 @@ function AgentsContent() {
               setShowCreate(false);
               setEditingId(null);
               setForm(emptyForm);
+              setCopiedBootstrap(false);
+              setCopiedCron(false);
+              setCopiedHeartbeat(false);
+              setCopiedProtocol(false);
+              setHeartbeatMinutes("60");
             }
           }}
         >
-          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[480px]">
+          <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[480px] max-h-[calc(100vh-2rem)] overflow-auto">
             <DialogHeader>
               <DialogTitle className="text-text-primary">
                 {editingId ? "Edit Agent" : "Add New Agent"}
@@ -503,6 +604,226 @@ function AgentsContent() {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-text-secondary">
+                    Bootstrap prompt (copy into OpenClaw)
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    onClick={() => {
+                      void (async () => {
+                        await navigator.clipboard.writeText(bootstrapPrompt);
+                        setCopiedBootstrap(true);
+                        setTimeout(() => setCopiedBootstrap(false), 1500);
+                      })();
+                    }}
+                    title={copiedBootstrap ? "Copied" : "Copy"}
+                  >
+                    {copiedBootstrap ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <Textarea
+                  readOnly
+                  value={bootstrapPrompt}
+                  rows={8}
+                  className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                />
+                <p className="text-[11px] text-text-dim">
+                  This is a suggested system prompt/instructions for the agent you are creating. Sutraha HQ does not store it; paste it into OpenClaw.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-text-secondary">
+                    Heartbeat kit (recommended)
+                  </Label>
+                </div>
+                <p className="text-[11px] text-text-dim">
+                  Create a small <span className="font-mono">HEARTBEAT.md</span>{" "}
+                  in this agent&apos;s OpenClaw workspace and schedule a cron run
+                  using the prompt below.
+                </p>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">
+                      Heartbeat cadence (minutes)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={heartbeatMinutes}
+                      onChange={(e) => setHeartbeatMinutes(e.target.value)}
+                      className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 gap-2"
+                      onClick={() =>
+                        downloadText(
+                          `cron-prompt.${effectiveSessionKey.replace(/[:]/g, "_")}.txt`,
+                          cronPrompt,
+                        )
+                      }
+                      title="Download a cron prompt snippet for OpenClaw"
+                    >
+                      <Download className="h-4 w-4" />
+                      Cron
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 gap-2"
+                      onClick={() =>
+                        downloadText(
+                          `HEARTBEAT.${effectiveSessionKey.replace(/[:]/g, "_")}.md`,
+                          heartbeatMd,
+                        )
+                      }
+                      title="Download HEARTBEAT.md to place inside the agent's OpenClaw workspace"
+                    >
+                      <Download className="h-4 w-4" />
+                      HEARTBEAT
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-dim">
+                      OpenClaw cron prompt
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                      onClick={() => {
+                        void (async () => {
+                          await navigator.clipboard.writeText(cronPrompt);
+                          setCopiedCron(true);
+                          setTimeout(() => setCopiedCron(false), 1500);
+                        })();
+                      }}
+                      title={copiedCron ? "Copied" : "Copy"}
+                    >
+                      {copiedCron ? (
+                        <Check className="h-4 w-4 text-status-active" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    readOnly
+                    value={cronPrompt}
+                    rows={2}
+                    className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-dim">
+                      HEARTBEAT.md template
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                      onClick={() => {
+                        void (async () => {
+                          await navigator.clipboard.writeText(heartbeatMd);
+                          setCopiedHeartbeat(true);
+                          setTimeout(() => setCopiedHeartbeat(false), 1500);
+                        })();
+                      }}
+                      title={copiedHeartbeat ? "Copied" : "Copy"}
+                    >
+                      {copiedHeartbeat ? (
+                        <Check className="h-4 w-4 text-status-active" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    readOnly
+                    value={heartbeatMd}
+                    rows={10}
+                    className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-dim">
+                      {SUTRAHA_PROTOCOL_FILENAME}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-2"
+                        onClick={() =>
+                          downloadText(
+                            `SUTRAHA_PROTOCOL.${String(workspaceId).slice(0, 6)}.md`,
+                            protocolMd,
+                          )
+                        }
+                        title="Download protocol file (shared rules)"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                        onClick={() => {
+                          void (async () => {
+                            await navigator.clipboard.writeText(protocolMd);
+                            setCopiedProtocol(true);
+                            setTimeout(() => setCopiedProtocol(false), 1500);
+                          })();
+                        }}
+                        title={copiedProtocol ? "Copied" : "Copy"}
+                      >
+                        {copiedProtocol ? (
+                          <Check className="h-4 w-4 text-status-active" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <Textarea
+                    readOnly
+                    value={protocolMd}
+                    rows={10}
+                    className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
+                  />
+                  <p className="text-[11px] text-text-dim">
+                    Put the same protocol file in each agent&apos;s OpenClaw workspace to keep prompts short.
+                  </p>
+                </div>
+              </div>
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -511,6 +832,11 @@ function AgentsContent() {
                     setShowCreate(false);
                     setEditingId(null);
                     setForm(emptyForm);
+                    setCopiedBootstrap(false);
+                    setCopiedCron(false);
+                    setCopiedHeartbeat(false);
+                    setCopiedProtocol(false);
+                    setHeartbeatMinutes("60");
                   }}
                   className="border-border-default text-text-secondary"
                 >

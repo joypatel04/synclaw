@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember } from "./lib/permissions";
+import { requireRole, requireMember, resolveActorName } from "./lib/permissions";
 
 const defaultTelemetry = {
   currentModel: "unknown",
@@ -46,10 +46,11 @@ export const getBySessionKey = query({
     await requireMember(ctx, args.workspaceId);
     const agent = await ctx.db
       .query("agents")
-      .withIndex("bySessionKey", (q) => q.eq("sessionKey", args.sessionKey))
+      .withIndex("byWorkspaceAndSessionKey", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("sessionKey", args.sessionKey),
+      )
       .first();
-    if (!agent || agent.workspaceId !== args.workspaceId) return null;
-    return agent;
+    return agent ?? null;
   },
 });
 
@@ -340,8 +341,9 @@ export const create = mutation({
     externalAgentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.workspaceId, "owner");
-    return await ctx.db.insert("agents", {
+    const membership = await requireRole(ctx, args.workspaceId, "owner");
+    const now = Date.now();
+    const id = await ctx.db.insert("agents", {
       workspaceId: args.workspaceId,
       name: args.name,
       role: args.role,
@@ -351,11 +353,77 @@ export const create = mutation({
       isArchived: false,
       status: "idle",
       currentTaskId: null,
-      lastHeartbeat: Date.now(),
-      lastPulseAt: Date.now(),
+      // New agents should start "offline" until they send their first real pulse/heartbeat.
+      lastHeartbeat: 0,
       telemetry: defaultTelemetry,
-      createdAt: Date.now(),
+      createdAt: now,
     });
+
+    // Auto-create a "setup" checklist task so onboarding isn't ephemeral.
+    // This makes setup work durable and trackable in the dashboard.
+    const { displayName, agentId: actingAgentId } = await resolveActorName(
+      ctx,
+      membership.userId,
+      null,
+    );
+
+    const agentsInWorkspace = await ctx.db
+      .query("agents")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+
+    const mainAgent =
+      agentsInWorkspace.find(
+        (a) => a.sessionKey === "agent:main:main" && !a.isArchived,
+      ) ?? null;
+
+    const assigneeIds = mainAgent ? [mainAgent._id] : [];
+    const status =
+      assigneeIds.length > 0
+        ? "assigned"
+        : ("inbox" as const);
+
+    const title = `Setup agent: ${args.name} (${args.sessionKey})`;
+    const description = `Checklist:
+- [ ] Configure Sutraha HQ MCP server (MCPorter config)
+- [ ] Set the agent's bootstrap prompt in OpenClaw
+- [ ] Add SUTRAHA_PROTOCOL.md + HEARTBEAT.md to the agent's OpenClaw workspace
+- [ ] Schedule a cron run (use the cron prompt from Sutraha HQ)
+- [ ] Confirm first pulse is received in Sutraha HQ (agent shows Connected)
+
+Links:
+- Agent setup: [open](/agents/${id}/setup)
+- OpenClaw settings: [open](/settings/openclaw)
+- Agent health: [open](/agents/health)
+
+Notes:
+- Prefer short, stable local files. Keep long context in Sutraha HQ Documents.
+- Never reuse another agent's sessionKey.`;
+
+    const taskId = await ctx.db.insert("tasks", {
+      workspaceId: args.workspaceId,
+      title,
+      description,
+      status,
+      assigneeIds,
+      priority: "medium",
+      createdBy: displayName,
+      dueAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await ctx.db.insert("activities", {
+      workspaceId: args.workspaceId,
+      type: "task_created",
+      agentId: actingAgentId,
+      taskId,
+      message: `${displayName} created task "${title}"`,
+      metadata: { priority: "medium", status, source: "agent_create_setup" },
+      createdAt: now,
+    });
+
+    return id;
   },
 });
 
