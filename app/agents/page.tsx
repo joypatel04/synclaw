@@ -312,13 +312,6 @@ function AgentsContent() {
               </Select>
             )}
 
-            {/* Setup wizard — owner only */}
-            {canAdmin && !isArchived && (
-              <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href={`/chat/${agent._id}?setup=1`}>Continue setup</Link>
-              </Button>
-            )}
-
             {/* Edit — owner only */}
             {canAdmin && !isArchived && (
               <Button

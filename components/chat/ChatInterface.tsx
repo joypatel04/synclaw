@@ -2,25 +2,17 @@
 
 import { useQuery } from "convex/react";
 import { ChevronDown, MessageSquare } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
   type OpenClawConnectionStatus,
-  type OpenClawModelInfo,
   OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -28,7 +20,7 @@ import {
   pickRunId,
   pickText,
 } from "@/lib/openclaw-gateway-client";
-import { clearChatDraft, getChatDraft } from "@/lib/chatDraft";
+import { clearChatDraft, consumeChatDraft } from "@/lib/chatDraft";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, type UiChatMessage } from "./ChatMessage";
 
@@ -52,15 +44,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
   const [gatewayBlock, setGatewayBlock] = useState<OpenClawConnectionStatus | null>(null);
   const [showGatewayPanel, setShowGatewayPanel] = useState(false);
-  const [availableModels, setAvailableModels] = useState<OpenClawModelInfo[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
-  const [modelsError, setModelsError] = useState<string | null>(null);
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [gatewayDefaultModel, setGatewayDefaultModel] = useState<string | null>(null);
+  const [gatewayModelProvider, setGatewayModelProvider] = useState<string | null>(null);
   const [gatewayChannels, setGatewayChannels] = useState<string[]>([]);
   const [gatewayAgentCount, setGatewayAgentCount] = useState<number | null>(null);
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
-  const modelsLoadRef = useRef<Promise<void> | null>(null);
 
   // Direct WS is now mandatory for chat.
   const useDirectWs = true;
@@ -86,7 +75,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
     [openclawConfig],
   );
-  const hasModels = availableModels.length > 0;
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const el = viewportRef.current;
@@ -133,10 +121,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     void gatewayRef.current?.disconnect();
     gatewayRef.current = null;
     connectRef.current = null;
-    modelsLoadRef.current = null;
-    setAvailableModels([]);
-    setModelsError(null);
-    setSelectedModelId("");
+    setGatewayDefaultModel(null);
+    setGatewayModelProvider(null);
     setGatewayChannels([]);
     setGatewayAgentCount(null);
     setGatewayBlock(null);
@@ -146,26 +132,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     return value as Record<string, unknown>;
   };
-
-  const loadGatewayModels = useCallback(async () => {
-    if (!gatewayRef.current) return;
-    setModelsLoading(true);
-    setModelsError(null);
-    try {
-      const models = await gatewayRef.current.listModels();
-      setAvailableModels(models);
-      setSelectedModelId((prev) => {
-        if (!prev) return "";
-        return models.some((m) => m.id === prev) ? prev : "";
-      });
-    } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : "Could not load models";
-      setModelsError(msg);
-    } finally {
-      setModelsLoading(false);
-    }
-  }, []);
 
   const makeClientMessageId = () =>
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -183,7 +149,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   useEffect(() => {
     setDraft(
-      getChatDraft({
+      consumeChatDraft({
         workspaceId: String(workspaceId),
         sessionKey: agent.sessionKey,
       }),
@@ -520,6 +486,28 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
               if (Array.isArray(payload.agents)) {
                 setGatewayAgentCount(payload.agents.length);
               }
+
+              const defaults = parseRecord(payload.defaults);
+              const sessions = parseRecord(payload.sessions);
+              const sessionDefaults = sessions
+                ? parseRecord(sessions.defaults)
+                : null;
+              const modelFromHealth =
+                (defaults && typeof defaults.model === "string" && defaults.model) ||
+                (sessionDefaults &&
+                  typeof sessionDefaults.model === "string" &&
+                  sessionDefaults.model) ||
+                null;
+              const providerFromHealth =
+                (defaults &&
+                  typeof defaults.modelProvider === "string" &&
+                  defaults.modelProvider) ||
+                (sessionDefaults &&
+                  typeof sessionDefaults.modelProvider === "string" &&
+                  sessionDefaults.modelProvider) ||
+                null;
+              if (modelFromHealth) setGatewayDefaultModel(modelFromHealth);
+              if (providerFromHealth) setGatewayModelProvider(providerFromHealth);
             }
           }
 
@@ -580,11 +568,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     const status = gatewayRef.current?.getConnectionStatus() ?? null;
     if (status?.state === "CONNECTED") {
       setGatewayBlock(null);
-      if (!modelsLoadRef.current && availableModels.length === 0) {
-        modelsLoadRef.current = loadGatewayModels().finally(() => {
-          modelsLoadRef.current = null;
-        });
-      }
     } else if (status) {
       setGatewayBlock(status);
     }
@@ -610,7 +593,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         sessionKey: agent.sessionKey,
         content,
         clientMessageId: id,
-        modelId: selectedModelId || undefined,
       });
       const expectedRunId = pickRunId(sendResult);
 
@@ -962,8 +944,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     if (gatewayChannels.length > 0) {
       features.push(`Channels: ${gatewayChannels.join(", ")}`);
     }
-    if (hasModels) {
-      features.push(`Model switching (${availableModels.length})`);
+    if (gatewayDefaultModel) {
+      const suffix = gatewayModelProvider ? ` (${gatewayModelProvider})` : "";
+      features.push(`Model: ${gatewayDefaultModel}${suffix}`);
     }
     return features;
   }, [
@@ -971,8 +954,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     historyPollMs,
     gatewayAgentCount,
     gatewayChannels,
-    hasModels,
-    availableModels.length,
+    gatewayDefaultModel,
+    gatewayModelProvider,
   ]);
 
   return (
@@ -1019,38 +1002,15 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       {showGatewayPanel && canChatBase && (
         <div className="border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6">
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-text-muted">Model</span>
-              {modelsLoading ? (
-                <span className="text-xs text-text-muted">Loading models...</span>
-              ) : (
-                <Select
-                  value={selectedModelId || "__default__"}
-                  onValueChange={(value) =>
-                    setSelectedModelId(value === "__default__" ? "" : value)
-                  }
-                >
-                  <SelectTrigger size="sm" className="h-7 min-w-[180px] text-xs">
-                    <SelectValue placeholder="Gateway default model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__default__">Gateway default model</SelectItem>
-                    {availableModels.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        {model.name ? `${model.name} (${model.id})` : model.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {modelsError && (
-                <span className="text-xs text-status-blocked">
-                  Model list unavailable
-                </span>
-              )}
-              {!modelsLoading && !modelsError && availableModels.length === 0 && (
-                <span className="text-xs text-text-muted">No model list from gateway</span>
-              )}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+              <span>Gateway model:</span>
+              <span className="text-text-secondary">
+                {gatewayDefaultModel
+                  ? gatewayModelProvider
+                    ? `${gatewayDefaultModel} (${gatewayModelProvider})`
+                    : gatewayDefaultModel
+                  : "Auto (from OpenClaw config)"}
+              </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {gatewayFeatures.map((feature) => (

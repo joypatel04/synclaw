@@ -29,6 +29,23 @@ export function getChatDraft(args: {
   }
 }
 
+export function consumeChatDraft(args: {
+  workspaceId: string;
+  sessionKey: string;
+}): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const key = draftKey(args);
+    const value = window.sessionStorage.getItem(key);
+    if (value !== null) {
+      window.sessionStorage.removeItem(key);
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 export function clearChatDraft(args: { workspaceId: string; sessionKey: string }) {
   if (typeof window === "undefined") return;
   try {

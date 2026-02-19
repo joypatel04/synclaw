@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { formatRelativeTime } from "@/lib/utils";
-import { buildCronPrompt } from "@/lib/agentRecipes";
-import { Activity, Copy, HeartPulse, Settings2 } from "lucide-react";
+import { Activity, HeartPulse, Settings2 } from "lucide-react";
 
 const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -43,8 +42,6 @@ function AgentHealthInner() {
   const agents =
     useQuery(api.agents.list, canManage ? { workspaceId, includeArchived: true } : "skip") ??
     [];
-
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const now = Date.now();
@@ -138,7 +135,6 @@ function AgentHealthInner() {
         ) : (
           <div className="space-y-3">
             {rows.map(({ agent, tone, label, pulseAt }) => {
-              const cron = buildCronPrompt({ sessionKey: agent.sessionKey });
               const model = agent.telemetry?.currentModel ?? "unknown";
               const oc = agent.telemetry?.openclawVersion ?? "unknown";
               const lastRun = `${formatDuration(agent.telemetry?.lastRunDurationMs)} • ${formatCost(agent.telemetry?.lastRunCost)}`;
@@ -201,27 +197,6 @@ function AgentHealthInner() {
                     </div>
 
                     <div className="flex flex-col gap-2 sm:items-end">
-                      <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline" size="sm" className="h-8">
-                          <Link href={`/agents/${agent._id}/setup`}>Setup</Link>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-2"
-                          onClick={() => {
-                            void (async () => {
-                              await navigator.clipboard.writeText(cron);
-                              setCopiedKey(agent._id as string);
-                              setTimeout(() => setCopiedKey(null), 1500);
-                            })();
-                          }}
-                          title="Copy OpenClaw cron prompt (explicit sessionKey)"
-                        >
-                          <Copy className="h-4 w-4" />
-                          {copiedKey === (agent._id as string) ? "Copied" : "Cron"}
-                        </Button>
-                      </div>
                       <p className="text-[11px] text-text-dim">
                         Tip: If this says "Never connected", the agent hasn't sent its first{" "}
                         <span className="font-mono">sutraha_agent_pulse</span> yet.
