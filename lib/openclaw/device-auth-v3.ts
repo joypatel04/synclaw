@@ -239,14 +239,9 @@ export function buildDeviceAuthPayloadV3(params: {
   version?: "v1" | "v2";
 }): string {
   const version = params.version ?? (params.nonce ? "v2" : "v1");
-  const scopes = Array.from(
-    new Set(
-      params.scopes
-        .map((s) => s.trim())
-        .filter(Boolean),
-    ),
-  )
-    .sort()
+  const scopes = params.scopes
+    .map((s) => s.trim())
+    .filter(Boolean)
     .join(",");
   const token = params.token ?? "";
   const base = [
