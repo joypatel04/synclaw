@@ -186,6 +186,7 @@ export async function ensureDeviceIdentityV3(): Promise<{
 }
 
 export async function buildDeviceProofV3(challengeNonce: string): Promise<{
+  deviceAuthPayload: string;
   device: {
     id: string;
     publicKey: string;
@@ -199,12 +200,87 @@ export async function buildDeviceProofV3(challengeNonce: string): Promise<{
   const signedAt = Date.now();
   const signature = await identity.sign(toUtf8Bytes(challengeNonce));
   return {
+    deviceAuthPayload: challengeNonce,
     device: {
       id: identity.deviceId,
       publicKey: identity.publicKey,
       signedAt,
       signature,
       nonce: challengeNonce,
+    },
+  };
+}
+
+export function buildDeviceAuthPayloadV3(params: {
+  deviceId: string;
+  clientId: string;
+  clientMode: string;
+  role: string;
+  scopes: string[];
+  signedAtMs: number;
+  token?: string | null;
+  nonce?: string | null;
+  version?: "v1" | "v2";
+}): string {
+  const version = params.version ?? (params.nonce ? "v2" : "v1");
+  const scopes = params.scopes.join(",");
+  const token = params.token ?? "";
+  const base = [
+    version,
+    params.deviceId,
+    params.clientId,
+    params.clientMode,
+    params.role,
+    scopes,
+    String(params.signedAtMs),
+    token,
+  ];
+  if (version === "v2") {
+    base.push(params.nonce ?? "");
+  }
+  return base.join("|");
+}
+
+export async function buildDeviceProofForConnectV3(params: {
+  challengeNonce: string;
+  clientId: string;
+  clientMode: string;
+  role: string;
+  scopes: string[];
+  token?: string | null;
+}): Promise<{
+  deviceAuthPayload: string;
+  device: {
+    id: string;
+    publicKey: string;
+    signedAt: number;
+    signature: string;
+    nonce: string;
+  };
+} | null> {
+  const identity = await ensureDeviceIdentityV3();
+  if (!identity) return null;
+  const signedAt = Date.now();
+  const deviceAuthPayload = buildDeviceAuthPayloadV3({
+    version: "v2",
+    deviceId: identity.deviceId,
+    clientId: params.clientId,
+    clientMode: params.clientMode,
+    role: params.role,
+    scopes: params.scopes,
+    signedAtMs: signedAt,
+    token: params.token ?? null,
+    nonce: params.challengeNonce,
+  });
+  const signature = await identity.sign(toUtf8Bytes(deviceAuthPayload));
+  return {
+    deviceAuthPayload,
+    device: {
+      id: identity.deviceId,
+      publicKey: identity.publicKey,
+      signedAt,
+      signature,
+      nonce: params.challengeNonce,
     },
   };
 }

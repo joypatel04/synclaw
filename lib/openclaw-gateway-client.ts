@@ -1,5 +1,5 @@
 import {
-  buildDeviceProofV3,
+  buildDeviceProofForConnectV3,
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V1,
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2,
   readStoredDeviceIdentityV2,
@@ -1498,7 +1498,15 @@ export class OpenClawBrowserGatewayClient {
 
       phase = "sign";
       this.log("phase", { phase: "sign", result: "ok" });
-      const proof = await buildDeviceProofV3(challenge.nonce);
+      const normalizedScopes = normalizeScopes(this.config.scopes, this.config.role);
+      const proof = await buildDeviceProofForConnectV3({
+        challengeNonce: challenge.nonce,
+        clientId: this.config.clientId,
+        clientMode: this.config.clientMode || "webchat",
+        role: this.config.role,
+        scopes: normalizedScopes,
+        token: this.config.authToken ?? null,
+      });
       if (!proof) {
         throw new Error("device auth unavailable: secure context + WebCrypto required");
       }
@@ -1507,7 +1515,7 @@ export class OpenClawBrowserGatewayClient {
         deviceId: proof.device.id,
       });
 
-      const scopes = normalizeScopes(this.config.scopes, this.config.role);
+      const scopes = normalizedScopes;
       const connectParams = {
         minProtocol: 3,
         maxProtocol: 3,
