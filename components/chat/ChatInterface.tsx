@@ -386,7 +386,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     if (!gatewayRef.current) {
       const scopes = (
         process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES ??
-        "operator.read,operator.write"
+        "operator.read,operator.write,operator.admin"
       )
         .split(",")
         .map((s) => s.trim())
