@@ -81,7 +81,7 @@ export function OnboardingWizard() {
   const [passwordDraft, setPasswordDraft] = useState("");
   const [protocol, setProtocol] = useState<Protocol>("req");
   const [clientId, setClientId] = useState("cli");
-  const [clientMode, setClientMode] = useState("operator");
+  const [clientMode, setClientMode] = useState("webchat");
   const [clientPlatform, setClientPlatform] = useState("web");
   const [role, setRole] = useState("operator");
   const [scopesCsv, setScopesCsv] = useState(
@@ -104,7 +104,7 @@ export function OnboardingWizard() {
     setWsUrl(summary.wsUrl ?? "");
     setProtocol((summary.protocol as Protocol) ?? "req");
     setClientId(summary.clientId ?? "cli");
-    setClientMode(summary.clientMode ?? "operator");
+    setClientMode(summary.clientMode ?? "webchat");
     setClientPlatform(summary.clientPlatform ?? "web");
     setRole(summary.role ?? "operator");
     setScopesCsv((summary.scopes ?? []).join(",") || scopesCsv);

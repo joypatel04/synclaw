@@ -93,7 +93,7 @@ function OpenClawSettingsContent() {
   const [wsUrl, setWsUrl] = useState("");
   const [protocol, setProtocol] = useState<Protocol>("req");
   const [clientId, setClientId] = useState("cli");
-  const [clientMode, setClientMode] = useState("operator");
+  const [clientMode, setClientMode] = useState("webchat");
   const [clientPlatform, setClientPlatform] = useState("web");
   const [role, setRole] = useState("operator");
   const [scopesCsv, setScopesCsv] = useState(
@@ -133,7 +133,7 @@ function OpenClawSettingsContent() {
     setWsUrl(summary.wsUrl ?? "");
     setProtocol((summary.protocol as Protocol) ?? "req");
     setClientId(summary.clientId ?? "cli");
-    setClientMode(summary.clientMode ?? "operator");
+    setClientMode(summary.clientMode ?? "webchat");
     setClientPlatform(summary.clientPlatform ?? "web");
     setRole(summary.role ?? "operator");
     setScopesCsv((summary.scopes ?? []).join(",") || scopesCsv);
@@ -488,7 +488,7 @@ function OpenClawSettingsContent() {
               <Input
                 value={clientMode}
                 onChange={(e) => setClientMode(e.target.value)}
-                placeholder="operator"
+                placeholder="webchat"
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
               />
             </div>

@@ -23,13 +23,26 @@ type GatewayClientConfig = {
   subscribeMethod: string;
 };
 
-function effectiveClientMode(clientMode: string, role: string): string {
+function buildClientModeAttempts(clientMode: string, role: string): string[] {
+  const out: string[] = [];
+  const push = (v: string | undefined | null) => {
+    const value = (v ?? "").trim();
+    if (!value) return;
+    if (!out.includes(value)) out.push(value);
+  };
+
+  // Keep user-configured mode first.
+  push(clientMode);
+
   const normalizedRole = (role || "").trim().toLowerCase();
-  const normalizedMode = (clientMode || "").trim().toLowerCase();
   if (normalizedRole === "operator") {
-    if (!normalizedMode || normalizedMode === "webchat") return "operator";
+    // Gateways differ by version; try common operator-compatible modes.
+    push("webchat");
+    push("operator");
   }
-  return clientMode;
+
+  if (out.length === 0) out.push("webchat");
+  return out;
 }
 
 function isGatewayDebugEnabled(): boolean {
@@ -951,9 +964,10 @@ export class OpenClawBrowserGatewayClient {
     wireProtocol: GatewayWireProtocol;
     withDeviceChallenge: boolean;
     deviceVariant: "nonce" | "nonce_signedAt" | "json";
+    clientMode: string;
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
-    const clientMode = effectiveClientMode(
+    const clientModes = buildClientModeAttempts(
       this.config.clientMode,
       this.config.role,
     );
@@ -963,19 +977,6 @@ export class OpenClawBrowserGatewayClient {
       deviceAuthEnabled && storedDeviceToken
         ? storedDeviceToken
         : this.config.authToken;
-
-    const base = {
-      minProtocol: 3,
-      maxProtocol: 3,
-      client: {
-        id: this.config.clientId,
-        version: "0.1.0",
-        mode: clientMode,
-        platform: this.config.clientPlatform,
-      },
-      role: this.config.role,
-      locale: "en-US",
-    };
 
     const authBase = {
       token: preferredToken,
@@ -1004,12 +1005,14 @@ export class OpenClawBrowserGatewayClient {
       params: Record<string, unknown>,
       withDeviceChallenge: boolean,
       deviceVariant: "nonce" | "nonce_signedAt" | "json",
+      clientMode: string,
     ) => ({
       method,
       wireProtocol,
       params,
       withDeviceChallenge,
       deviceVariant,
+      clientMode,
     });
 
     const out: Array<{
@@ -1018,18 +1021,35 @@ export class OpenClawBrowserGatewayClient {
       wireProtocol: GatewayWireProtocol;
       withDeviceChallenge: boolean;
       deviceVariant: "nonce" | "nonce_signedAt" | "json";
+      clientMode: string;
     }> = [];
 
-    for (const mode of challengeModes) {
-      out.push(
-        mk(
-          "connect",
-          "req",
-          { ...base, scopes, auth: authBase },
-          mode.withDeviceChallenge,
-          mode.deviceVariant,
-        ),
-      );
+    for (const clientMode of clientModes) {
+      const base = {
+        minProtocol: 3,
+        maxProtocol: 3,
+        client: {
+          id: this.config.clientId,
+          version: "0.1.0",
+          mode: clientMode,
+          platform: this.config.clientPlatform,
+        },
+        role: this.config.role,
+        locale: "en-US",
+      };
+
+      for (const mode of challengeModes) {
+        out.push(
+          mk(
+            "connect",
+            "req",
+            { ...base, scopes, auth: authBase },
+            mode.withDeviceChallenge,
+            mode.deviceVariant,
+            clientMode,
+          ),
+        );
+      }
     }
 
     // If we have a stored device token, also try raw configured token in fallback.
@@ -1042,9 +1062,23 @@ export class OpenClawBrowserGatewayClient {
         mk(
           "connect",
           "req",
-          { ...base, scopes, auth: authFallback },
+          {
+            minProtocol: 3,
+            maxProtocol: 3,
+            client: {
+              id: this.config.clientId,
+              version: "0.1.0",
+              mode: clientModes[0] ?? this.config.clientMode,
+              platform: this.config.clientPlatform,
+            },
+            role: this.config.role,
+            locale: "en-US",
+            scopes,
+            auth: authFallback,
+          },
           false,
           "nonce",
+          clientModes[0] ?? this.config.clientMode,
         ),
       );
     }
@@ -1186,6 +1220,7 @@ export class OpenClawBrowserGatewayClient {
       attempts: attempts.map((a) => ({
         method: a.method,
         wireProtocol: a.wireProtocol,
+        clientMode: a.clientMode,
         params: a.params,
       })),
     });
@@ -1199,6 +1234,7 @@ export class OpenClawBrowserGatewayClient {
           wireProtocol: attempt.wireProtocol,
           withDeviceChallenge: attempt.withDeviceChallenge,
           deviceVariant: attempt.deviceVariant,
+          clientMode: attempt.clientMode,
         });
         const ws = await this.openSocket();
         this.ws = ws;
@@ -1242,6 +1278,7 @@ export class OpenClawBrowserGatewayClient {
           index: i + 1,
           method: attempt.method,
           wireProtocol: attempt.wireProtocol,
+          clientMode: attempt.clientMode,
         });
 
         if (this.config.subscribeOnConnect) {
@@ -1268,6 +1305,7 @@ export class OpenClawBrowserGatewayClient {
           index: i + 1,
           method: attempt.method,
           wireProtocol: attempt.wireProtocol,
+          clientMode: attempt.clientMode,
           error: error instanceof Error ? error.message : String(error),
         });
         await this.disconnect().catch(() => {});
