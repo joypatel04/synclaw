@@ -612,6 +612,15 @@ export class OpenClawBrowserGatewayClient {
     console.info("[OpenClawGateway]", event);
   }
 
+  private isIgnorableSubscribeError(message: string): boolean {
+    const m = message.toLowerCase();
+    if (m.includes("unknown method")) return true;
+    // Newer gateways may gate live subscribe behind elevated scope.
+    // We can continue without subscription and rely on history polling.
+    if (m.includes("missing scope") && m.includes("operator.admin")) return true;
+    return false;
+  }
+
   private buildConnectAttempts(): Array<{
     method: string;
     params: Record<string, unknown>;
@@ -898,8 +907,8 @@ export class OpenClawBrowserGatewayClient {
           } catch (error) {
             const message =
               error instanceof Error ? error.message : String(error);
-            if (!message.includes("unknown method")) throw error;
-            this.log("connect.subscribe.unknown_method_ignored", {
+            if (!this.isIgnorableSubscribeError(message)) throw error;
+            this.log("connect.subscribe.ignored", {
               method: this.config.subscribeMethod,
               message,
             });
