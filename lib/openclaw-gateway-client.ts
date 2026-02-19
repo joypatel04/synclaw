@@ -944,8 +944,12 @@ export class OpenClawBrowserGatewayClient {
     deviceVariant: "nonce" | "nonce_signedAt" | "json";
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
+    const deviceAuthEnabled = isOpenClawDeviceAuthEnabled();
     const storedDeviceToken = this.getStoredDeviceToken();
-    const preferredToken = storedDeviceToken || this.config.authToken;
+    const preferredToken =
+      deviceAuthEnabled && storedDeviceToken
+        ? storedDeviceToken
+        : this.config.authToken;
 
     const base = {
       minProtocol: 3,
@@ -972,7 +976,7 @@ export class OpenClawBrowserGatewayClient {
     const challengeModes: Array<{
       withDeviceChallenge: boolean;
       deviceVariant: "nonce" | "nonce_signedAt" | "json";
-    }> = isOpenClawDeviceAuthEnabled()
+    }> = deviceAuthEnabled
       ? [
           { withDeviceChallenge: true, deviceVariant: "nonce" },
           { withDeviceChallenge: true, deviceVariant: "nonce_signedAt" },
