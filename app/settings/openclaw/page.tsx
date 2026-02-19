@@ -678,6 +678,59 @@ function OpenClawSettingsContent() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary">
+            First-time OpenClaw checklist
+          </h2>
+          <p className="mt-1 text-xs text-text-muted">
+            Each user brings their own OpenClaw. Complete these on your OpenClaw side before chat works.
+          </p>
+
+          <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
+            <li>
+              Add this Sutraha origin to OpenClaw allowed origins:
+              <div className="mt-1 flex items-center gap-2">
+                <code className="rounded bg-bg-tertiary px-2 py-1 font-mono text-[11px] text-text-primary">
+                  {origin || "(open this page in browser to detect origin)"}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={!origin}
+                  title={copiedId === "origin" ? "Copied" : "Copy origin"}
+                  onClick={() => void copy("origin", origin)}
+                >
+                  {copiedId === "origin" ? (
+                    <Check className="h-4 w-4 text-status-active" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </li>
+            <li>
+              Approve/pair this device in OpenClaw device list (if your gateway enforces device auth).
+              <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+{`openclaw devices list
+openclaw devices approve <requestId>`}
+              </pre>
+            </li>
+            <li>
+              Ensure your OpenClaw policy grants required scopes (including{" "}
+              <span className="font-mono">operator.admin</span>) for subscribe/history/chat methods.
+              <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
+{`openclaw devices rotate \\
+  --device <deviceId> \\
+  --role operator \\
+  --scope operator.read \\
+  --scope operator.write \\
+  --scope operator.admin`}
+              </pre>
+            </li>
+          </ol>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">
             Local device auth cache
           </h2>
           <p className="mt-1 text-xs text-text-muted">
