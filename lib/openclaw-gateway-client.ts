@@ -121,9 +121,11 @@ export function isOpenClawDeviceAuthEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const raw = window.localStorage.getItem(OPENCLAW_DEVICE_AUTH_ENABLED_KEY);
+    // Default ON for modern OpenClaw gateways unless explicitly disabled.
+    if (raw === null) return true;
     return raw === "1" || raw === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 
