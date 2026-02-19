@@ -1,4 +1,5 @@
 export type GatewayProtocol = "req" | "jsonrpc";
+type GatewayWireProtocol = GatewayProtocol | "raw";
 
 type GatewayMessage = Record<string, unknown>;
 
@@ -614,6 +615,7 @@ export class OpenClawBrowserGatewayClient {
   private buildConnectAttempts(): Array<{
     method: string;
     params: Record<string, unknown>;
+    wireProtocol: GatewayWireProtocol;
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
     const scopeCsv = scopes.join(",");
@@ -640,6 +642,7 @@ export class OpenClawBrowserGatewayClient {
     return [
       {
         method: "connect",
+        wireProtocol: "req",
         params: {
           ...base,
           scopes,
@@ -648,6 +651,25 @@ export class OpenClawBrowserGatewayClient {
       },
       {
         method: "connect",
+        wireProtocol: "jsonrpc",
+        params: {
+          ...base,
+          scopes,
+          auth: authBase,
+        },
+      },
+      {
+        method: "connect",
+        wireProtocol: "raw",
+        params: {
+          ...base,
+          scopes,
+          auth: authBase,
+        },
+      },
+      {
+        method: "connect",
+        wireProtocol: "req",
         params: {
           ...base,
           scopes,
@@ -662,6 +684,22 @@ export class OpenClawBrowserGatewayClient {
       },
       {
         method: "connect",
+        wireProtocol: "jsonrpc",
+        params: {
+          ...base,
+          scopes,
+          scope: scopeCsv,
+          auth: {
+            ...authBase,
+            scopes,
+            scope: scopeCsv,
+            role: this.config.role,
+          },
+        },
+      },
+      {
+        method: "connect",
+        wireProtocol: "req",
         params: {
           ...base,
           scopes,
@@ -675,7 +713,23 @@ export class OpenClawBrowserGatewayClient {
         },
       },
       {
-        method: "gateway.connect",
+        method: "connect",
+        wireProtocol: "jsonrpc",
+        params: {
+          ...base,
+          scopes,
+          scope: scopeSp,
+          auth: {
+            ...authBase,
+            scopes,
+            scope: scopeSp,
+            role: this.config.role,
+          },
+        },
+      },
+      {
+        method: "connect",
+        wireProtocol: "raw",
         params: {
           ...base,
           scopes,
@@ -805,19 +859,35 @@ export class OpenClawBrowserGatewayClient {
     this.log("connect.start", {
       wsUrl: this.config.wsUrl,
       protocol: this.config.protocol,
-      attempts: attempts.map((a) => ({ method: a.method, params: a.params })),
+      attempts: attempts.map((a) => ({
+        method: a.method,
+        wireProtocol: a.wireProtocol,
+        params: a.params,
+      })),
     });
 
     for (let i = 0; i < attempts.length; i++) {
       const attempt = attempts[i];
       try {
-        this.log("connect.attempt.start", { index: i + 1, method: attempt.method });
+        this.log("connect.attempt.start", {
+          index: i + 1,
+          method: attempt.method,
+          wireProtocol: attempt.wireProtocol,
+        });
         const ws = await this.openSocket();
         this.ws = ws;
         this.attachSocketListeners(ws);
 
-        await this.request(attempt.method, attempt.params);
-        this.log("connect.attempt.ok", { index: i + 1, method: attempt.method });
+        await this.requestWithWireProtocol(
+          attempt.method,
+          attempt.params,
+          attempt.wireProtocol,
+        );
+        this.log("connect.attempt.ok", {
+          index: i + 1,
+          method: attempt.method,
+          wireProtocol: attempt.wireProtocol,
+        });
 
         if (this.config.subscribeOnConnect) {
           try {
@@ -842,6 +912,7 @@ export class OpenClawBrowserGatewayClient {
         this.log("connect.attempt.error", {
           index: i + 1,
           method: attempt.method,
+          wireProtocol: attempt.wireProtocol,
           error: error instanceof Error ? error.message : String(error),
         });
         await this.disconnect().catch(() => {});
@@ -864,6 +935,18 @@ export class OpenClawBrowserGatewayClient {
   }
 
   async request(method: string, params: Record<string, unknown>) {
+    return await this.requestWithWireProtocol(
+      method,
+      params,
+      this.config.protocol,
+    );
+  }
+
+  async requestWithWireProtocol(
+    method: string,
+    params: Record<string, unknown>,
+    wireProtocol: GatewayWireProtocol,
+  ) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       const detail = this.lastCloseReason ? ` (${this.lastCloseReason})` : "";
       throw new Error(`Gateway socket not connected${detail}`);
@@ -871,10 +954,12 @@ export class OpenClawBrowserGatewayClient {
 
     const id = String(this.nextId++);
     const payload =
-      this.config.protocol === "jsonrpc"
+      wireProtocol === "jsonrpc"
         ? { jsonrpc: "2.0", id, method, params }
-        : { type: "req", id, method, params };
-    this.log("request.send", { id, method, payload });
+        : wireProtocol === "req"
+          ? { type: "req", id, method, params }
+          : { id, method, params };
+    this.log("request.send", { id, method, wireProtocol, payload });
 
     return await new Promise<unknown>((resolve, reject) => {
       const timeout = setTimeout(() => {
