@@ -147,6 +147,12 @@ function MembersContent() {
         >
           Members
         </Link>
+        <Link
+          href="/settings/openclaw"
+          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+        >
+          OpenClaw
+        </Link>
       </div>
 
       {/* Members */}

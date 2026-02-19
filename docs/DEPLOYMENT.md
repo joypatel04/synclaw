@@ -69,6 +69,7 @@ AUTH_GITHUB_ID=<GitHub OAuth App ID>
 AUTH_GITHUB_SECRET=<GitHub OAuth App Secret>
 JWT_PRIVATE_KEY=<RSA private key>
 JWKS=<JSON Web Key Set>
+OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<64 hex chars (openssl rand -hex 32)>
 ```
 
 To generate JWT keys for a new deployment:
@@ -178,5 +179,4 @@ bunx convex dev
 | Convex Site | `descriptive-perch-695.convex.site` | `confident-ram-83.convex.site` |
 | Frontend | `localhost:3001` | `hq.sutraha.in` |
 | SITE_URL | `http://localhost:3001` | `https://hq.sutraha.in` |
-
 

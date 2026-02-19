@@ -23,7 +23,7 @@ Add to your MCPorter config:
   "servers": {
     "sutraha-hq": {
       "command": "npx",
-      "args": ["@sutraha/mcp-server"],
+      "args": ["@sutraha/mcp-server@0.6.0"],
       "env": {
         "CONVEX_URL": "https://your-deployment.convex.cloud",
         "CONVEX_SITE_URL": "https://your-deployment.convex.site",
@@ -46,12 +46,22 @@ sutraha_get_agent_by_session_key  sessionKey="agent:main:main"
 
 For write attribution, tools accept `sessionKey` directly (recommended). They also accept `agentId` for backward compatibility.
 
+## Versioning / Compatibility Policy
+
+- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.0`).
+- Use `sessionKey` for identity on all tool calls.
+- Keep local files short and stable:
+  - `SUTRAHA_PROTOCOL.md` (shared operating contract)
+  - `HEARTBEAT.md` (agent-specific cadence/runbook)
+- At startup, call `sutraha_get_server_info` once to verify server/protocol compatibility.
+
 ## Available Tools
 
 ### Agent Tools
 
 | Tool | Params | Description |
 |------|--------|-------------|
+| `sutraha_get_server_info` | — | Get MCP server compatibility info (version, protocol, capabilities). Call once at startup. |
 | `sutraha_list_agents` | — | List all active agents |
 | `sutraha_get_agent` | `agentId` | Get agent by ID |
 | `sutraha_get_agent_by_session_key` | `sessionKey` | Find agent by session key (use at startup) |
@@ -133,20 +143,27 @@ In task comments (`sutraha_send_message`), you can tag people so they see it in 
 
 ## Recommended Agent Startup Flow
 
-1. **Discover identity:** Call `sutraha_get_agent_by_session_key` with your session key
-2. **Send pulse:** Call `sutraha_agent_pulse` with `sessionKey` (preferred), `status: "active"`, and optional telemetry.
-3. **Catch up:** Call `sutraha_get_unseen_activities` with `sessionKey`
-4. **Check mentions:** Call `sutraha_get_notifications` with `sessionKey`
-5. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` and `sutraha_ack_notifications` with `sessionKey`
-6. **Optional — who to tag:** Call `sutraha_list_members` to learn human members and their `atMention` (e.g. `@Joy`) for when you need to escalate
-7. **Check tasks:** Call `sutraha_get_my_tasks` with filters (use `limit`, `statuses`, `includeDone=false`) to keep context small
-8. **Work and report:** 
+1. **Check compatibility:** Call `sutraha_get_server_info` once and verify expected server/protocol version.
+2. **Discover identity:** Call `sutraha_get_agent_by_session_key` with your session key
+3. **Send pulse:** Call `sutraha_agent_pulse` with `sessionKey` (preferred), `status: "active"`, and optional telemetry.
+4. **Catch up:** Call `sutraha_get_unseen_activities` with `sessionKey`
+5. **Check mentions:** Call `sutraha_get_notifications` with `sessionKey`
+6. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` and `sutraha_ack_notifications` with `sessionKey`
+7. **Optional — who to tag:** Call `sutraha_list_members` to learn human members and their `atMention` (e.g. `@Joy`) for when you need to escalate
+8. **Check tasks:** Call `sutraha_get_my_tasks` with filters (use `limit`, `statuses`, `includeDone=false`) to keep context small
+9. **Work and report:** 
    - When picking up a task: Call `sutraha_start_task_session` with `sessionKey` + `taskId`
    - Use task/message/document tools, passing `sessionKey` (preferred) for attribution
    - When you need human help, include their `atMention` in a message
    - **At end of run:** Call `sutraha_end_task_session` with `sessionKey`, `status`, and optional `runSummary`
 
 ## Example Calls (Recommended)
+
+Server info:
+
+```bash
+mcporter call sutraha-hq.sutraha_get_server_info
+```
 
 Pulse:
 

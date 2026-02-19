@@ -9,6 +9,7 @@
  */
 
 import type * as activities from "../activities.js";
+import type * as agentSetup from "../agentSetup.js";
 import type * as agents from "../agents.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as apiKeys_internal from "../apiKeys_internal.js";
@@ -19,8 +20,11 @@ import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as lib_apiAuth from "../lib/apiAuth.js";
 import type * as lib_permissions from "../lib/permissions.js";
+import type * as lib_secretCrypto from "../lib/secretCrypto.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as onboarding from "../onboarding.js";
+import type * as openclaw from "../openclaw.js";
 import type * as tasks from "../tasks.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -32,6 +36,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
+  agentSetup: typeof agentSetup;
   agents: typeof agents;
   apiKeys: typeof apiKeys;
   apiKeys_internal: typeof apiKeys_internal;
@@ -42,8 +47,11 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/apiAuth": typeof lib_apiAuth;
   "lib/permissions": typeof lib_permissions;
+  "lib/secretCrypto": typeof lib_secretCrypto;
   messages: typeof messages;
   notifications: typeof notifications;
+  onboarding: typeof onboarding;
+  openclaw: typeof openclaw;
   tasks: typeof tasks;
   workspaces: typeof workspaces;
 }>;

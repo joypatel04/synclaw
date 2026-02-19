@@ -1,13 +1,55 @@
 "use client";
 
-import { useConvexAuth } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useConvexAuth, useQuery } from "convex/react";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "./Header";
-import { WorkspaceProvider } from "@/components/providers/workspace-provider";
+import {
+  WorkspaceProvider,
+  useWorkspace,
+} from "@/components/providers/workspace-provider";
+import { api } from "@/convex/_generated/api";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
+import { isAllowedWhileLocked as isAllowedWhileLockedRoute } from "@/lib/onboardingGate";
 
 interface AppLayoutProps {
   children: React.ReactNode;
+}
+
+function AuthedShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() || "/";
+  const { workspaceId, canAdmin } = useWorkspace();
+  const status = useQuery(api.onboarding.getStatus, { workspaceId });
+
+  const allowed = isAllowedWhileLockedRoute(pathname);
+
+  // Hide nav until we know onboarding is complete (prevents "flash of nav").
+  const onboardingLocked = canAdmin && (status === undefined || !status.isComplete);
+
+  // Only redirect once status is known.
+  const shouldRedirect = canAdmin && status !== undefined && !status.isComplete;
+  // Strict gating UX: if owner onboarding status is still loading and we're on a
+  // disallowed route, block rendering to avoid flashing the app before redirect.
+  const blocking = canAdmin && !allowed && (status === undefined || shouldRedirect);
+
+  return (
+    <div className="flex min-h-screen flex-col bg-bg-primary">
+      <OnboardingGate shouldRedirect={shouldRedirect} />
+      <Header onboardingLocked={onboardingLocked} />
+      <main className="flex-1">
+        {blocking ? (
+          <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+              <p className="text-sm text-text-muted">Redirecting to setup...</p>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
+      </main>
+    </div>
+  );
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -45,10 +87,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <WorkspaceProvider>
-      <div className="flex min-h-screen flex-col bg-bg-primary">
-        <Header />
-        <main className="flex-1">{children}</main>
-      </div>
+      <AuthedShell>{children}</AuthedShell>
     </WorkspaceProvider>
   );
 }

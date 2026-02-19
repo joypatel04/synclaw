@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { ChevronDown, MessageSquare } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import {
   mapGatewayEventForIngest,
+  type OpenClawConnectionStatus,
   OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -18,6 +20,7 @@ import {
   pickRunId,
   pickText,
 } from "@/lib/openclaw-gateway-client";
+import { clearChatDraft, getChatDraft } from "@/lib/chatDraft";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, type UiChatMessage } from "./ChatMessage";
 
@@ -39,15 +42,33 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
+  const [gatewayBlock, setGatewayBlock] = useState<OpenClawConnectionStatus | null>(null);
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
 
   // Direct WS is now mandatory for chat.
   const useDirectWs = true;
-  const includeCron =
-    process.env.NEXT_PUBLIC_OPENCLAW_INCLUDE_CRON === "true";
-  const historyPollMs = Number(
-    process.env.NEXT_PUBLIC_OPENCLAW_HISTORY_POLL_MS ?? "0",
+
+  const openclawConfig = useQuery(
+    api.openclaw.getClientConfig,
+    canEdit ? { workspaceId } : "skip",
+  );
+  const includeCron = openclawConfig?.includeCron ?? false;
+  const historyPollMs = openclawConfig?.historyPollMs ?? 0;
+
+  const canChatBase = Boolean(canEdit && openclawConfig && openclawConfig.wsUrl);
+  const gatewayBlocked = Boolean(
+    gatewayBlock &&
+      gatewayBlock.state !== "CONNECTED" &&
+      (gatewayBlock.state === "PAIRING_REQUIRED" ||
+        gatewayBlock.state === "PAIRING_PENDING" ||
+        gatewayBlock.state === "SCOPES_INSUFFICIENT" ||
+        gatewayBlock.state === "INVALID_CONFIG"),
+  );
+  const canChat = canChatBase && !gatewayBlocked;
+  const gatewayConfigKey = useMemo(
+    () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
+    [openclawConfig],
   );
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
@@ -90,6 +111,14 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     [agent.sessionKey],
   );
 
+  // Reset gateway connection when config changes (wsUrl/token/etc).
+  useEffect(() => {
+    void gatewayRef.current?.disconnect();
+    gatewayRef.current = null;
+    connectRef.current = null;
+    setGatewayBlock(null);
+  }, [gatewayConfigKey]);
+
   const makeClientMessageId = () =>
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -97,6 +126,21 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const sendQueueRef = useRef<QueueItem[]>([]);
   const sendingRef = useRef(false);
   const [queuedCount, setQueuedCount] = useState(0);
+
+  const draftKey = useMemo(
+    () => `${String(workspaceId)}:${agent.sessionKey}`,
+    [workspaceId, agent.sessionKey],
+  );
+  const [draft, setDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(
+      getChatDraft({
+        workspaceId: String(workspaceId),
+        sessionKey: agent.sessionKey,
+      }),
+    );
+  }, [draftKey, workspaceId, agent.sessionKey]);
 
   const rebuildIndex = (next: UiChatMessage[]) => {
     const map = new Map<string, number>();
@@ -383,36 +427,29 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   };
 
   const ensureDirectGatewayConnected = async () => {
-    if (!gatewayRef.current) {
-      const scopes = (
-        process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SCOPES ??
-        "operator.read,operator.write,operator.admin"
-      )
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+    if (!openclawConfig) {
+      throw new Error(
+        "OpenClaw is not configured for this workspace. Go to Settings → OpenClaw.",
+      );
+    }
+    if (!openclawConfig.wsUrl) {
+      throw new Error("OpenClaw wsUrl is missing.");
+    }
 
+    if (!gatewayRef.current) {
       gatewayRef.current = new OpenClawBrowserGatewayClient(
         {
-          wsUrl: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_WS_URL ?? "",
-          protocol:
-            process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_PROTOCOL === "jsonrpc"
-              ? "jsonrpc"
-              : "req",
-          authToken: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_AUTH_TOKEN,
-          password: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_PASSWORD,
-          clientId: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_ID ?? "cli",
-          clientMode:
-            process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_MODE ?? "webchat",
-          clientPlatform:
-            process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CLIENT_PLATFORM ?? "web",
-          role: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_ROLE ?? "operator",
-          scopes,
-          subscribeOnConnect:
-            process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_CHAT_SUBSCRIBE === "true",
-          subscribeMethod:
-            process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_SUBSCRIBE_METHOD ??
-            "chat.subscribe",
+          wsUrl: openclawConfig.wsUrl,
+          protocol: openclawConfig.protocol,
+          authToken: openclawConfig.authToken,
+          password: openclawConfig.password,
+          clientId: openclawConfig.clientId,
+          clientMode: openclawConfig.clientMode,
+          clientPlatform: openclawConfig.clientPlatform,
+          role: openclawConfig.role,
+          scopes: openclawConfig.scopes,
+          subscribeOnConnect: openclawConfig.subscribeOnConnect,
+          subscribeMethod: openclawConfig.subscribeMethod,
         },
         async (event) => {
           // Render streaming deltas locally (no Convex writes).
@@ -462,11 +499,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
     if (!connectRef.current) {
       connectRef.current = gatewayRef.current.connect().catch((error) => {
+        const status = gatewayRef.current?.getConnectionStatus() ?? null;
+        if (status) setGatewayBlock(status);
         gatewayRef.current = null;
         throw error;
       });
     }
     await connectRef.current;
+    const status = gatewayRef.current?.getConnectionStatus() ?? null;
+    if (status?.state === "CONNECTED") {
+      setGatewayBlock(null);
+    } else if (status) {
+      setGatewayBlock(status);
+    }
   };
 
   const sendDirect = async (content: string, clientMessageId?: string) => {
@@ -668,6 +713,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   // tool calls are only available via `chat.history`.
   useEffect(() => {
     if (!useDirectWs) return;
+    if (!canChat) return;
     if (!historyPollMs || Number.isNaN(historyPollMs) || historyPollMs < 1000) {
       // Still do a one-time hydration on mount for history.
       void (async () => {
@@ -781,10 +827,11 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [useDirectWs, historyPollMs, agent.sessionKey]);
+  }, [useDirectWs, canChat, historyPollMs, agent.sessionKey, gatewayConfigKey]);
 
   const handleSend = async (content: string) => {
     await enqueueOrSend(content);
+    clearChatDraft({ workspaceId: String(workspaceId), sessionKey: agent.sessionKey });
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {
@@ -839,7 +886,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           <p className="text-xs text-text-muted hidden sm:block">{agent.role}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          {activeRun?.externalRunId && canEdit && (
+          {activeRun?.externalRunId && canChat && (
             <Button
               variant="outline"
               size="sm"
@@ -860,7 +907,40 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       <div className="relative flex-1 min-h-0">
         <ScrollArea className="h-full bg-bg-secondary" viewportRef={viewportRef}>
           <div className="space-y-3 p-3 sm:space-y-4 sm:p-6">
-            {localMessages.length === 0 ? (
+            {!canEdit ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="Chat requires member access"
+                description="Ask the workspace owner to upgrade your role."
+              />
+            ) : openclawConfig === undefined ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+              </div>
+            ) : openclawConfig === null ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="OpenClaw is not configured"
+                description="Set your gateway URL and token in Settings to enable chat."
+              >
+                <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+                  <Link href="/settings/openclaw">Open Settings</Link>
+                </Button>
+              </EmptyState>
+            ) : gatewayBlocked ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="OpenClaw setup required"
+                description={
+                  gatewayBlock?.message ??
+                  "Connection is blocked. Complete pairing and scope setup in OpenClaw settings."
+                }
+              >
+                <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+                  <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
+                </Button>
+              </EmptyState>
+            ) : localMessages.length === 0 ? (
               <EmptyState
                 icon={MessageSquare}
                 title={`Start chatting with ${agent.name}`}
@@ -876,7 +956,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                     userName={me?.name}
                     userImage={me?.image ?? undefined}
                   />
-                  {msg.state === "failed" && msg.externalMessageId && canEdit && (
+                  {msg.state === "failed" && msg.externalMessageId && canChat && (
                     <div className="mt-1 flex justify-end">
                       <Button
                         variant="ghost"
@@ -910,9 +990,12 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
       <div className="sticky bottom-0 border-t border-border-default bg-bg-secondary pb-[env(safe-area-inset-bottom)]">
         <ChatInput
+          key={draftKey}
           onSend={handleSend}
           placeholder={`Message ${agent.name}...`}
-          disabled={!canEdit}
+          disabled={!canChat}
+          initialValue={draft ?? undefined}
+          initialValueKey={draftKey}
           statusText={
             queuedCount > 0
               ? `Queued: ${queuedCount} (will send after the agent finishes)`
