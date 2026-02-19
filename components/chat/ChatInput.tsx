@@ -44,6 +44,12 @@ export function ChatInput({
     }
   }, [initialValue, initialValueKey]);
 
+  useEffect(() => {
+    if (content.trim().length === 0) {
+      setIsExpanded(false);
+    }
+  }, [content]);
+
   const showExpandToggle =
     isExpanded || content.length > 140 || content.includes("\n");
 
@@ -56,6 +62,7 @@ export function ChatInput({
     // Clear immediately so long-running sends (streaming/history polling) don't
     // leave the input looking "stuck". Restore on error.
     setContent("");
+    setIsExpanded(false);
     setErrorText(null);
     setIsSending(true);
     try {

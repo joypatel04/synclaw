@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { ChevronDown, MessageSquare } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ agent }: ChatInterfaceProps) {
   const { workspaceId, canEdit, membershipId } = useWorkspace();
+  const searchParams = useSearchParams();
   const members =
     useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
   const me = useMemo(
@@ -145,16 +147,21 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     () => `${String(workspaceId)}:${agent.sessionKey}`,
     [workspaceId, agent.sessionKey],
   );
+  const setupIntent = searchParams.get("setup") === "1";
   const [draft, setDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft(
-      consumeChatDraft({
-        workspaceId: String(workspaceId),
-        sessionKey: agent.sessionKey,
-      }),
-    );
-  }, [draftKey, workspaceId, agent.sessionKey]);
+    const key = {
+      workspaceId: String(workspaceId),
+      sessionKey: agent.sessionKey,
+    };
+    if (!setupIntent) {
+      clearChatDraft(key);
+      setDraft(null);
+      return;
+    }
+    setDraft(consumeChatDraft(key));
+  }, [draftKey, workspaceId, agent.sessionKey, setupIntent]);
 
   const rebuildIndex = (next: UiChatMessage[]) => {
     const map = new Map<string, number>();
