@@ -168,7 +168,7 @@ export const upsertConfig = mutation({
       workspaceId: args.workspaceId,
       wsUrl,
       protocol: args.protocol,
-      clientId: args.clientId || "cli",
+      clientId: args.clientId || "openclaw-control-ui",
       clientMode: args.clientMode || "webchat",
       clientPlatform: args.clientPlatform || "web",
       role: args.role || "operator",

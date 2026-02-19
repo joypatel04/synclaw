@@ -32,8 +32,6 @@ import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawCo
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
 
-type Protocol = "req";
-
 function parseScopesCsv(input: string): string[] {
   return input
     .split(",")
@@ -85,18 +83,12 @@ function OpenClawSettingsContent() {
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
-  const [protocol, setProtocol] = useState<Protocol>("req");
-  const [clientId, setClientId] = useState("openclaw-control-ui");
-  const [clientMode, setClientMode] = useState("webchat");
-  const [clientPlatform, setClientPlatform] = useState("web");
   const [role, setRole] = useState("operator");
   const [scopesCsv, setScopesCsv] = useState(
     "operator.read,operator.write,operator.admin",
   );
-  const [subscribeOnConnect, setSubscribeOnConnect] = useState(true);
-  const [subscribeMethod, setSubscribeMethod] = useState("chat.subscribe");
   const [includeCron, setIncludeCron] = useState(true);
-  const [historyPollMs, setHistoryPollMs] = useState("10000");
+  const [historyPollMs, setHistoryPollMs] = useState("5000");
 
   const [tokenDraft, setTokenDraft] = useState("");
   const [tokenClear, setTokenClear] = useState(false);
@@ -127,16 +119,10 @@ function OpenClawSettingsContent() {
   useEffect(() => {
     if (!summary) return;
     setWsUrl(summary.wsUrl ?? "");
-    setProtocol((summary.protocol as Protocol) ?? "req");
-    setClientId(summary.clientId ?? "openclaw-control-ui");
-    setClientMode(summary.clientMode ?? "webchat");
-    setClientPlatform(summary.clientPlatform ?? "web");
     setRole(summary.role ?? "operator");
     setScopesCsv((summary.scopes ?? []).join(",") || scopesCsv);
-    setSubscribeOnConnect(Boolean(summary.subscribeOnConnect));
-    setSubscribeMethod(summary.subscribeMethod ?? "chat.subscribe");
     setIncludeCron(Boolean(summary.includeCron));
-    setHistoryPollMs(String(summary.historyPollMs ?? 0));
+    setHistoryPollMs(String(summary.historyPollMs ?? 5000));
     // Don't populate secrets.
     setTokenDraft("");
     setTokenClear(false);
@@ -276,14 +262,15 @@ function OpenClawSettingsContent() {
       await upsert({
         workspaceId,
         wsUrl,
-        protocol,
-        clientId,
-        clientMode,
-        clientPlatform,
+        protocol: "req",
+        clientId: "openclaw-control-ui",
+        clientMode: "webchat",
+        clientPlatform:
+          typeof navigator !== "undefined" ? navigator.platform || "web" : "web",
         role,
         scopes,
-        subscribeOnConnect,
-        subscribeMethod,
+        subscribeOnConnect: false,
+        subscribeMethod: "chat.subscribe",
         includeCron,
         historyPollMs: Number(historyPollMs || "0"),
         authToken: tokenClear ? null : tokenDraft ? tokenDraft : undefined,
@@ -462,66 +449,9 @@ function OpenClawSettingsContent() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
-            Client Identity
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Client ID</Label>
-              <Input
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                placeholder="cli"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Mode</Label>
-              <Input
-                value={clientMode}
-                onChange={(e) => setClientMode(e.target.value)}
-                placeholder="webchat"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Platform</Label>
-              <Input
-                value={clientPlatform}
-                onChange={(e) => setClientPlatform(e.target.value)}
-                placeholder="web"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary mb-4">
             Chat Behavior
           </h2>
           <div className="space-y-4">
-            <label className="flex items-center gap-2 text-sm text-text-secondary">
-              <input
-                type="checkbox"
-                checked={subscribeOnConnect}
-                onChange={(e) => setSubscribeOnConnect(e.target.checked)}
-                className="h-4 w-4 accent-accent-orange"
-              />
-              Subscribe on connect (optional compatibility)
-            </label>
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Subscribe method</Label>
-              <Input
-                value={subscribeMethod}
-                onChange={(e) => setSubscribeMethod(e.target.value)}
-                placeholder="chat.subscribe"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-              />
-              <p className="text-[11px] text-text-dim">
-                Optional compatibility field. Control-UI parity mode does not require this for readiness.
-              </p>
-            </div>
-
             <label className="flex items-center gap-2 text-sm text-text-secondary">
               <input
                 type="checkbox"
@@ -543,6 +473,13 @@ function OpenClawSettingsContent() {
               <p className="text-[11px] text-text-dim">
                 Used to hydrate tool calls and missed messages via <code className="font-mono">chat.history</code>.
                 Recommended: 3000-5000ms. Set 0 to disable background polling.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Client identity (managed automatically)</p>
+              <p className="mt-1 font-mono text-[11px] text-text-primary">
+                openclaw-control-ui / webchat / req
               </p>
             </div>
           </div>

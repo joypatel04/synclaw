@@ -87,10 +87,10 @@ export function OnboardingWizard() {
   const [scopesCsv, setScopesCsv] = useState(
     "operator.read,operator.write,operator.admin",
   );
-  const [subscribeOnConnect, setSubscribeOnConnect] = useState(true);
+  const [subscribeOnConnect, setSubscribeOnConnect] = useState(false);
   const [subscribeMethod, setSubscribeMethod] = useState("chat.subscribe");
   const [includeCron, setIncludeCron] = useState(true);
-  const [historyPollMs, setHistoryPollMs] = useState("10000");
+  const [historyPollMs, setHistoryPollMs] = useState("5000");
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
@@ -111,7 +111,7 @@ export function OnboardingWizard() {
     setSubscribeOnConnect(Boolean(summary.subscribeOnConnect));
     setSubscribeMethod(summary.subscribeMethod ?? "chat.subscribe");
     setIncludeCron(Boolean(summary.includeCron));
-    setHistoryPollMs(String(summary.historyPollMs ?? 0));
+    setHistoryPollMs(String(summary.historyPollMs ?? 5000));
     setTokenDraft("");
     setPasswordDraft("");
     setTestResult({ status: "idle" });
