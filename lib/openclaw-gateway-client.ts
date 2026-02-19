@@ -51,6 +51,84 @@ function redactForLog(value: unknown): unknown {
   return out;
 }
 
+type DeviceIdentity = {
+  alg: "Ed25519" | "ECDSA_P256";
+  deviceId: string;
+  publicKeyB64u: string;
+  privateKey: CryptoKey;
+};
+
+type ConnectChallenge = {
+  nonce: string;
+  ts?: number;
+};
+
+export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY =
+  "sutraha:openclaw:deviceIdentity:v1";
+export const OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX =
+  "sutraha:openclaw:deviceToken:";
+
+export function openClawDeviceTokenStorageKey(wsUrl: string, role: string) {
+  return `${OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX}${wsUrl}|${role}`;
+}
+
+export function clearOpenClawLocalAuthState(wsUrl?: string, role?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY);
+    if (wsUrl && role) {
+      window.localStorage.removeItem(openClawDeviceTokenStorageKey(wsUrl, role));
+    } else {
+      const keys: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.startsWith(OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX)) {
+          keys.push(key);
+        }
+      }
+      for (const key of keys) window.localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function toUtf8Bytes(input: string): Uint8Array {
+  return new TextEncoder().encode(input);
+}
+
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", toArrayBuffer(bytes));
+  const arr = new Uint8Array(digest);
+  return Array.from(arr)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function parseStoredJson<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeScopes(scopes: string[], role: string): string[] {
   const out = new Set(scopes.map((s) => s.trim()).filter(Boolean));
   if (out.size === 0) {
@@ -583,6 +661,8 @@ export class OpenClawBrowserGatewayClient {
   private pending = new Map<string, PendingRequest>();
   private lastCloseReason: string | null = null;
   private debug = isGatewayDebugEnabled();
+  private latestChallenge: ConnectChallenge | null = null;
+  private challengeWaiters: Array<(value: ConnectChallenge | null) => void> = [];
 
   constructor(
     private config: GatewayClientConfig,
@@ -612,6 +692,218 @@ export class OpenClawBrowserGatewayClient {
     console.info("[OpenClawGateway]", event);
   }
 
+  private tokenStorageKey(): string {
+    return openClawDeviceTokenStorageKey(this.config.wsUrl, this.config.role);
+  }
+
+  private getStoredDeviceToken(): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(this.tokenStorageKey());
+    } catch {
+      return null;
+    }
+  }
+
+  private saveStoredDeviceToken(token: string) {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(this.tokenStorageKey(), token);
+      this.log("deviceToken.saved");
+    } catch {
+      // ignore storage failures
+    }
+  }
+
+  private async loadOrCreateDeviceIdentity(): Promise<DeviceIdentity | null> {
+    if (typeof window === "undefined" || !window.isSecureContext) return null;
+    if (!crypto?.subtle) return null;
+
+    const stored = parseStoredJson<{
+      alg: "Ed25519" | "ECDSA_P256";
+      deviceId: string;
+      publicKeyB64u: string;
+      privateJwk: JsonWebKey;
+    }>(
+      window.localStorage.getItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY),
+    );
+
+    const importStored = async () => {
+      if (!stored) return null;
+      try {
+        if (stored.alg === "Ed25519") {
+          const privateKey = await crypto.subtle.importKey(
+            "jwk",
+            stored.privateJwk,
+            { name: "Ed25519" },
+            false,
+            ["sign"],
+          );
+          return {
+            alg: "Ed25519" as const,
+            deviceId: stored.deviceId,
+            publicKeyB64u: stored.publicKeyB64u,
+            privateKey,
+          };
+        }
+        const privateKey = await crypto.subtle.importKey(
+          "jwk",
+          stored.privateJwk,
+          { name: "ECDSA", namedCurve: "P-256" },
+          false,
+          ["sign"],
+        );
+        return {
+          alg: "ECDSA_P256" as const,
+          deviceId: stored.deviceId,
+          publicKeyB64u: stored.publicKeyB64u,
+          privateKey,
+        };
+      } catch {
+        return null;
+      }
+    };
+
+    const existing = await importStored();
+    if (existing) return existing;
+
+    try {
+      const kp = await crypto.subtle.generateKey(
+        { name: "Ed25519" },
+        true,
+        ["sign", "verify"],
+      );
+      const privateJwk = (await crypto.subtle.exportKey(
+        "jwk",
+        kp.privateKey,
+      )) as JsonWebKey;
+      const spki = new Uint8Array(
+        await crypto.subtle.exportKey("spki", kp.publicKey),
+      );
+      const publicKeyB64u = toBase64Url(spki);
+      const fingerprint = (await sha256Hex(spki)).slice(0, 32);
+      const identityDoc = {
+        alg: "Ed25519" as const,
+        deviceId: `web-${fingerprint}`,
+        publicKeyB64u,
+        privateJwk,
+      };
+      window.localStorage.setItem(
+        OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
+        JSON.stringify(identityDoc),
+      );
+      return {
+        alg: identityDoc.alg,
+        deviceId: identityDoc.deviceId,
+        publicKeyB64u: identityDoc.publicKeyB64u,
+        privateKey: kp.privateKey,
+      };
+    } catch {
+      // Fall back to ECDSA if Ed25519 isn't available.
+    }
+
+    try {
+      const kp = await crypto.subtle.generateKey(
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["sign", "verify"],
+      );
+      const privateJwk = (await crypto.subtle.exportKey(
+        "jwk",
+        kp.privateKey,
+      )) as JsonWebKey;
+      const spki = new Uint8Array(
+        await crypto.subtle.exportKey("spki", kp.publicKey),
+      );
+      const publicKeyB64u = toBase64Url(spki);
+      const fingerprint = (await sha256Hex(spki)).slice(0, 32);
+      const identityDoc = {
+        alg: "ECDSA_P256" as const,
+        deviceId: `web-${fingerprint}`,
+        publicKeyB64u,
+        privateJwk,
+      };
+      window.localStorage.setItem(
+        OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
+        JSON.stringify(identityDoc),
+      );
+      return {
+        alg: identityDoc.alg,
+        deviceId: identityDoc.deviceId,
+        publicKeyB64u: identityDoc.publicKeyB64u,
+        privateKey: kp.privateKey,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private challengeMessage(
+    challenge: ConnectChallenge,
+    signedAt: number,
+    variant: "nonce" | "nonce_signedAt" | "json",
+  ): Uint8Array {
+    if (variant === "nonce") {
+      return toUtf8Bytes(challenge.nonce);
+    }
+    if (variant === "nonce_signedAt") {
+      return toUtf8Bytes(`${challenge.nonce}:${signedAt}`);
+    }
+    return toUtf8Bytes(
+      JSON.stringify({
+        nonce: challenge.nonce,
+        signedAt,
+        challengeTs: challenge.ts ?? null,
+      }),
+    );
+  }
+
+  private async buildSignedDevice(
+    challenge: ConnectChallenge,
+    variant: "nonce" | "nonce_signedAt" | "json",
+  ): Promise<Record<string, unknown> | null> {
+    const identity = await this.loadOrCreateDeviceIdentity();
+    if (!identity) return null;
+    const signedAt = Date.now();
+    const message = this.challengeMessage(challenge, signedAt, variant);
+    const signatureBuf =
+      identity.alg === "Ed25519"
+        ? await crypto.subtle.sign(
+            { name: "Ed25519" },
+            identity.privateKey,
+            toArrayBuffer(message),
+          )
+        : await crypto.subtle.sign(
+            { name: "ECDSA", hash: "SHA-256" },
+            identity.privateKey,
+            toArrayBuffer(message),
+          );
+    const signature = toBase64Url(new Uint8Array(signatureBuf));
+    return {
+      id: identity.deviceId,
+      publicKey: identity.publicKeyB64u,
+      alg: identity.alg,
+      signedAt,
+      challengeNonce: challenge.nonce,
+      signature,
+    };
+  }
+
+  private waitForChallenge(timeoutMs = 300): Promise<ConnectChallenge | null> {
+    if (this.latestChallenge) return Promise.resolve(this.latestChallenge);
+    return new Promise((resolve) => {
+      const resolver = (value: ConnectChallenge | null) => {
+        clearTimeout(timer);
+        resolve(value);
+      };
+      const timer = setTimeout(() => {
+        this.challengeWaiters = this.challengeWaiters.filter((r) => r !== resolver);
+        resolve(null);
+      }, timeoutMs);
+      this.challengeWaiters.push(resolver);
+    });
+  }
+
   private isIgnorableSubscribeError(message: string): boolean {
     const m = message.toLowerCase();
     if (m.includes("unknown method")) return true;
@@ -625,10 +917,14 @@ export class OpenClawBrowserGatewayClient {
     method: string;
     params: Record<string, unknown>;
     wireProtocol: GatewayWireProtocol;
+    withDeviceChallenge: boolean;
+    deviceVariant: "nonce" | "nonce_signedAt" | "json";
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
     const scopeCsv = scopes.join(",");
     const scopeSp = scopes.join(" ");
+    const storedDeviceToken = this.getStoredDeviceToken();
+    const preferredToken = storedDeviceToken || this.config.authToken;
 
     const base = {
       minProtocol: 3,
@@ -644,114 +940,87 @@ export class OpenClawBrowserGatewayClient {
     };
 
     const authBase = {
+      token: preferredToken,
+      password: this.config.password,
+    };
+    const authFallback = {
       token: this.config.authToken,
       password: this.config.password,
     };
 
-    return [
-      {
-        method: "connect",
-        wireProtocol: "req",
-        params: {
-          ...base,
-          scopes,
-          auth: authBase,
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "jsonrpc",
-        params: {
-          ...base,
-          scopes,
-          auth: authBase,
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "raw",
-        params: {
-          ...base,
-          scopes,
-          auth: authBase,
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "req",
-        params: {
-          ...base,
-          scopes,
-          scope: scopeCsv,
-          auth: {
-            ...authBase,
-            scopes,
-            scope: scopeCsv,
-            role: this.config.role,
-          },
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "jsonrpc",
-        params: {
-          ...base,
-          scopes,
-          scope: scopeCsv,
-          auth: {
-            ...authBase,
-            scopes,
-            scope: scopeCsv,
-            role: this.config.role,
-          },
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "req",
-        params: {
-          ...base,
-          scopes,
-          scope: scopeSp,
-          auth: {
-            ...authBase,
-            scopes,
-            scope: scopeSp,
-            role: this.config.role,
-          },
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "jsonrpc",
-        params: {
-          ...base,
-          scopes,
-          scope: scopeSp,
-          auth: {
-            ...authBase,
-            scopes,
-            scope: scopeSp,
-            role: this.config.role,
-          },
-        },
-      },
-      {
-        method: "connect",
-        wireProtocol: "raw",
-        params: {
-          ...base,
-          scopes,
-          scope: scopeSp,
-          auth: {
-            ...authBase,
-            scopes,
-            scope: scopeSp,
-            role: this.config.role,
-          },
-        },
-      },
+    const challengeModes: Array<{
+      withDeviceChallenge: boolean;
+      deviceVariant: "nonce" | "nonce_signedAt" | "json";
+    }> = [
+      { withDeviceChallenge: true, deviceVariant: "nonce" },
+      { withDeviceChallenge: true, deviceVariant: "nonce_signedAt" },
+      { withDeviceChallenge: true, deviceVariant: "json" },
+      { withDeviceChallenge: false, deviceVariant: "nonce" },
     ];
+
+    const mk = (
+      method: string,
+      wireProtocol: GatewayWireProtocol,
+      params: Record<string, unknown>,
+      withDeviceChallenge: boolean,
+      deviceVariant: "nonce" | "nonce_signedAt" | "json",
+    ) => ({
+      method,
+      wireProtocol,
+      params,
+      withDeviceChallenge,
+      deviceVariant,
+    });
+
+    const out: Array<{
+      method: string;
+      params: Record<string, unknown>;
+      wireProtocol: GatewayWireProtocol;
+      withDeviceChallenge: boolean;
+      deviceVariant: "nonce" | "nonce_signedAt" | "json";
+    }> = [];
+
+    for (const mode of challengeModes) {
+      out.push(
+        mk("connect", "req", { ...base, scopes, auth: authBase }, mode.withDeviceChallenge, mode.deviceVariant),
+      );
+      out.push(
+        mk("connect", "jsonrpc", { ...base, scopes, auth: authBase }, mode.withDeviceChallenge, mode.deviceVariant),
+      );
+      out.push(
+        mk("connect", "raw", { ...base, scopes, auth: authBase }, mode.withDeviceChallenge, mode.deviceVariant),
+      );
+    }
+
+    // If we have a stored device token, also try raw configured token in fallback.
+    if (storedDeviceToken && this.config.authToken && this.config.authToken !== storedDeviceToken) {
+      out.push(
+        mk("connect", "req", { ...base, scopes, auth: authFallback }, false, "nonce"),
+      );
+      out.push(
+        mk("connect", "jsonrpc", { ...base, scopes, auth: authFallback }, false, "nonce"),
+      );
+    }
+
+    // Legacy scope-shape variants, no device challenge.
+    out.push(
+      mk("connect", "req", {
+        ...base,
+        scopes,
+        scope: scopeCsv,
+        auth: { ...authBase, scopes, scope: scopeCsv, role: this.config.role },
+      }, false, "nonce"),
+    );
+    out.push(
+      mk("connect", "req", {
+        ...base,
+        scopes,
+        scope: scopeSp,
+        auth: { ...authBase, scopes, scope: scopeSp, role: this.config.role },
+      }, false, "nonce"),
+    );
+
+    return out;
   }
 
   private async openSocket(): Promise<WebSocket> {
@@ -807,6 +1076,20 @@ export class OpenClawBrowserGatewayClient {
         try {
           const parsed = JSON.parse(String(event.data)) as GatewayMessage;
           this.log("ws.message", parsed);
+          if (parsed.type === "event" && parsed.event === "connect.challenge") {
+            const payload = asRecord(parsed.payload);
+            const nonce =
+              (payload && typeof payload.nonce === "string" && payload.nonce) || "";
+            const ts =
+              payload && typeof payload.ts === "number" ? payload.ts : undefined;
+            if (nonce) {
+              const challenge = { nonce, ts };
+              this.latestChallenge = challenge;
+              for (const waiter of this.challengeWaiters) waiter(challenge);
+              this.challengeWaiters = [];
+              this.log("connect.challenge.received", challenge);
+            }
+          }
           const responseId =
             typeof parsed.id === "string"
               ? parsed.id
@@ -848,6 +1131,9 @@ export class OpenClawBrowserGatewayClient {
 
     ws.addEventListener("close", (event) => {
       this.ws = null;
+      this.latestChallenge = null;
+      for (const waiter of this.challengeWaiters) waiter(null);
+      this.challengeWaiters = [];
       const detail = `code=${event.code}${event.reason ? ` reason=${event.reason}` : ""}`;
       this.lastCloseReason = detail;
       this.log("ws.closed", { detail });
@@ -882,16 +1168,48 @@ export class OpenClawBrowserGatewayClient {
           index: i + 1,
           method: attempt.method,
           wireProtocol: attempt.wireProtocol,
+          withDeviceChallenge: attempt.withDeviceChallenge,
+          deviceVariant: attempt.deviceVariant,
         });
         const ws = await this.openSocket();
         this.ws = ws;
         this.attachSocketListeners(ws);
 
-        await this.requestWithWireProtocol(
+        const challenge = attempt.withDeviceChallenge
+          ? await this.waitForChallenge(450)
+          : null;
+        const params: Record<string, unknown> = { ...attempt.params };
+        if (attempt.withDeviceChallenge && challenge) {
+          const device = await this.buildSignedDevice(
+            challenge,
+            attempt.deviceVariant,
+          );
+          if (device) {
+            params.device = device;
+            this.log("connect.device.attached", {
+              index: i + 1,
+              deviceId: (device as any).id,
+              alg: (device as any).alg,
+              deviceVariant: attempt.deviceVariant,
+            });
+          }
+        }
+
+        const connectResult = await this.requestWithWireProtocol(
           attempt.method,
-          attempt.params,
+          params,
           attempt.wireProtocol,
         );
+        const resultObj = asRecord(connectResult);
+        const resultPayload = resultObj ? asRecord(resultObj.payload) : null;
+        const authObj = resultPayload ? asRecord(resultPayload.auth) : null;
+        const deviceToken =
+          authObj && typeof authObj.deviceToken === "string"
+            ? authObj.deviceToken
+            : null;
+        if (deviceToken && deviceToken.length > 0) {
+          this.saveStoredDeviceToken(deviceToken);
+        }
         this.log("connect.attempt.ok", {
           index: i + 1,
           method: attempt.method,

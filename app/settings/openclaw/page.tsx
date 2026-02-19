@@ -18,7 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
+import {
+  OpenClawBrowserGatewayClient,
+  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
+  clearOpenClawLocalAuthState,
+  openClawDeviceTokenStorageKey,
+} from "@/lib/openclaw-gateway-client";
 import { Settings, ShieldAlert, Activity, Check, Copy } from "lucide-react";
 import {
   buildMainAgentBootstrapMessage,
@@ -114,6 +119,7 @@ function OpenClawSettingsContent() {
   >({ status: "idle" });
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [localAuthRev, setLocalAuthRev] = useState(0);
   const copy = async (id: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopiedId(id);
@@ -150,6 +156,25 @@ function OpenClawSettingsContent() {
     if (typeof window === "undefined") return "";
     return window.location.origin;
   }, []);
+
+  const localAuthState = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { hasDeviceIdentity: false, hasDeviceToken: false };
+    }
+    try {
+      const hasDeviceIdentity = Boolean(
+        window.localStorage.getItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY),
+      );
+      const key = openClawDeviceTokenStorageKey(
+        wsUrl.trim() || "",
+        role.trim() || "operator",
+      );
+      const hasDeviceToken = Boolean(window.localStorage.getItem(key));
+      return { hasDeviceIdentity, hasDeviceToken };
+    } catch {
+      return { hasDeviceIdentity: false, hasDeviceToken: false };
+    }
+  }, [wsUrl, role, localAuthRev]);
 
   const bootstrapPrompt = useMemo(() => {
     return buildMainAgentBootstrapMessage({
@@ -650,6 +675,71 @@ function OpenClawSettingsContent() {
             <p className="mt-1 text-xs text-text-secondary">{testResult.message}</p>
           </div>
         )}
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">
+            Local device auth cache
+          </h2>
+          <p className="mt-1 text-xs text-text-muted">
+            OpenClaw device identity and device token are stored in this browser for this gateway.
+            You usually do not need to edit anything.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Device identity</p>
+              <p
+                className={`text-xs ${
+                  localAuthState.hasDeviceIdentity
+                    ? "text-status-active"
+                    : "text-text-muted"
+                }`}
+              >
+                {localAuthState.hasDeviceIdentity ? "Present" : "Not found"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Device token (current wsUrl/role)</p>
+              <p
+                className={`text-xs ${
+                  localAuthState.hasDeviceToken
+                    ? "text-status-active"
+                    : "text-text-muted"
+                }`}
+              >
+                {localAuthState.hasDeviceToken ? "Present" : "Not found"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                clearOpenClawLocalAuthState(
+                  wsUrl.trim() || undefined,
+                  role.trim() || "operator",
+                );
+                setLocalAuthRev((v) => v + 1);
+              }}
+            >
+              Clear current gateway cache
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                clearOpenClawLocalAuthState();
+                setLocalAuthRev((v) => v + 1);
+              }}
+            >
+              Clear all OpenClaw device cache
+            </Button>
+          </div>
+        </div>
 
         {summary?.wsUrl ? (
           <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
