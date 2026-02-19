@@ -169,7 +169,7 @@ export const upsertConfig = mutation({
       wsUrl,
       protocol: args.protocol,
       clientId: args.clientId || "cli",
-      clientMode: args.clientMode || "webchat",
+      clientMode: args.clientMode || "operator",
       clientPlatform: args.clientPlatform || "web",
       role: args.role || "operator",
       scopes,

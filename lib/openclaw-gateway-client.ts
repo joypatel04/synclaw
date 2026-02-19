@@ -23,6 +23,15 @@ type GatewayClientConfig = {
   subscribeMethod: string;
 };
 
+function effectiveClientMode(clientMode: string, role: string): string {
+  const normalizedRole = (role || "").trim().toLowerCase();
+  const normalizedMode = (clientMode || "").trim().toLowerCase();
+  if (normalizedRole === "operator") {
+    if (!normalizedMode || normalizedMode === "webchat") return "operator";
+  }
+  return clientMode;
+}
+
 function isGatewayDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -944,6 +953,10 @@ export class OpenClawBrowserGatewayClient {
     deviceVariant: "nonce" | "nonce_signedAt" | "json";
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
+    const clientMode = effectiveClientMode(
+      this.config.clientMode,
+      this.config.role,
+    );
     const deviceAuthEnabled = isOpenClawDeviceAuthEnabled();
     const storedDeviceToken = this.getStoredDeviceToken();
     const preferredToken =
@@ -957,7 +970,7 @@ export class OpenClawBrowserGatewayClient {
       client: {
         id: this.config.clientId,
         version: "0.1.0",
-        mode: this.config.clientMode,
+        mode: clientMode,
         platform: this.config.clientPlatform,
       },
       role: this.config.role,
