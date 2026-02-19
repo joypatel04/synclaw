@@ -507,7 +507,7 @@ function OpenClawSettingsContent() {
                 onChange={(e) => setSubscribeOnConnect(e.target.checked)}
                 className="h-4 w-4 accent-accent-orange"
               />
-              Subscribe on connect
+              Subscribe on connect (optional compatibility)
             </label>
             <div className="space-y-2">
               <Label className="text-text-secondary">Subscribe method</Label>
@@ -518,7 +518,7 @@ function OpenClawSettingsContent() {
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
               />
               <p className="text-[11px] text-text-dim">
-                If your gateway doesn’t support this, set “Subscribe on connect” off.
+                Optional compatibility field. Control-UI parity mode does not require this for readiness.
               </p>
             </div>
 
@@ -537,12 +537,12 @@ function OpenClawSettingsContent() {
               <Input
                 value={historyPollMs}
                 onChange={(e) => setHistoryPollMs(e.target.value)}
-                placeholder="10000"
+                placeholder="5000"
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
               />
               <p className="text-[11px] text-text-dim">
                 Used to hydrate tool calls and missed messages via <code className="font-mono">chat.history</code>.
-                Set 0 to disable background polling.
+                Recommended: 3000-5000ms. Set 0 to disable background polling.
               </p>
             </div>
           </div>

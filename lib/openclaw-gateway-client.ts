@@ -46,6 +46,7 @@ export type OpenClawReasonCode =
   | "INVALID_CONNECT_PARAMS"
   | "UNAUTHORIZED"
   | "INVALID_HANDSHAKE"
+  | "UNKNOWN_METHOD"
   | "UNKNOWN";
 
 export type OpenClawConnectionStatus = {
@@ -59,6 +60,7 @@ export type OpenClawConnectionStatus = {
     | "verify_admin";
   result: "ok" | "fail";
   reasonCode?: OpenClawReasonCode;
+  verifyMethod?: string;
   message: string;
   missingScope?: string;
   deviceId?: string;
@@ -277,6 +279,7 @@ function classifyConnectionFailure(
   message: string,
   lastCloseReason: string | null,
   deviceId?: string,
+  verifyMethod?: string,
 ): OpenClawConnectionStatus {
   const lower = message.toLowerCase();
   const missingScope = parseMissingScope(message);
@@ -290,6 +293,7 @@ function classifyConnectionFailure(
       missingScope,
       deviceId,
       lastCloseReason,
+      verifyMethod,
     };
   }
   if (lower.includes("device identity mismatch")) {
@@ -301,6 +305,7 @@ function classifyConnectionFailure(
       message,
       deviceId,
       lastCloseReason,
+      verifyMethod,
     };
   }
   if (lower.includes("device signature invalid")) {
@@ -312,6 +317,7 @@ function classifyConnectionFailure(
       message,
       deviceId,
       lastCloseReason,
+      verifyMethod,
     };
   }
   if (lower.includes("pair") && (lower.includes("pending") || lower.includes("approve"))) {
@@ -323,6 +329,7 @@ function classifyConnectionFailure(
       message,
       deviceId,
       lastCloseReason,
+      verifyMethod,
     };
   }
   if (lower.includes("invalid connect params")) {
@@ -334,6 +341,7 @@ function classifyConnectionFailure(
       message,
       deviceId,
       lastCloseReason,
+      verifyMethod,
     };
   }
   if (lower.includes("unauthorized") || lower.includes("token mismatch")) {
@@ -345,6 +353,7 @@ function classifyConnectionFailure(
       message,
       deviceId,
       lastCloseReason,
+      verifyMethod,
     };
   }
   if (lower.includes("invalid handshake")) {
@@ -356,6 +365,19 @@ function classifyConnectionFailure(
       message,
       deviceId,
       lastCloseReason,
+      verifyMethod,
+    };
+  }
+  if (lower.includes("unknown method")) {
+    return {
+      state: "INVALID_CONFIG",
+      phase,
+      result: "fail",
+      reasonCode: "UNKNOWN_METHOD",
+      message,
+      deviceId,
+      lastCloseReason,
+      verifyMethod,
     };
   }
   return {
@@ -366,6 +388,7 @@ function classifyConnectionFailure(
     message,
     deviceId,
     lastCloseReason,
+    verifyMethod,
   };
 }
 
@@ -888,6 +911,13 @@ export class OpenClawBrowserGatewayClient {
   private challengeWaiters: Array<(value: ConnectChallenge | null) => void> = [];
   private lastStatus: OpenClawConnectionStatus | null = null;
   private lastDeviceId: string | undefined;
+  private reconnectCount = 0;
+  private lastWsSeq: number | null = null;
+  private lastStreamEventAt: number | null = null;
+  private lastHistorySyncAt: number | null = null;
+  private lastHistoryError: string | null = null;
+  private optionalProbeMethod: string | null = null;
+  private optionalProbeError: string | null = null;
 
   constructor(
     private config: GatewayClientConfig,
@@ -923,6 +953,9 @@ export class OpenClawBrowserGatewayClient {
 
   getDiagnostics() {
     const localIdentity = readStoredDeviceIdentityV2();
+    const streamActive =
+      this.lastStreamEventAt !== null &&
+      Date.now() - this.lastStreamEventAt < 15_000;
     return {
       status: this.lastStatus,
       lastCloseReason: this.lastCloseReason,
@@ -932,6 +965,15 @@ export class OpenClawBrowserGatewayClient {
       clientId: this.config.clientId,
       deviceId: this.lastDeviceId,
       localIdentity: localIdentity ? { deviceId: localIdentity.deviceId } : null,
+      reconnectCount: this.reconnectCount,
+      lastWsSeq: this.lastWsSeq,
+      connectOk: this.lastStatus?.state === "CONNECTED",
+      streamActive,
+      historySyncOk: this.lastHistoryError == null,
+      lastHistorySyncAt: this.lastHistorySyncAt,
+      lastHistoryError: this.lastHistoryError,
+      verifyReadMethod: this.optionalProbeMethod,
+      verifyReadError: this.optionalProbeError,
       legacyMode: isOpenClawLegacyClientEnabled(),
     };
   }
@@ -1341,6 +1383,7 @@ export class OpenClawBrowserGatewayClient {
 
   private async openSocket(): Promise<WebSocket> {
     this.log("ws.open.start", { wsUrl: this.config.wsUrl });
+    this.reconnectCount += 1;
     return await new Promise<WebSocket>((resolve, reject) => {
       const ws = new WebSocket(this.config.wsUrl);
       let settled = false;
@@ -1391,6 +1434,23 @@ export class OpenClawBrowserGatewayClient {
       void (async () => {
         try {
           const parsed = JSON.parse(String(event.data)) as GatewayMessage;
+          const payloadObj = asRecord(parsed.payload);
+          const parsedSeq =
+            (typeof parsed.seq === "number" ? parsed.seq : undefined) ||
+            (payloadObj && typeof payloadObj.seq === "number"
+              ? payloadObj.seq
+              : undefined);
+          if (typeof parsedSeq === "number") this.lastWsSeq = parsedSeq;
+          if (typeof parsed.event === "string") {
+            const eventName = parsed.event.toLowerCase();
+            if (
+              eventName.includes("chat") ||
+              eventName.includes("message") ||
+              (payloadObj && typeof payloadObj.runId === "string")
+            ) {
+              this.lastStreamEventAt = Date.now();
+            }
+          }
           this.log("ws.message", parsed);
           if (parsed.type === "event" && parsed.event === "connect.challenge") {
             const payload = asRecord(parsed.payload);
@@ -1474,6 +1534,8 @@ export class OpenClawBrowserGatewayClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
     this.lastStatus = null;
     this.lastDeviceId = undefined;
+    this.optionalProbeMethod = null;
+    this.optionalProbeError = null;
     this.log("connect.start", {
       wsUrl: this.config.wsUrl,
       protocol: "req",
@@ -1571,27 +1633,75 @@ export class OpenClawBrowserGatewayClient {
       if (deviceToken) this.saveStoredDeviceToken(deviceToken);
       this.log("phase", { phase: "connect", result: "ok" });
 
-      // Verify read-capable access.
+      // Control-UI parity: connect success is readiness.
+      this.lastStatus = {
+        state: "CONNECTED",
+        phase: "connect",
+        result: "ok",
+        message: "Connected. Live events + history hydration active.",
+        deviceId: this.lastDeviceId,
+        lastCloseReason: this.lastCloseReason,
+        verifyMethod: this.optionalProbeMethod ?? undefined,
+      };
+
+      // Optional, non-blocking readiness probe for diagnostics only.
       phase = "verify_read";
-      await this.request("health.get", {});
-      this.log("phase", { phase: "verify_read", result: "ok" });
-
-      // Verify admin-capable access via subscription method.
-      phase = "verify_admin";
-      const adminMethod = this.config.subscribeMethod || "chat.subscribe";
-      await this.request(adminMethod, {});
-      this.log("phase", { phase: "verify_admin", result: "ok" });
-
-        this.lastStatus = {
-          state: "CONNECTED",
-          phase: "verify_admin",
+      this.optionalProbeMethod = "health";
+      try {
+        await this.request("health", {});
+        this.optionalProbeError = null;
+        this.log("phase", {
+          phase: "verify_read",
           result: "ok",
-          message: "Connected and verified read/admin scopes.",
-          deviceId: this.lastDeviceId,
-          lastCloseReason: this.lastCloseReason,
-        };
-        this.log("connect.done", this.lastStatus);
-        return;
+          method: this.optionalProbeMethod,
+        });
+      } catch (probeError) {
+        const probeMessage =
+          probeError instanceof Error ? probeError.message : String(probeError);
+        this.optionalProbeError = probeMessage;
+        this.log("phase", {
+          phase: "verify_read",
+          result: "fail",
+          method: this.optionalProbeMethod,
+          reasonCode: probeMessage.toLowerCase().includes("unknown method")
+            ? "UNKNOWN_METHOD"
+            : "UNKNOWN",
+          message: probeMessage,
+        });
+      }
+
+      // Optional subscription warm-up for compatibility diagnostics only.
+      phase = "verify_admin";
+      if (this.config.subscribeOnConnect) {
+        const adminMethod = this.config.subscribeMethod || "chat.subscribe";
+        try {
+          await this.request(adminMethod, {});
+          this.log("phase", {
+            phase: "verify_admin",
+            result: "ok",
+            method: adminMethod,
+          });
+        } catch (subscribeError) {
+          const subscribeMessage =
+            subscribeError instanceof Error
+              ? subscribeError.message
+              : String(subscribeError);
+          this.log("phase", {
+            phase: "verify_admin",
+            result: "fail",
+            method: adminMethod,
+            reasonCode: subscribeMessage.toLowerCase().includes("unknown method")
+              ? "UNKNOWN_METHOD"
+              : "UNKNOWN",
+            message: subscribeMessage,
+          });
+        }
+      }
+      if (this.lastStatus) {
+        this.lastStatus.verifyMethod = this.optionalProbeMethod ?? undefined;
+      }
+      this.log("connect.done", this.lastStatus);
+      return;
     } catch (error) {
       const variant: DeviceProofVariant = "v2_raw_token";
       const msg = error instanceof Error ? error.message : String(error);
@@ -1603,6 +1713,7 @@ export class OpenClawBrowserGatewayClient {
         message,
         this.lastCloseReason,
         this.lastDeviceId,
+        this.optionalProbeMethod ?? undefined,
       );
       this.lastStatus = status;
       this.log("phase", {
@@ -1803,9 +1914,27 @@ export class OpenClawBrowserGatewayClient {
   }
 
   async getChatHistory(params: { sessionKey: string; limit?: number }) {
-    return await this.request("chat.history", {
-      sessionKey: params.sessionKey,
-      limit: params.limit ?? 20,
-    });
+    try {
+      const result = await this.request("chat.history", {
+        sessionKey: params.sessionKey,
+        limit: params.limit ?? 20,
+      });
+      this.lastHistorySyncAt = Date.now();
+      this.lastHistoryError = null;
+      this.log("phase", { phase: "history_sync", result: "ok" });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.lastHistoryError = message;
+      this.log("phase", {
+        phase: "history_sync",
+        result: "fail",
+        reasonCode: message.toLowerCase().includes("unknown method")
+          ? "UNKNOWN_METHOD"
+          : "UNKNOWN",
+        message,
+      });
+      throw error;
+    }
   }
 }
