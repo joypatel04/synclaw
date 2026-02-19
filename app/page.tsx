@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
 import { AgentPanel } from "@/components/dashboard/AgentPanel";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
-import { BurnRateCard } from "@/components/dashboard/BurnRateCard";
+// import { BurnRateCard } from "@/components/dashboard/BurnRateCard";
 import { Activity, Bot, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +30,9 @@ function DashboardContent() {
         </div>
         {/* Main area: Kanban */}
         <div className="flex-1 overflow-auto p-6">
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <BurnRateCard />
-          </div>
+          </div> */}
           <KanbanBoard />
         </div>
         {/* Right sidebar: Activity */}
