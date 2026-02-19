@@ -11,15 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Check, Copy, Download, Sparkles } from "lucide-react";
+import { Check, Copy, Sparkles } from "lucide-react";
 import {
   AGENT_RECIPES,
   buildAgentRecipePrompt,
-  buildCronPrompt,
-  buildHeartbeatMd,
   type AgentRecipe,
 } from "@/lib/agentRecipes";
-import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
 import { setChatDraft } from "@/lib/chatDraft";
 
 function slugify(input: string): string {
@@ -29,16 +26,6 @@ function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
-}
-
-function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export function AgentRecipeWizard() {
@@ -90,7 +77,6 @@ export function AgentRecipeWizard() {
   }, [agentName, recipe.title]);
   const [sessionKey, setSessionKey] = useState(defaultSessionKey);
 
-  // Keep sessionKey in sync when user hasn't edited it manually.
   const [sessionKeyTouched, setSessionKeyTouched] = useState(false);
   useEffect(() => {
     if (sessionKeyTouched) return;
@@ -116,66 +102,11 @@ export function AgentRecipeWizard() {
     spec,
   ]);
 
-  const cronPrompt = useMemo(() => {
-    return buildCronPrompt({
-      sessionKey: sessionKey.trim() || defaultSessionKey,
-    });
-  }, [sessionKey, defaultSessionKey]);
-
-  const heartbeatMd = useMemo(() => {
-    return buildHeartbeatMd({
-      workspaceName: workspace.name,
-      workspaceId: String(workspaceId),
-      agentName: agentName.trim() || recipe.title,
-      sessionKey: sessionKey.trim() || defaultSessionKey,
-      agentRole: agentRole.trim() || recipe.defaultRole,
-      recommendedMinutes: recipe.recommendedHeartbeatMinutes,
-    });
-  }, [
-    workspace.name,
-    workspaceId,
-    agentName,
-    sessionKey,
-    defaultSessionKey,
-    agentRole,
-    recipe.defaultRole,
-    recipe.recommendedHeartbeatMinutes,
-    recipe.title,
-  ]);
-
-  const protocolMd = useMemo(() => {
-    return buildSutrahaProtocolMd({
-      workspaceName: workspace.name,
-      workspaceId: String(workspaceId),
-    });
-  }, [workspace.name, workspaceId]);
-
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     await navigator.clipboard.writeText(prompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-  };
-
-  const [copiedHeartbeat, setCopiedHeartbeat] = useState(false);
-  const copyHeartbeat = async () => {
-    await navigator.clipboard.writeText(heartbeatMd);
-    setCopiedHeartbeat(true);
-    setTimeout(() => setCopiedHeartbeat(false), 1500);
-  };
-
-  const [copiedCron, setCopiedCron] = useState(false);
-  const copyCron = async () => {
-    await navigator.clipboard.writeText(cronPrompt);
-    setCopiedCron(true);
-    setTimeout(() => setCopiedCron(false), 1500);
-  };
-
-  const [copiedProtocol, setCopiedProtocol] = useState(false);
-  const copyProtocol = async () => {
-    await navigator.clipboard.writeText(protocolMd);
-    setCopiedProtocol(true);
-    setTimeout(() => setCopiedProtocol(false), 1500);
   };
 
   const collision = sessionKey.trim().length > 0 && existingSessionKeys.has(sessionKey.trim());
@@ -189,23 +120,22 @@ export function AgentRecipeWizard() {
     setCreating(true);
     setCreateError(null);
     try {
+      const nextSessionKey = sessionKey.trim() || defaultSessionKey;
       const id = await createAgent({
         workspaceId,
         name: agentName.trim() || recipe.title,
         role: agentRole.trim() || recipe.defaultRole,
         emoji: agentEmoji.trim() || recipe.defaultEmoji,
-        sessionKey: sessionKey.trim() || defaultSessionKey,
-        externalAgentId: sessionKey.trim() || defaultSessionKey,
+        sessionKey: nextSessionKey,
+        externalAgentId: nextSessionKey,
       });
 
-      // Prefill the chat input so users can send this as the first message if
-      // they want, or use it as a copy buffer.
       setChatDraft({
         workspaceId: String(workspaceId),
-        sessionKey: sessionKey.trim() || defaultSessionKey,
+        sessionKey: nextSessionKey,
         content: prompt,
       });
-      router.push(`/agents/${id}/setup`);
+      router.push(`/chat/${id}?setup=1`);
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -231,7 +161,7 @@ export function AgentRecipeWizard() {
             New agent (recipe)
           </h1>
           <p className="mt-1 text-xs text-text-muted">
-            Pick a template, fill your spec, then copy the prompt into OpenClaw.
+            Create agent metadata + SPEC prompt. Complete heartbeat/cron setup in Chat.
           </p>
         </div>
         <Button asChild variant="outline" size="sm" className="h-8">
@@ -258,9 +188,7 @@ export function AgentRecipeWizard() {
                       : "border-border-default bg-bg-tertiary hover:border-border-hover"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-text-primary">
-                    {r.title}
-                  </p>
+                  <p className="text-sm font-semibold text-text-primary">{r.title}</p>
                   <p className="mt-1 text-xs text-text-muted">{r.description}</p>
                 </button>
               );
@@ -338,7 +266,7 @@ export function AgentRecipeWizard() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                3) Prompt template (copy into OpenClaw)
+                3) Prompt template
               </p>
               <p className="mt-1 text-xs text-text-muted">
                 Keep your requirements inside <span className="font-mono">SPEC_START</span> /{" "}
@@ -371,169 +299,15 @@ export function AgentRecipeWizard() {
               disabled={creating || !agentName.trim() || !sessionKey.trim() || collision}
               title={collision ? "Session key must be unique" : "Create agent in Sutraha HQ"}
             >
-              {creating ? "Creating..." : "Create agent and open setup"}
+              {creating ? "Creating..." : "Create agent and continue setup in chat"}
             </Button>
             {createError ? (
               <p className="text-xs text-status-blocked">{createError}</p>
             ) : (
               <p className="text-[11px] text-text-dim">
-                Tip: One workspace should usually contain multiple agents. Use a new workspace only for isolation (different OpenClaw deployment or members).
+                Heartbeat, cron, and protocol are completed from Chat setup rail.
               </p>
             )}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                4) Heartbeat kit (recommended)
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                Create a lightweight <span className="font-mono">HEARTBEAT.md</span> inside this agent's OpenClaw workspace and schedule a cron run every{" "}
-                <span className="font-medium text-text-secondary">
-                  {recipe.recommendedHeartbeatMinutes} minutes
-                </span>
-                .
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4">
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                    Cron prompt (paste into OpenClaw cron)
-                  </p>
-                  <p className="mt-1 text-[11px] text-text-muted">
-                    This keeps cron runs using the correct Sutraha sessionKey.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2"
-                    onClick={() =>
-                      downloadText(
-                        `cron-prompt.${(sessionKey.trim() || defaultSessionKey).replace(/[:]/g, "_")}.txt`,
-                        cronPrompt,
-                      )
-                    }
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void copyCron()}
-                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                    title={copiedCron ? "Copied" : "Copy"}
-                  >
-                    {copiedCron ? (
-                      <Check className="h-4 w-4 text-status-active" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <pre className="mt-3 max-h-[160px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {cronPrompt}
-              </pre>
-            </div>
-
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                    HEARTBEAT.md (put in the agent's OpenClaw workspace)
-                  </p>
-                  <p className="mt-1 text-[11px] text-text-muted">
-                    Keep this file short and stable. Agents should follow it on every scheduled run.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2"
-                    onClick={() =>
-                      downloadText(
-                        `HEARTBEAT.${(sessionKey.trim() || defaultSessionKey).replace(/[:]/g, "_")}.md`,
-                        heartbeatMd,
-                      )
-                    }
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void copyHeartbeat()}
-                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                    title={copiedHeartbeat ? "Copied" : "Copy"}
-                  >
-                    {copiedHeartbeat ? (
-                      <Check className="h-4 w-4 text-status-active" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <pre className="mt-3 max-h-[320px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {heartbeatMd}
-              </pre>
-            </div>
-
-            <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                    {SUTRAHA_PROTOCOL_FILENAME} (shared rules)
-                  </p>
-                  <p className="mt-1 text-[11px] text-text-muted">
-                    Put the same protocol file in each agent&apos;s OpenClaw workspace so your prompts stay short.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2"
-                    onClick={() =>
-                      downloadText(
-                        `SUTRAHA_PROTOCOL.${String(workspaceId).slice(0, 6)}.md`,
-                        protocolMd,
-                      )
-                    }
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void copyProtocol()}
-                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                    title={copiedProtocol ? "Copied" : "Copy"}
-                  >
-                    {copiedProtocol ? (
-                      <Check className="h-4 w-4 text-status-active" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <pre className="mt-3 max-h-[320px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {protocolMd}
-              </pre>
-            </div>
           </div>
         </div>
       </div>

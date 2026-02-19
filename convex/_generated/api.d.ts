@@ -9,6 +9,7 @@
  */
 
 import type * as activities from "../activities.js";
+import type * as agentSetup from "../agentSetup.js";
 import type * as agents from "../agents.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as apiKeys_internal from "../apiKeys_internal.js";
@@ -35,6 +36,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
+  agentSetup: typeof agentSetup;
   agents: typeof agents;
   apiKeys: typeof apiKeys;
   apiKeys_internal: typeof apiKeys_internal;

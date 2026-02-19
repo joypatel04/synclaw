@@ -2,32 +2,18 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
-import {
-  buildMainAgentBootstrapMessage,
-  buildMcpServerConfigTemplate,
-  MODEL_STRATEGY_PRESETS,
-} from "@/lib/onboardingTemplates";
-import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
-import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import { Check, Settings2, Zap } from "lucide-react";
 import { setChatDraft } from "@/lib/chatDraft";
-import { Check, Copy, Settings2, Zap } from "lucide-react";
+import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 
 type Protocol = "req" | "jsonrpc";
 
@@ -36,17 +22,6 @@ function parseScopesCsv(input: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-}
-
-function isSafeNextPath(next: string | null): next is string {
-  if (!next) return false;
-  if (!next.startsWith("/")) return false;
-  if (next.startsWith("//")) return false;
-  // Root isn't a great post-onboarding destination; default to main chat.
-  if (next === "/") return false;
-  // Avoid redirect loops or confusing "complete -> onboarding" bounce.
-  if (next === "/onboarding" || next.startsWith("/onboarding?")) return false;
-  return true;
 }
 
 function StepHeader({
@@ -92,73 +67,14 @@ function StepHeader({
   );
 }
 
-function CopyBlock({
-  id,
-  title,
-  value,
-  copiedId,
-  onCopy,
-}: {
-  id: string;
-  title: string;
-  value: string;
-  copiedId: string | null;
-  onCopy: (id: string, value: string) => Promise<void>;
-}) {
-  const copied = copiedId === id;
-  return (
-    <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-            {title}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void onCopy(id, value)}
-          className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-          title={copied ? "Copied" : "Copy"}
-        >
-          {copied ? (
-            <Check className="h-4 w-4 text-status-active" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-      <pre className="mt-3 max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-        {value}
-      </pre>
-    </div>
-  );
-}
-
 export function OnboardingWizard() {
   const { workspaceId, workspace, canAdmin } = useWorkspace();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next");
 
   const status = useQuery(api.onboarding.getStatus, { workspaceId });
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
   const upsertOpenClaw = useMutation(api.openclaw.upsertConfig);
   const createAgent = useMutation(api.agents.create);
-
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const copy = async (id: string, value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const origin = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return window.location.origin;
-  }, []);
-
-  // Step 1: OpenClaw
 
   const [wsUrl, setWsUrl] = useState("");
   const [tokenDraft, setTokenDraft] = useState("");
@@ -175,7 +91,6 @@ export function OnboardingWizard() {
   const [subscribeMethod, setSubscribeMethod] = useState("chat.subscribe");
   const [includeCron, setIncludeCron] = useState(true);
   const [historyPollMs, setHistoryPollMs] = useState("10000");
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
@@ -233,8 +148,6 @@ export function OnboardingWizard() {
 
       try {
         await client.connect();
-
-        // Best-effort health request (different gateways use different method names).
         const candidates = ["health.get", "health", "gateway.health"];
         for (const method of candidates) {
           try {
@@ -278,71 +191,36 @@ export function OnboardingWizard() {
     }
   };
 
-  // Step 2: Main Agent
-
   const [mainName, setMainName] = useState("Jarvis");
   const [mainEmoji, setMainEmoji] = useState("🦊");
   const [mainRole, setMainRole] = useState("Squad Lead");
   const [creatingAgent, setCreatingAgent] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const bootstrapPrompt = useMemo(() => {
-    return buildMainAgentBootstrapMessage({
-      workspaceName: workspace.name,
-      workspaceId: String(workspaceId),
-    });
-  }, [workspace.name, workspaceId]);
+  const mainBootstrap = useMemo(
+    () =>
+      buildMainAgentBootstrapMessage({
+        workspaceName: workspace.name,
+        workspaceId: String(workspaceId),
+      }),
+    [workspace.name, workspaceId],
+  );
 
-  const mcpConfigTemplate = useMemo(() => {
-    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-    const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
-    return buildMcpServerConfigTemplate({
-      workspaceId: String(workspaceId),
-      convexUrl,
-      convexSiteUrl,
-    });
-  }, [workspaceId]);
-
-  const mainCronPrompt = useMemo(() => {
-    return buildCronPrompt({ sessionKey: "agent:main:main" });
-  }, []);
-
-  const mainHeartbeatMd = useMemo(() => {
-    return buildHeartbeatMd({
-      workspaceName: workspace.name,
-      workspaceId: String(workspaceId),
-      agentName: mainName.trim() || "Jarvis",
-      sessionKey: "agent:main:main",
-      agentRole: mainRole.trim() || "Squad Lead",
-      // Orchestrator doesn't need to run every 15m by default.
-      recommendedMinutes: 720,
-    });
-  }, [workspace.name, workspaceId, mainName, mainRole]);
-
-  const protocolMd = useMemo(() => {
-    return buildSutrahaProtocolMd({
-      workspaceName: workspace.name,
-      workspaceId: String(workspaceId),
-    });
-  }, [workspace.name, workspaceId]);
-
-  const redirectAfterComplete = (mainAgentId: string) => {
-    const dest = isSafeNextPath(next) ? next : `/chat/${mainAgentId}`;
-    router.replace(dest);
-  };
-
-  // Auto-redirect as soon as onboarding becomes complete.
-  useEffect(() => {
-    if (!canAdmin) return;
-    if (!status || !status.isComplete || !status.mainAgentId) return;
+  const goChatSetup = (mainAgentId: string) => {
     setChatDraft({
       workspaceId: String(workspaceId),
       sessionKey: "agent:main:main",
-      content: bootstrapPrompt,
+      content: mainBootstrap,
     });
-    redirectAfterComplete(String(status.mainAgentId));
+    router.replace(`/chat/${mainAgentId}?setup=1`);
+  };
+
+  useEffect(() => {
+    if (!canAdmin) return;
+    if (!status || !status.isComplete || !status.mainAgentId) return;
+    goChatSetup(String(status.mainAgentId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAdmin, status?.isComplete, status?.mainAgentId, bootstrapPrompt, workspaceId]);
+  }, [canAdmin, status?.isComplete, status?.mainAgentId]);
 
   if (!canAdmin) {
     return (
@@ -373,20 +251,19 @@ export function OnboardingWizard() {
             Workspace setup
           </h1>
           <p className="mt-0.5 text-xs text-text-muted">
-            Connect OpenClaw, create your main agent, then start chatting.
+            Complete prerequisites, then continue setup in Chat.
           </p>
         </div>
       </div>
 
       <div className="space-y-6">
-        {/* Step 1 */}
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-            <StepHeader
-              step={1}
-              title="Connect OpenClaw"
-              subtitle="We'll test the gateway connection, then save it to this workspace."
-              done={step1Done}
-            />
+          <StepHeader
+            step={1}
+            title="Connect OpenClaw"
+            subtitle="Test gateway and save configuration."
+            done={step1Done}
+          />
 
           <div className="mt-5 space-y-4">
             <div className="space-y-2">
@@ -397,10 +274,6 @@ export function OnboardingWizard() {
                 placeholder="wss://your-openclaw.example.com"
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
               />
-              <p className="text-[11px] text-text-dim">
-                Make sure this origin is allowed in OpenClaw:
-                <span className="ml-1 font-mono text-text-muted">{origin}</span>
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -411,146 +284,48 @@ export function OnboardingWizard() {
                 placeholder="Paste your OpenClaw token..."
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
               />
-              <p className="text-[11px] text-text-dim">
-                This will be stored encrypted at rest in Convex, but is visible to
-                the browser at runtime for direct WebSocket chat.
-              </p>
             </div>
 
-            <button
-              type="button"
-              className="text-xs font-medium text-text-muted hover:text-text-secondary transition-smooth"
-              onClick={() => setShowAdvanced((v) => !v)}
-            >
-              {showAdvanced ? "Hide advanced settings" : "Show advanced settings"}
-            </button>
-
-            {showAdvanced ? (
-              <div className="rounded-xl border border-border-default bg-bg-tertiary p-4 space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Protocol</Label>
-                    <Select
-                      value={protocol}
-                      onValueChange={(v) => setProtocol(v as Protocol)}
-                    >
-                      <SelectTrigger className="bg-bg-primary border-border-default text-text-primary">
-                        <SelectValue placeholder="Select protocol" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-bg-tertiary border-border-default">
-                        <SelectItem value="req">req</SelectItem>
-                        <SelectItem value="jsonrpc">jsonrpc</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Role</Label>
-                    <Input
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      placeholder="operator"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-text-secondary">Scopes (comma-separated)</Label>
-                  <Input
-                    value={scopesCsv}
-                    onChange={(e) => setScopesCsv(e.target.value)}
-                    placeholder="operator.read,operator.write"
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Client ID</Label>
-                    <Input
-                      value={clientId}
-                      onChange={(e) => setClientId(e.target.value)}
-                      placeholder="cli"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Mode</Label>
-                    <Input
-                      value={clientMode}
-                      onChange={(e) => setClientMode(e.target.value)}
-                      placeholder="webchat"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Platform</Label>
-                    <Input
-                      value={clientPlatform}
-                      onChange={(e) => setClientPlatform(e.target.value)}
-                      placeholder="web"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-text-secondary">Password (optional)</Label>
-                  <Input
-                    value={passwordDraft}
-                    onChange={(e) => setPasswordDraft(e.target.value)}
-                    placeholder="Optional password mode..."
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <label className="flex items-center gap-2 text-sm text-text-secondary">
-                    <input
-                      type="checkbox"
-                      checked={subscribeOnConnect}
-                      onChange={(e) => setSubscribeOnConnect(e.target.checked)}
-                      className="h-4 w-4 accent-accent-orange"
-                    />
-                    Subscribe on connect
-                  </label>
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Subscribe method</Label>
-                    <Input
-                      value={subscribeMethod}
-                      onChange={(e) => setSubscribeMethod(e.target.value)}
-                      placeholder="chat.subscribe"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                    />
-                  </div>
-
-                  <label className="flex items-center gap-2 text-sm text-text-secondary">
-                    <input
-                      type="checkbox"
-                      checked={includeCron}
-                      onChange={(e) => setIncludeCron(e.target.checked)}
-                      className="h-4 w-4 accent-accent-orange"
-                    />
-                    Include cron/heartbeat sessions in chat
-                  </label>
-
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">History poll (ms)</Label>
-                    <Input
-                      value={historyPollMs}
-                      onChange={(e) => setHistoryPollMs(e.target.value)}
-                      placeholder="10000"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                    />
-                    <p className="text-[11px] text-text-dim">
-                      Used to hydrate tool calls and missed messages via{" "}
-                      <code className="font-mono">chat.history</code>.
-                    </p>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Role</Label>
+                <Input
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  placeholder="operator"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                />
               </div>
-            ) : null}
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Scopes</Label>
+                <Input
+                  value={scopesCsv}
+                  onChange={(e) => setScopesCsv(e.target.value)}
+                  placeholder="operator.read,operator.write,operator.admin"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="hidden">
+              <Input value={protocol} onChange={(e) => setProtocol(e.target.value as Protocol)} />
+              <Input value={clientId} onChange={(e) => setClientId(e.target.value)} />
+              <Input value={clientMode} onChange={(e) => setClientMode(e.target.value)} />
+              <Input value={clientPlatform} onChange={(e) => setClientPlatform(e.target.value)} />
+              <Input value={subscribeMethod} onChange={(e) => setSubscribeMethod(e.target.value)} />
+              <Input value={historyPollMs} onChange={(e) => setHistoryPollMs(e.target.value)} />
+              <Input value={passwordDraft} onChange={(e) => setPasswordDraft(e.target.value)} />
+              <input
+                type="checkbox"
+                checked={subscribeOnConnect}
+                onChange={(e) => setSubscribeOnConnect(e.target.checked)}
+              />
+              <input
+                type="checkbox"
+                checked={includeCron}
+                onChange={(e) => setIncludeCron(e.target.checked)}
+              />
+            </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button
@@ -575,7 +350,6 @@ export function OnboardingWizard() {
           </div>
         </div>
 
-        {/* Step 2 */}
         <div
           className={`rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6 ${
             !step1Done ? "opacity-60" : ""
@@ -584,25 +358,21 @@ export function OnboardingWizard() {
           <StepHeader
             step={2}
             title="Create main agent"
-            subtitle='Creates the canonical main agent sessionKey "agent:main:main".'
+            subtitle='Canonical sessionKey: "agent:main:main".'
             done={step2Done}
           />
 
           <div className="mt-5 space-y-4">
             {!step1Done ? (
-              <p className="text-xs text-text-muted">
-                Complete Step 1 first (OpenClaw connection) to unlock agent creation.
-              </p>
+              <p className="text-xs text-text-muted">Complete Step 1 first.</p>
             ) : status?.mainAgentId ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-text-muted">
-                  Main agent already exists for this workspace.
-                </p>
+                <p className="text-xs text-text-muted">Main agent exists. Continue setup in Chat.</p>
                 <Button
                   className="bg-teal hover:bg-teal/90 text-white"
-                  onClick={() => redirectAfterComplete(String(status.mainAgentId))}
+                  onClick={() => goChatSetup(String(status.mainAgentId))}
                 >
-                  Go to chat
+                  Continue in chat
                 </Button>
               </div>
             ) : (
@@ -647,9 +417,7 @@ export function OnboardingWizard() {
                   />
                 </div>
 
-                {createError ? (
-                  <p className="text-xs text-status-blocked">{createError}</p>
-                ) : null}
+                {createError ? <p className="text-xs text-status-blocked">{createError}</p> : null}
 
                 <Button
                   disabled={creatingAgent || !mainName.trim()}
@@ -668,12 +436,7 @@ export function OnboardingWizard() {
                           sessionKey: "agent:main:main",
                           externalAgentId: "agent:main:main",
                         });
-                        setChatDraft({
-                          workspaceId: String(workspaceId),
-                          sessionKey: "agent:main:main",
-                          content: bootstrapPrompt,
-                        });
-                        redirectAfterComplete(String(id));
+                        goChatSetup(String(id));
                       } catch (e) {
                         setCreateError(e instanceof Error ? e.message : String(e));
                       } finally {
@@ -689,123 +452,16 @@ export function OnboardingWizard() {
           </div>
         </div>
 
-        {/* Optional: Next steps */}
-        {step2Done ? (
-          <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings2 className="h-4 w-4 text-text-muted" />
-              <p className="text-sm font-semibold text-text-primary">
-                Next steps (optional)
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <CopyBlock
-                id="bootstrap"
-                title="Main Agent Bootstrap Prompt"
-                value={bootstrapPrompt}
-                copiedId={copiedId}
-                onCopy={copy}
-              />
-
-              <CopyBlock
-                id="mcporter"
-                title="MCPorter Config (Sutraha HQ MCP Server)"
-                value={mcpConfigTemplate}
-                copiedId={copiedId}
-                onCopy={copy}
-              />
-
-              <CopyBlock
-                id="main-cron"
-                title='Cron Prompt (OpenClaw) — "Read HEARTBEAT.md"'
-                value={mainCronPrompt}
-                copiedId={copiedId}
-                onCopy={copy}
-              />
-
-              <CopyBlock
-                id="main-heartbeat"
-                title="HEARTBEAT.md Template (Main Agent)"
-                value={mainHeartbeatMd}
-                copiedId={copiedId}
-                onCopy={copy}
-              />
-
-              <CopyBlock
-                id="protocol"
-                title={`${SUTRAHA_PROTOCOL_FILENAME} Template`}
-                value={protocolMd}
-                copiedId={copiedId}
-                onCopy={copy}
-              />
-
-              <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim mb-3">
-                  Model strategy presets
-                </p>
-                <div className="space-y-3">
-                  {MODEL_STRATEGY_PRESETS.map((p) => (
-                    <div
-                      key={p.id}
-                      className="rounded-xl border border-border-default bg-bg-tertiary p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm font-semibold text-text-primary">
-                          {p.title}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void copy(`preset:${p.id}`, p.body)}
-                          className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                          title={copiedId === `preset:${p.id}` ? "Copied" : "Copy"}
-                        >
-                          {copiedId === `preset:${p.id}` ? (
-                            <Check className="h-4 w-4 text-status-active" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <Textarea
-                        readOnly
-                        value={p.body}
-                        className="mt-3 bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
-                        rows={8}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
-                <p className="text-xs text-text-muted">
-                  Tip: These are also available later in{" "}
-                  <span className="font-medium text-text-secondary">
-                    Settings -&gt; OpenClaw
-                  </span>
-                  .
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
-                <p className="text-xs text-text-muted">
-                  Next: create specialist agents using{" "}
-                  <span className="font-medium text-text-secondary">
-                    Agents -&gt; Use recipe
-                  </span>
-                  .
-                </p>
-                <div className="mt-3">
-                  <Button asChild variant="outline" size="sm" className="h-8">
-                    <Link href="/agents/new">Create an agent (recipe)</Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <p className="text-xs text-text-muted">
+            After prerequisites, setup continues in Chat with the left checklist rail.
+          </p>
+          <div className="mt-3">
+            <Button asChild variant="outline" size="sm" className="h-8">
+              <Link href="/chat?setup=1">Open chat setup</Link>
+            </Button>
           </div>
-        ) : null}
+        </div>
       </div>
     </div>
   );

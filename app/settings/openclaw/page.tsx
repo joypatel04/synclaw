@@ -659,268 +659,74 @@ function OpenClawSettingsContent() {
                   Setup guide
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Copy these templates to configure your agents and multi-agent workflow.
+                  Open Chat setup rail for the canonical workflow. Templates below are minimal references.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href="/settings/api-keys">Create API key</Link>
+                <Link href="/chat?setup=1">Open chat setup</Link>
               </Button>
             </div>
 
-            <div className="mt-4 rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">
-                Workspace ID:{" "}
-                <span className="font-mono text-text-muted">
-                  {String(workspaceId)}
-                </span>
-              </p>
-            </div>
-
-            {/* Multi-agent bootstrap prompt */}
-            <div className="mt-5 space-y-2">
-              <div className="flex items-center justify-between gap-3">
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl border border-border-default bg-bg-tertiary p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                  Main Agent Bootstrap Prompt
+                  Main bootstrap
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    disabled={!mainAgent?._id}
-                    title={
-                      mainAgent?._id
-                        ? "Open the main agent chat with the bootstrap prompt prefilled"
-                        : "Create the main agent first"
-                    }
-                    onClick={() => {
-                      if (!mainAgent?._id) return;
-                      setChatDraft({
-                        workspaceId: String(workspaceId),
-                        sessionKey: "agent:main:main",
-                        content: bootstrapPrompt,
-                      });
-                      router.push(`/chat/${mainAgent._id}`);
-                    }}
-                  >
-                    Open chat
-                  </Button>
-
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Where to paste: OpenClaw main agent prompt (or first chat message).
+                </p>
+                <div className="mt-2 flex justify-end">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => void copy("bootstrap", bootstrapPrompt)}
-                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
+                    className="h-8 w-8 p-0"
                     title={copiedId === "bootstrap" ? "Copied" : "Copy"}
                   >
-                    {copiedId === "bootstrap" ? (
-                      <Check className="h-4 w-4 text-status-active" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+                    {copiedId === "bootstrap" ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {bootstrapPrompt}
-              </pre>
-            </div>
 
-            {/* Protocol file */}
-            <div className="mt-5 space-y-2">
-              <div className="flex items-center justify-between gap-3">
+              <div className="rounded-xl border border-border-default bg-bg-tertiary p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                  {SUTRAHA_PROTOCOL_FILENAME} (copy into OpenClaw workspaces)
+                  MCPorter config
                 </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void copy("protocol", protocolMd)}
-                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                  title={copiedId === "protocol" ? "Copied" : "Copy"}
-                >
-                  {copiedId === "protocol" ? (
-                    <Check className="h-4 w-4 text-status-active" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {protocolMd}
-              </pre>
-              <p className="text-[11px] text-text-dim">
-                Tip: Put the same protocol file in each agent&apos;s OpenClaw workspace to keep prompts short and consistent.
-              </p>
-            </div>
-
-            {/* Recommended squad */}
-            <div className="mt-5 rounded-xl border border-border-default bg-bg-tertiary p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                    Recommended squad (optional)
-                  </p>
-                  <p className="mt-1 text-xs text-text-muted">
-                    One workspace should usually contain multiple agents (main + specialists). Create a separate workspace only when you need isolation (different OpenClaw deployment, members, or permissions).
-                  </p>
+                <p className="mt-1 text-[11px] text-text-muted">
+                  BYO mode: Sutraha HQ does not store model provider keys.
+                </p>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copy("mcporter", mcpConfigTemplate)}
+                    className="h-8 w-8 p-0"
+                    title={copiedId === "mcporter" ? "Copied" : "Copy"}
+                  >
+                    {copiedId === "mcporter" ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
-                  disabled={creatingSquad || missingSpecialists.length === 0}
-                  onClick={() => void onCreateSquad()}
-                  title={
-                    missingSpecialists.length === 0
-                      ? "All recommended agents already exist"
-                      : "Create missing agents"
-                  }
-                >
-                  {creatingSquad
-                    ? "Creating..."
-                    : missingSpecialists.length === 0
-                      ? "Squad ready"
-                      : `Create ${missingSpecialists.length} agent(s)`}
-                </Button>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {canonicalSpecialists.map((a) => {
-                  const exists = existingSessionKeys.has(a.sessionKey);
-                  return (
-                    <div
-                      key={a.sessionKey}
-                      className="rounded-lg border border-border-default bg-bg-secondary px-3 py-2"
-                    >
-                      <p className="text-xs font-semibold text-text-primary">
-                        {a.emoji} {a.name}
-                      </p>
-                      <p className="mt-0.5 text-[11px] font-mono text-text-dim">
-                        {a.sessionKey}
-                      </p>
-                      <p
-                        className={`mt-1 text-[11px] ${
-                          exists ? "text-status-active" : "text-text-muted"
-                        }`}
-                      >
-                        {exists ? "Created" : "Not created"}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {squadOk ? (
-                <p className="mt-3 text-xs text-status-active">
-                  Squad created.
+              <details className="rounded-xl border border-border-default bg-bg-tertiary p-3">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-text-dim">
+                  {SUTRAHA_PROTOCOL_FILENAME}
+                </summary>
+                <p className="mt-2 text-[11px] text-text-muted">
+                  Where to paste: each OpenClaw workspace root.
                 </p>
-              ) : null}
-              {squadError ? (
-                <p className="mt-3 text-xs text-status-blocked">
-                  {squadError}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Specialist prompts */}
-            <div className="mt-5 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                Specialist bootstrap prompts
-              </p>
-              {specialistPrompts.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-border-default bg-bg-secondary p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-text-dim">
-                      {p.title}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void copy(p.id, p.value)}
-                      className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                      title={copiedId === p.id ? "Copied" : "Copy"}
-                    >
-                      {copiedId === p.id ? (
-                        <Check className="h-4 w-4 text-status-active" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <pre className="mt-3 max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                    {p.value}
-                  </pre>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void copy("protocol", protocolMd)}
+                    className="h-8 w-8 p-0"
+                    title={copiedId === "protocol" ? "Copied" : "Copy"}
+                  >
+                    {copiedId === "protocol" ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
+                  </Button>
                 </div>
-              ))}
-            </div>
-
-            {/* MCP config */}
-            <div className="mt-5 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                  MCPorter Config (Sutraha HQ MCP Server)
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void copy("mcporter", mcpConfigTemplate)}
-                  className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                  title={copiedId === "mcporter" ? "Copied" : "Copy"}
-                >
-                  {copiedId === "mcporter" ? (
-                    <Check className="h-4 w-4 text-status-active" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <pre className="max-h-[260px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {mcpConfigTemplate}
-              </pre>
-              <p className="text-[11px] text-text-dim">
-                Note: Sutraha HQ is BYO OpenClaw + BYO model provider. Sutraha HQ does not store LLM provider keys in this setup.
-              </p>
-            </div>
-
-            {/* Model strategy */}
-            <div className="mt-5 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                Model strategy presets
-              </p>
-              {MODEL_STRATEGY_PRESETS.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-border-default bg-bg-tertiary p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-semibold text-text-primary">
-                      {p.title}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void copy(`preset:${p.id}`, p.body)}
-                      className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-                      title={copiedId === `preset:${p.id}` ? "Copied" : "Copy"}
-                    >
-                      {copiedId === `preset:${p.id}` ? (
-                        <Check className="h-4 w-4 text-status-active" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <Textarea
-                    readOnly
-                    value={p.body}
-                    className="mt-3 bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
-                    rows={8}
-                  />
-                </div>
-              ))}
+              </details>
             </div>
           </div>
         ) : null}

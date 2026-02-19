@@ -1,4 +1,5 @@
 import { SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import { SUTRAHA_MCP_SERVER_NPX_SPEC } from "@/lib/mcpServerSpec";
 
 export const CANONICAL_SESSION_KEYS = {
   main: "agent:main:main",
@@ -170,7 +171,7 @@ export function buildMcpServerConfigTemplate(args: {
     servers: {
       "sutraha-hq": {
         command: "npx",
-        args: ["@sutraha/mcp-server"],
+        args: [SUTRAHA_MCP_SERVER_NPX_SPEC],
         env: {
           CONVEX_URL: convexUrl,
           CONVEX_SITE_URL: convexSiteUrl,

@@ -26,7 +26,6 @@ import {
   ExternalLink,
   HeartPulse,
   Pencil,
-  Plus,
 } from "lucide-react";
 import {
   Dialog,
@@ -316,7 +315,7 @@ function AgentsContent() {
             {/* Setup wizard — owner only */}
             {canAdmin && !isArchived && (
               <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href={`/agents/${agent._id}/setup`}>Setup</Link>
+                <Link href={`/chat/${agent._id}?setup=1`}>Continue setup</Link>
               </Button>
             )}
 
@@ -456,13 +455,8 @@ function AgentsContent() {
                 Health
               </Link>
             </Button>
-            <Button
-              onClick={openCreate}
-              size="sm"
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
-            >
-              <Plus className="h-4 w-4" />
-              Add Agent
+            <Button asChild size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto">
+              <Link href="/agents/new">Create agent</Link>
             </Button>
           </div>
         )}
@@ -484,15 +478,6 @@ function AgentsContent() {
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <Button asChild variant="outline" size="sm">
                   <Link href="/agents/new">Use recipe</Link>
-                </Button>
-                <Button
-                  onClick={openCreate}
-                  variant="ghost"
-                  size="sm"
-                  className="text-accent-orange"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add manually
                 </Button>
               </div>
             )}

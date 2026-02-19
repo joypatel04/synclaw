@@ -1,3 +1,5 @@
+import { SUTRAHA_MCP_SERVER_VERSION } from "@/lib/mcpServerSpec";
+
 export const SUTRAHA_PROTOCOL_FILENAME = "SUTRAHA_PROTOCOL.md";
 export const SUTRAHA_PROTOCOL_VERSION = "0.1.0";
 
@@ -24,17 +26,20 @@ Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
 
 ## Minimal lifecycle (every run)
 1) Read \`HEARTBEAT.md\` and follow it strictly.
-2) Presence:
+2) Compatibility check (once per startup):
+   - Call: \`sutraha_get_server_info()\`
+   - Confirm MCP server version is pinned (recommended: \`${SUTRAHA_MCP_SERVER_VERSION}\`).
+3) Presence:
    - Quick keepalive: \`sutraha_agent_heartbeat(sessionKey)\`
    - When starting work: \`sutraha_agent_pulse(sessionKey, status="active", telemetry?)\`
-3) Catch up:
+4) Catch up:
    - \`sutraha_get_unseen_activities(sessionKey)\`
    - \`sutraha_get_notifications(sessionKey)\`
-4) Work:
+5) Work:
    - \`sutraha_get_my_tasks(sessionKey, includeDone=false, limit=10)\`
-5) Idempotency:
+6) Idempotency:
    - After processing unseen items: \`sutraha_ack_activities(sessionKey)\` + \`sutraha_ack_notifications(sessionKey)\`
-6) End cleanly:
+7) End cleanly:
    - \`sutraha_end_task_session(sessionKey, status="idle"|"error", runSummary?)\`
 
 ## Artifact rules
@@ -52,4 +57,3 @@ Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
 - Keep context small: use \`limit\`, \`since\`, and filters in list calls.
 `;
 }
-

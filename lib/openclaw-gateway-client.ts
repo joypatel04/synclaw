@@ -22,6 +22,18 @@ type GatewayClientConfig = {
   subscribeMethod: string;
 };
 
+function normalizeScopes(scopes: string[], role: string): string[] {
+  const out = new Set(scopes.map((s) => s.trim()).filter(Boolean));
+  if (out.size === 0) {
+    out.add("operator.read");
+    out.add("operator.write");
+  }
+  if (role === "operator") {
+    out.add("operator.admin");
+  }
+  return Array.from(out);
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -546,6 +558,100 @@ export class OpenClawBrowserGatewayClient {
     private onEvent: (event: GatewayMessage) => Promise<void>,
   ) {}
 
+  private formatGatewayError(errorValue: unknown): string {
+    if (typeof errorValue === "string") return errorValue;
+    const errObj = asRecord(errorValue);
+    if (!errObj) return String(errorValue);
+
+    const code = typeof errObj.code === "string" ? errObj.code : undefined;
+    const message =
+      (typeof errObj.message === "string" && errObj.message) ||
+      (typeof errObj.error === "string" && errObj.error) ||
+      JSON.stringify(errObj);
+
+    return code ? `${code}: ${message}` : message;
+  }
+
+  private buildConnectAttempts(): Array<{
+    method: string;
+    params: Record<string, unknown>;
+  }> {
+    const scopes = normalizeScopes(this.config.scopes, this.config.role);
+    const scopeCsv = scopes.join(",");
+    const scopeSp = scopes.join(" ");
+
+    const base = {
+      minProtocol: 3,
+      maxProtocol: 3,
+      client: {
+        id: this.config.clientId,
+        version: "0.1.0",
+        mode: this.config.clientMode,
+        platform: this.config.clientPlatform,
+      },
+      role: this.config.role,
+      locale: "en-US",
+    };
+
+    const authBase = {
+      token: this.config.authToken,
+      password: this.config.password,
+    };
+
+    return [
+      {
+        method: "connect",
+        params: {
+          ...base,
+          scopes,
+          auth: authBase,
+        },
+      },
+      {
+        method: "connect",
+        params: {
+          ...base,
+          scopes,
+          scope: scopeCsv,
+          auth: {
+            ...authBase,
+            scopes,
+            scope: scopeCsv,
+            role: this.config.role,
+          },
+        },
+      },
+      {
+        method: "connect",
+        params: {
+          ...base,
+          scopes,
+          scope: scopeSp,
+          auth: {
+            ...authBase,
+            scopes,
+            scope: scopeSp,
+            role: this.config.role,
+          },
+        },
+      },
+      {
+        method: "gateway.connect",
+        params: {
+          ...base,
+          scopes,
+          scope: scopeSp,
+          auth: {
+            ...authBase,
+            scopes,
+            scope: scopeSp,
+            role: this.config.role,
+          },
+        },
+      },
+    ];
+  }
+
   async connect(): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
 
@@ -556,23 +662,25 @@ export class OpenClawBrowserGatewayClient {
       ws.addEventListener("open", () => {
         void (async () => {
           try {
-            await this.request("connect", {
-              minProtocol: 3,
-              maxProtocol: 3,
-              client: {
-                id: this.config.clientId,
-                version: "0.1.0",
-                mode: this.config.clientMode,
-                platform: this.config.clientPlatform,
-              },
-              role: this.config.role,
-              scopes: this.config.scopes,
-              locale: "en-US",
-              auth: {
-                token: this.config.authToken,
-                password: this.config.password,
-              },
-            });
+            const attempts = this.buildConnectAttempts();
+            let lastError: unknown = null;
+            let connected = false;
+
+            for (const attempt of attempts) {
+              try {
+                await this.request(attempt.method, attempt.params);
+                connected = true;
+                break;
+              } catch (error) {
+                lastError = error;
+              }
+            }
+
+            if (!connected) {
+              const message =
+                lastError instanceof Error ? lastError.message : String(lastError);
+              throw new Error(`Gateway connect failed: ${message}`);
+            }
 
             if (this.config.subscribeOnConnect) {
               try {
@@ -614,7 +722,9 @@ export class OpenClawBrowserGatewayClient {
               this.pending.delete(responseId);
 
               if (parsed.error || parsed.ok === false) {
-                pending.reject(new Error(JSON.stringify(parsed.error)));
+                pending.reject(
+                  new Error(this.formatGatewayError(parsed.error)),
+                );
               } else {
                 pending.resolve(parsed.result ?? parsed);
               }

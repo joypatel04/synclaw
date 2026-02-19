@@ -3,6 +3,26 @@ import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
 import { decryptSecretFromHex, encryptSecretToHex } from "./lib/secretCrypto";
 
+function normalizeScopes(scopes: string[], role?: string): string[] {
+  const out = new Set(
+    scopes
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+
+  if (out.size === 0) {
+    out.add("operator.read");
+    out.add("operator.write");
+  }
+
+  // Newer OpenClaw gateway versions may require admin scope for operator flows.
+  if ((role ?? "operator") === "operator") {
+    out.add("operator.admin");
+  }
+
+  return Array.from(out);
+}
+
 function validateWsUrl(input: string): string {
   const wsUrl = input.trim();
   if (!wsUrl) throw new Error("wsUrl is required");
@@ -30,7 +50,7 @@ export const getConfigSummary = query({
       clientMode: row.clientMode,
       clientPlatform: row.clientPlatform,
       role: row.role,
-      scopes: row.scopes,
+      scopes: normalizeScopes(row.scopes, row.role),
       subscribeOnConnect: row.subscribeOnConnect,
       subscribeMethod: row.subscribeMethod,
       includeCron: row.includeCron,
@@ -81,7 +101,7 @@ export const getClientConfig = query({
       clientMode: row.clientMode,
       clientPlatform: row.clientPlatform,
       role: row.role,
-      scopes: row.scopes,
+      scopes: normalizeScopes(row.scopes, row.role),
       subscribeOnConnect: row.subscribeOnConnect,
       subscribeMethod: row.subscribeMethod,
       includeCron: row.includeCron,
@@ -112,7 +132,7 @@ export const upsertConfig = mutation({
 
     const now = Date.now();
     const wsUrl = validateWsUrl(args.wsUrl);
-    const scopes = args.scopes.map((s) => s.trim()).filter(Boolean);
+    const scopes = normalizeScopes(args.scopes, args.role);
 
     const existing = await ctx.db
       .query("openclawGatewayConfigs")
@@ -152,7 +172,7 @@ export const upsertConfig = mutation({
       clientMode: args.clientMode || "webchat",
       clientPlatform: args.clientPlatform || "web",
       role: args.role || "operator",
-      scopes: scopes.length > 0 ? scopes : ["operator.read", "operator.write"],
+      scopes,
       subscribeOnConnect: args.subscribeOnConnect,
       subscribeMethod: args.subscribeMethod || "chat.subscribe",
       includeCron: args.includeCron,

@@ -6,7 +6,7 @@ import { MessageSquare } from "lucide-react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { ChatSetupRail } from "@/components/chat/ChatSetupRail";
 
 function ChatContent() {
   const { workspaceId, canAdmin } = useWorkspace();
@@ -23,21 +23,21 @@ function ChatContent() {
     );
   }
 
-  // Inline onboarding in Chat so owners don't have to context-switch.
-  if (canAdmin && status && !status.isComplete) {
-    return <OnboardingWizard />;
-  }
-
   return (
-    <div className="mx-auto max-w-3xl p-3 sm:p-6">
-      <div className="flex items-center gap-2.5 mb-4 sm:mb-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/20"><MessageSquare className="h-4 w-4 text-teal" /></div>
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-text-primary">Chat</h1>
-          <p className="text-xs text-text-muted hidden sm:block">Direct conversations with your agents</p>
+    <div className="mx-auto max-w-7xl p-3 sm:p-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <ChatSetupRail />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 mb-4 sm:mb-6">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/20"><MessageSquare className="h-4 w-4 text-teal" /></div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-text-primary">Chat</h1>
+              <p className="text-xs text-text-muted hidden sm:block">Direct conversations with your agents</p>
+            </div>
+          </div>
+          <ChatAgentSelector />
         </div>
       </div>
-      <ChatAgentSelector />
     </div>
   );
 }

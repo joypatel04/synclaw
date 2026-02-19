@@ -7,6 +7,7 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams } from "next/navigation";
+import { ChatSetupRail } from "@/components/chat/ChatSetupRail";
 
 function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId } = useWorkspace();
@@ -23,7 +24,16 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
     );
   if (agent === null) return <div className="flex items-center justify-center py-20"><p className="text-text-muted">Agent not found</p></div>;
 
-  return <ChatInterface agent={agent} />;
+  return (
+    <div className="mx-auto max-w-7xl p-3 sm:p-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <ChatSetupRail selectedAgentId={agentId} />
+        <div className="min-w-0">
+          <ChatInterface agent={agent} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function ChatDetailPage() {

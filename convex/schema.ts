@@ -138,6 +138,22 @@ export default defineSchema({
     .index("bySessionKey", ["sessionKey"])
     .index("byWorkspaceAndSessionKey", ["workspaceId", "sessionKey"]),
 
+  // ─── Agent setup progress (workspace-scoped, owner-managed) ────
+  agentSetupProgress: defineTable({
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    bootstrapPrimedAt: v.optional(v.number()),
+    heartbeatConfirmedAt: v.optional(v.number()),
+    cronConfirmedAt: v.optional(v.number()),
+    protocolConfirmedAt: v.optional(v.number()),
+    localFilesWrittenAt: v.optional(v.number()),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byAgent", ["agentId"])
+    .index("byWorkspaceAndAgent", ["workspaceId", "agentId"]),
+
   tasks: defineTable({
     workspaceId: v.id("workspaces"),
     title: v.string(),
