@@ -34,11 +34,27 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+function fromBase64Url(input: string): Uint8Array {
+  const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = base64.length % 4 === 0 ? "" : "=".repeat(4 - (base64.length % 4));
+  const binary = atob(base64 + pad);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
+}
+
+function deriveRawEd25519PublicKeyFromSpki(spkiB64u: string): Uint8Array | null {
+  const spki = fromBase64Url(spkiB64u);
+  // Ed25519 SPKI DER layout ends with 32-byte raw pubkey.
+  if (spki.length < 32) return null;
+  return spki.slice(spki.length - 32);
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
@@ -232,7 +248,7 @@ export function buildDeviceAuthPayloadV3(params: {
   )
     .sort()
     .join(",");
-  const token = (params.token ?? "").trim();
+  const token = params.token ?? "";
   const base = [
     version,
     params.deviceId,
@@ -249,6 +265,13 @@ export function buildDeviceAuthPayloadV3(params: {
   return base.join("|");
 }
 
+export type DeviceProofVariant =
+  | "v2_spki_token"
+  | "v2_spki_notoken"
+  | "v2_raw_token"
+  | "v2_raw_notoken"
+  | "nonce_spki";
+
 export async function buildDeviceProofForConnectV3(params: {
   challengeNonce: string;
   clientId: string;
@@ -256,7 +279,9 @@ export async function buildDeviceProofForConnectV3(params: {
   role: string;
   scopes: string[];
   token?: string | null;
+  variant?: DeviceProofVariant;
 }): Promise<{
+  variant: DeviceProofVariant;
   deviceAuthPayload: string;
   device: {
     id: string;
@@ -268,24 +293,41 @@ export async function buildDeviceProofForConnectV3(params: {
 } | null> {
   const identity = await ensureDeviceIdentityV3();
   if (!identity) return null;
+  const variant = params.variant ?? "v2_spki_token";
   const signedAt = Date.now();
-  const deviceAuthPayload = buildDeviceAuthPayloadV3({
-    version: "v2",
-    deviceId: identity.deviceId,
-    clientId: params.clientId,
-    clientMode: params.clientMode,
-    role: params.role,
-    scopes: params.scopes,
-    signedAtMs: signedAt,
-    token: params.token ?? null,
-    nonce: params.challengeNonce,
-  });
+  const raw = deriveRawEd25519PublicKeyFromSpki(identity.publicKey);
+  const rawB64u = raw ? toBase64Url(raw) : null;
+  const rawId = raw ? await sha256Hex(raw) : null;
+
+  const useRaw = variant === "v2_raw_token" || variant === "v2_raw_notoken";
+  const publicKey = useRaw && rawB64u ? rawB64u : identity.publicKey;
+  const deviceId = useRaw && rawId ? rawId : identity.deviceId;
+  const token =
+    variant === "v2_spki_notoken" || variant === "v2_raw_notoken"
+      ? ""
+      : (params.token ?? "");
+
+  const deviceAuthPayload =
+    variant === "nonce_spki"
+      ? params.challengeNonce
+      : buildDeviceAuthPayloadV3({
+          version: "v2",
+          deviceId,
+          clientId: params.clientId,
+          clientMode: params.clientMode,
+          role: params.role,
+          scopes: params.scopes,
+          signedAtMs: signedAt,
+          token,
+          nonce: params.challengeNonce,
+        });
   const signature = await identity.sign(toUtf8Bytes(deviceAuthPayload));
   return {
+    variant,
     deviceAuthPayload,
     device: {
-      id: identity.deviceId,
-      publicKey: identity.publicKey,
+      id: deviceId,
+      publicKey,
       signedAt,
       signature,
       nonce: params.challengeNonce,

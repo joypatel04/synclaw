@@ -1,4 +1,5 @@
 import {
+  type DeviceProofVariant,
   buildDeviceProofForConnectV3,
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V1,
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2,
@@ -1479,68 +1480,81 @@ export class OpenClawBrowserGatewayClient {
       legacyMode: false,
     });
     let phase: OpenClawConnectionStatus["phase"] = "ws_open";
-    try {
-      this.log("phase", { phase: "ws_open", result: "ok" });
-      const ws = await this.openSocket();
-      this.ws = ws;
-      this.attachSocketListeners(ws);
+    const variants: DeviceProofVariant[] = [
+      "v2_spki_token",
+      "v2_spki_notoken",
+      "v2_raw_token",
+      "v2_raw_notoken",
+      "nonce_spki",
+    ];
+    let lastError: unknown = null;
+    for (const variant of variants) {
+      try {
+        this.log("phase", { phase: "ws_open", result: "ok", variant });
+        const ws = await this.openSocket();
+        this.ws = ws;
+        this.attachSocketListeners(ws);
 
-      phase = "challenge";
-      const challenge = await this.waitForChallenge(3_000);
-      if (!challenge?.nonce) {
-        throw new Error("invalid handshake: missing connect.challenge");
-      }
-      this.log("phase", {
-        phase: "challenge",
-        result: "ok",
-        nonce: challenge.nonce,
-      });
+        phase = "challenge";
+        const challenge = await this.waitForChallenge(3_000);
+        if (!challenge?.nonce) {
+          throw new Error("invalid handshake: missing connect.challenge");
+        }
+        this.log("phase", {
+          phase: "challenge",
+          result: "ok",
+          nonce: challenge.nonce,
+          variant,
+        });
 
-      phase = "sign";
-      this.log("phase", { phase: "sign", result: "ok" });
-      const normalizedScopes = normalizeScopes(this.config.scopes, this.config.role);
-      const proof = await buildDeviceProofForConnectV3({
-        challengeNonce: challenge.nonce,
-        clientId: this.config.clientId,
-        clientMode: this.config.clientMode || "webchat",
-        role: this.config.role,
-        scopes: normalizedScopes,
-        token: this.config.authToken ?? null,
-      });
-      if (!proof) {
-        throw new Error("device auth unavailable: secure context + WebCrypto required");
-      }
-      this.lastDeviceId = proof.device.id;
-      this.log("connect.device.attached", {
-        deviceId: proof.device.id,
-      });
+        phase = "sign";
+        this.log("phase", { phase: "sign", result: "ok", variant });
+        const normalizedScopes = normalizeScopes(this.config.scopes, this.config.role);
+        const proof = await buildDeviceProofForConnectV3({
+          challengeNonce: challenge.nonce,
+          clientId: this.config.clientId,
+          clientMode: this.config.clientMode || "webchat",
+          role: this.config.role,
+          scopes: normalizedScopes,
+          token: this.config.authToken ?? null,
+          variant,
+        });
+        if (!proof) {
+          throw new Error("device auth unavailable: secure context + WebCrypto required");
+        }
+        this.lastDeviceId = proof.device.id;
+        this.log("connect.device.attached", {
+          deviceId: proof.device.id,
+          variant: proof.variant,
+        });
 
-      const scopes = normalizedScopes;
-      const connectParams = {
-        minProtocol: 3,
-        maxProtocol: 3,
-        client: {
-          id: this.config.clientId,
-          version: "0.1.0",
-          mode: this.config.clientMode || "webchat",
-          platform: this.config.clientPlatform,
-        },
-        role: this.config.role,
-        locale: "en-US",
-        scopes,
-        auth: {
-          token: this.config.authToken,
-          password: this.config.password,
-        },
-        device: proof.device,
-      };
+        const scopes = normalizedScopes;
+        const connectParams = {
+          minProtocol: 3,
+          maxProtocol: 3,
+          client: {
+            id: this.config.clientId,
+            version: "0.1.0",
+            mode: this.config.clientMode || "webchat",
+            platform: this.config.clientPlatform,
+          },
+          role: this.config.role,
+          locale: "en-US",
+          scopes,
+          auth: {
+            token: this.config.authToken,
+            password: this.config.password,
+          },
+          device: proof.device,
+        };
 
-      phase = "connect";
-      const connectResult = await this.requestWithWireProtocol(
-        "connect",
-        connectParams,
-        "req",
-      );
+        phase = "connect";
+        const connectResult = await this.requestWithWireProtocol(
+          "connect",
+          connectParams,
+          "req",
+        );
+        this.log("connect.variant.ok", { variant });
       const resultObj = asRecord(connectResult);
       const resultPayload = resultObj ? asRecord(resultObj.payload) : null;
       const authObj = resultPayload ? asRecord(resultPayload.auth) : null;
@@ -1562,15 +1576,29 @@ export class OpenClawBrowserGatewayClient {
       await this.request(adminMethod, {});
       this.log("phase", { phase: "verify_admin", result: "ok" });
 
-      this.lastStatus = {
-        state: "CONNECTED",
-        phase: "verify_admin",
-        result: "ok",
-        message: "Connected and verified read/admin scopes.",
-        deviceId: this.lastDeviceId,
-        lastCloseReason: this.lastCloseReason,
-      };
-      this.log("connect.done", this.lastStatus);
+        this.lastStatus = {
+          state: "CONNECTED",
+          phase: "verify_admin",
+          result: "ok",
+          message: "Connected and verified read/admin scopes.",
+          deviceId: this.lastDeviceId,
+          lastCloseReason: this.lastCloseReason,
+        };
+        this.log("connect.done", this.lastStatus);
+        return;
+      } catch (error) {
+        lastError = error;
+        const msg = error instanceof Error ? error.message : String(error);
+        this.log("connect.variant.fail", { variant, error: msg });
+        await this.disconnect().catch(() => {});
+        // Continue only for signature-invalid errors. Other errors are terminal.
+        if (!msg.toLowerCase().includes("device signature invalid")) {
+          break;
+        }
+      }
+    }
+    try {
+      throw lastError instanceof Error ? lastError : new Error(String(lastError));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error);
