@@ -882,9 +882,7 @@ export class OpenClawBrowserGatewayClient {
     return {
       id: identity.deviceId,
       publicKey: identity.publicKeyB64u,
-      alg: identity.alg,
       signedAt,
-      challengeNonce: challenge.nonce,
       signature,
     };
   }
@@ -921,8 +919,6 @@ export class OpenClawBrowserGatewayClient {
     deviceVariant: "nonce" | "nonce_signedAt" | "json";
   }> {
     const scopes = normalizeScopes(this.config.scopes, this.config.role);
-    const scopeCsv = scopes.join(",");
-    const scopeSp = scopes.join(" ");
     const storedDeviceToken = this.getStoredDeviceToken();
     const preferredToken = storedDeviceToken || this.config.authToken;
 
@@ -982,43 +978,32 @@ export class OpenClawBrowserGatewayClient {
 
     for (const mode of challengeModes) {
       out.push(
-        mk("connect", "req", { ...base, scopes, auth: authBase }, mode.withDeviceChallenge, mode.deviceVariant),
-      );
-      out.push(
-        mk("connect", "jsonrpc", { ...base, scopes, auth: authBase }, mode.withDeviceChallenge, mode.deviceVariant),
-      );
-      out.push(
-        mk("connect", "raw", { ...base, scopes, auth: authBase }, mode.withDeviceChallenge, mode.deviceVariant),
+        mk(
+          "connect",
+          "req",
+          { ...base, scopes, auth: authBase },
+          mode.withDeviceChallenge,
+          mode.deviceVariant,
+        ),
       );
     }
 
     // If we have a stored device token, also try raw configured token in fallback.
-    if (storedDeviceToken && this.config.authToken && this.config.authToken !== storedDeviceToken) {
+    if (
+      storedDeviceToken &&
+      this.config.authToken &&
+      this.config.authToken !== storedDeviceToken
+    ) {
       out.push(
-        mk("connect", "req", { ...base, scopes, auth: authFallback }, false, "nonce"),
-      );
-      out.push(
-        mk("connect", "jsonrpc", { ...base, scopes, auth: authFallback }, false, "nonce"),
+        mk(
+          "connect",
+          "req",
+          { ...base, scopes, auth: authFallback },
+          false,
+          "nonce",
+        ),
       );
     }
-
-    // Legacy scope-shape variants, no device challenge.
-    out.push(
-      mk("connect", "req", {
-        ...base,
-        scopes,
-        scope: scopeCsv,
-        auth: { ...authBase, scopes, scope: scopeCsv, role: this.config.role },
-      }, false, "nonce"),
-    );
-    out.push(
-      mk("connect", "req", {
-        ...base,
-        scopes,
-        scope: scopeSp,
-        auth: { ...authBase, scopes, scope: scopeSp, role: this.config.role },
-      }, false, "nonce"),
-    );
 
     return out;
   }
@@ -1189,7 +1174,6 @@ export class OpenClawBrowserGatewayClient {
             this.log("connect.device.attached", {
               index: i + 1,
               deviceId: (device as any).id,
-              alg: (device as any).alg,
               deviceVariant: attempt.deviceVariant,
             });
           }
