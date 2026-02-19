@@ -22,7 +22,9 @@ import {
   OpenClawBrowserGatewayClient,
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
   clearOpenClawLocalAuthState,
+  isOpenClawDeviceAuthEnabled,
   openClawDeviceTokenStorageKey,
+  setOpenClawDeviceAuthEnabled,
 } from "@/lib/openclaw-gateway-client";
 import { Settings, ShieldAlert, Activity, Check, Copy } from "lucide-react";
 import {
@@ -175,6 +177,11 @@ function OpenClawSettingsContent() {
       return { hasDeviceIdentity: false, hasDeviceToken: false };
     }
   }, [wsUrl, role, localAuthRev]);
+
+  const deviceAuthEnabled = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return isOpenClawDeviceAuthEnabled();
+  }, [localAuthRev]);
 
   const bootstrapPrompt = useMemo(() => {
     return buildMainAgentBootstrapMessage({
@@ -740,6 +747,18 @@ openclaw devices approve <requestId>`}
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Device-auth pairing mode</p>
+              <p
+                className={`text-xs ${
+                  deviceAuthEnabled
+                    ? "text-status-active"
+                    : "text-text-muted"
+                }`}
+              >
+                {deviceAuthEnabled ? "Enabled" : "Disabled (token-only mode)"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
               <p className="text-[11px] text-text-dim">Device identity</p>
               <p
                 className={`text-xs ${
@@ -766,6 +785,19 @@ openclaw devices approve <requestId>`}
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setOpenClawDeviceAuthEnabled(!deviceAuthEnabled);
+                setLocalAuthRev((v) => v + 1);
+              }}
+            >
+              {deviceAuthEnabled
+                ? "Disable device-auth pairing"
+                : "Enable device-auth pairing"}
+            </Button>
             <Button
               variant="outline"
               size="sm"

@@ -67,6 +67,8 @@ export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY =
   "sutraha:openclaw:deviceIdentity:v1";
 export const OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX =
   "sutraha:openclaw:deviceToken:";
+export const OPENCLAW_DEVICE_AUTH_ENABLED_KEY =
+  "sutraha:openclaw:deviceAuthEnabled";
 
 export function openClawDeviceTokenStorageKey(wsUrl: string, role: string) {
   return `${OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX}${wsUrl}|${role}`;
@@ -88,6 +90,28 @@ export function clearOpenClawLocalAuthState(wsUrl?: string, role?: string) {
       }
       for (const key of keys) window.localStorage.removeItem(key);
     }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function isOpenClawDeviceAuthEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = window.localStorage.getItem(OPENCLAW_DEVICE_AUTH_ENABLED_KEY);
+    return raw === "1" || raw === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setOpenClawDeviceAuthEnabled(enabled: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      OPENCLAW_DEVICE_AUTH_ENABLED_KEY,
+      enabled ? "1" : "0",
+    );
   } catch {
     // ignore storage errors
   }
@@ -883,6 +907,7 @@ export class OpenClawBrowserGatewayClient {
       id: identity.deviceId,
       publicKey: identity.publicKeyB64u,
       signedAt,
+      nonce: challenge.nonce,
       signature,
     };
   }
@@ -947,12 +972,14 @@ export class OpenClawBrowserGatewayClient {
     const challengeModes: Array<{
       withDeviceChallenge: boolean;
       deviceVariant: "nonce" | "nonce_signedAt" | "json";
-    }> = [
-      { withDeviceChallenge: true, deviceVariant: "nonce" },
-      { withDeviceChallenge: true, deviceVariant: "nonce_signedAt" },
-      { withDeviceChallenge: true, deviceVariant: "json" },
-      { withDeviceChallenge: false, deviceVariant: "nonce" },
-    ];
+    }> = isOpenClawDeviceAuthEnabled()
+      ? [
+          { withDeviceChallenge: true, deviceVariant: "nonce" },
+          { withDeviceChallenge: true, deviceVariant: "nonce_signedAt" },
+          { withDeviceChallenge: true, deviceVariant: "json" },
+          { withDeviceChallenge: false, deviceVariant: "nonce" },
+        ]
+      : [{ withDeviceChallenge: false, deviceVariant: "nonce" }];
 
     const mk = (
       method: string,
