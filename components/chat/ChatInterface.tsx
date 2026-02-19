@@ -1009,16 +1009,6 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
       {showGatewayPanel && canChatBase && (
         <div className="border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6">
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-              <span>Gateway model:</span>
-              <span className="text-text-secondary">
-                {gatewayDefaultModel
-                  ? gatewayModelProvider
-                    ? `${gatewayDefaultModel} (${gatewayModelProvider})`
-                    : gatewayDefaultModel
-                  : "Auto (from OpenClaw config)"}
-              </span>
-            </div>
             <div className="flex flex-wrap gap-1.5">
               {gatewayFeatures.map((feature) => (
                 <span
