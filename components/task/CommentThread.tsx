@@ -55,6 +55,18 @@ export function CommentThread({ taskId }: CommentThreadProps) {
     return agents.find((a) => a._id === agentId)?.emoji;
   };
 
+  const getAuthorLabel = (msg: Doc<"messages">) => {
+    const raw = (msg.authorName ?? "").trim();
+    if (!msg.agentId) return raw;
+    const agent = agents.find((a) => a._id === msg.agentId);
+    if (!agent) return raw;
+    const prefixed = `${agent.emoji} `;
+    if (raw.startsWith(prefixed)) {
+      return raw.slice(prefixed.length).trim() || agent.name;
+    }
+    return raw;
+  };
+
   const openDocModalFor = (msg: Doc<"messages">) => {
     setSourceMessage(msg);
     const firstLine = msg.content.split("\n")[0] ?? "";
@@ -119,7 +131,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">
-                        {msg.authorName}
+                        {getAuthorLabel(msg as Doc<"messages">)}
                       </span>
                       <Timestamp time={msg.createdAt} />
                     </div>

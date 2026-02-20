@@ -16,7 +16,6 @@ type CategoryId =
   | "tasks"
   | "docs"
   | "comments"
-  | "status"
   | "broadcasts"
   | "mentions";
 
@@ -29,10 +28,8 @@ function isMentionActivity(a: Doc<"activities">): boolean {
 }
 
 function isStatusNoiseActivity(a: Doc<"activities">): boolean {
-  if (a.type !== "agent_status") return false;
-  const msg = a.message.toLowerCase();
-  // Remove low-signal heartbeat/presence chatter from dashboard live feed.
-  return msg.includes("idle") || msg.includes("connected");
+  // Remove status chatter from dashboard feed; it creates noise.
+  return a.type === "agent_status";
 }
 
 const categories: {
@@ -52,7 +49,6 @@ const categories: {
     predicate: (a) => a.type === "document_created" || a.type === "document_updated",
   },
   { id: "comments", label: "Comments", predicate: (a) => a.type === "message_sent" },
-  { id: "status", label: "Status", predicate: (a) => a.type === "agent_status" },
   { id: "broadcasts", label: "Broadcasts", predicate: (a) => a.type === "broadcast_sent" },
   { id: "mentions", label: "Mentions", predicate: (a) => isMentionActivity(a) },
 ];
@@ -78,7 +74,6 @@ export function LiveFeed() {
       tasks: 0,
       docs: 0,
       comments: 0,
-      status: 0,
       broadcasts: 0,
       mentions: 0,
     };
@@ -86,7 +81,6 @@ export function LiveFeed() {
       if (a.type === "task_created" || a.type === "task_updated") result.tasks++;
       if (a.type === "document_created" || a.type === "document_updated") result.docs++;
       if (a.type === "message_sent") result.comments++;
-      if (a.type === "agent_status") result.status++;
       if (a.type === "broadcast_sent") result.broadcasts++;
       if (isMentionActivity(a)) result.mentions++;
     }

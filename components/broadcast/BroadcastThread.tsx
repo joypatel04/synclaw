@@ -18,10 +18,20 @@ export function BroadcastThread({ broadcastId }: BroadcastThreadProps) {
   const broadcast = useQuery(api.broadcasts.getById, { workspaceId, id: broadcastId });
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
 
+  
   if (broadcast === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
   if (broadcast === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Broadcast not found</p><Link href="/broadcasts" className="mt-2 text-sm text-accent-orange hover:underline">Back to broadcasts</Link></div>;
 
   const targetAgents = broadcast.targetAgentIds === "all" ? agents : agents.filter((a) => (broadcast.targetAgentIds as string[]).includes(a._id));
+  const getAuthorLabel = (msg: any, agent: any) => {
+    const raw = String(msg?.authorName ?? "").trim();
+    if (!agent || !raw) return raw;
+    const prefixed = `${agent.emoji} `;
+    if (raw.startsWith(prefixed)) {
+      return raw.slice(prefixed.length).trim() || agent.name;
+    }
+    return raw;
+  };
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -43,7 +53,7 @@ export function BroadcastThread({ broadcastId }: BroadcastThreadProps) {
         ) : (
           <ScrollArea className="max-h-[400px]"><div className="space-y-3">{broadcast.responseMessages.map((msg: any) => {
             const agent = agents.find((a) => a._id === msg?.agentId); if (!msg) return null;
-            return (<div key={msg._id} className="rounded-lg border border-border-default bg-bg-secondary p-4"><div className="flex items-center gap-2"><span className="text-lg">{agent?.emoji ?? "🤖"}</span><span className="text-sm font-medium text-text-primary">{msg.authorName}</span><Timestamp time={msg.createdAt} /></div><div className="mt-2 text-sm text-text-secondary leading-relaxed"><MarkdownContent content={msg.content} /></div></div>);
+            return (<div key={msg._id} className="rounded-lg border border-border-default bg-bg-secondary p-4"><div className="flex items-center gap-2"><span className="text-lg">{agent?.emoji ?? "🤖"}</span><span className="text-sm font-medium text-text-primary">{getAuthorLabel(msg, agent)}</span><Timestamp time={msg.createdAt} /></div><div className="mt-2 text-sm text-text-secondary leading-relaxed"><MarkdownContent content={msg.content} /></div></div>);
           })}</div></ScrollArea>
         )}
       </div>
