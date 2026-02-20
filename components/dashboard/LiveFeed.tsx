@@ -111,7 +111,7 @@ export function LiveFeed() {
   }, [visibleActivities, category, selectedAgentId, query]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="px-4 py-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
@@ -216,7 +216,7 @@ export function LiveFeed() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-0.5 px-1">
           {filtered.length === 0 ? (
             <EmptyState

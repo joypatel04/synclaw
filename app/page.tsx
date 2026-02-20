@@ -36,7 +36,7 @@ function DashboardContent() {
           <KanbanBoard />
         </div>
         {/* Right sidebar: Activity */}
-        <div className="w-[300px] border-l border-border-default bg-bg-secondary overflow-hidden">
+        <div className="w-[300px] min-h-0 border-l border-border-default bg-bg-secondary overflow-hidden">
           <LiveFeed />
         </div>
       </div>
@@ -56,7 +56,7 @@ function DashboardContent() {
             </div>
           )}
           {activeTab === "activity" && (
-            <div className="h-full bg-bg-secondary">
+            <div className="h-full min-h-0 overflow-hidden bg-bg-secondary">
               <LiveFeed />
             </div>
           )}

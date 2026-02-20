@@ -12,10 +12,11 @@ import { Timestamp } from "@/components/shared/Timestamp";
 import { CommentThread } from "./CommentThread";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface TaskDetailProps { taskId: Id<"tasks">; }
 
@@ -28,15 +29,33 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const deleteTask = useMutation(api.tasks.remove);
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [savingDescription, setSavingDescription] = useState(false);
 
   if (task === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
   if (task === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Task not found</p><Link href="/" className="mt-2 text-sm text-accent-orange hover:underline">Back to dashboard</Link></div>;
+
+  useEffect(() => {
+    if (!isEditingDescription) {
+      setDescriptionDraft(task.description ?? "");
+    }
+  }, [task.description, isEditingDescription]);
 
   const assignees = agents.filter((a) => task.assigneeIds.includes(a._id as Id<"agents">));
 
   const handleStatusChange = async (status: string) => { await updateStatus({ workspaceId, id: taskId, status: status as any }); };
   const handlePriorityChange = async (priority: string) => { await updateTask({ workspaceId, id: taskId, priority: priority as any }); };
   const handleDelete = async () => { await deleteTask({ workspaceId, id: taskId }); router.push("/"); };
+  const handleSaveDescription = async () => {
+    setSavingDescription(true);
+    try {
+      await updateTask({ workspaceId, id: taskId, description: descriptionDraft });
+      setIsEditingDescription(false);
+    } finally {
+      setSavingDescription(false);
+    }
+  };
 
   const toggleAssignee = (agentId: Id<"agents">) => {
     const next = task.assigneeIds.includes(agentId)
@@ -54,11 +73,63 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             <h1 className="text-2xl font-bold text-text-primary">{task.title}</h1>
             <div className="flex items-center gap-2 shrink-0"><PriorityBadge priority={task.priority} /><StatusBadge status={task.status} /></div>
           </div>
-          {task.description && (
-            <div className="mt-4 text-sm text-text-secondary leading-relaxed">
-              <MarkdownContent content={task.description} />
+          <div className="mt-4 rounded-xl border border-border-default bg-bg-secondary p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Description
+              </p>
+              {canEdit && !isEditingDescription ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setIsEditingDescription(true)}
+                >
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+              ) : null}
             </div>
-          )}
+            {isEditingDescription ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={descriptionDraft}
+                  onChange={(e) => setDescriptionDraft(e.target.value)}
+                  rows={8}
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                  placeholder="Add task description..."
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    onClick={() => void handleSaveDescription()}
+                    disabled={savingDescription}
+                  >
+                    {savingDescription ? "Saving..." : "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    disabled={savingDescription}
+                    onClick={() => {
+                      setDescriptionDraft(task.description ?? "");
+                      setIsEditingDescription(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : task.description ? (
+              <div className="text-sm text-text-secondary leading-relaxed">
+                <MarkdownContent content={task.description} />
+              </div>
+            ) : (
+              <p className="text-sm text-text-dim">No description yet.</p>
+            )}
+          </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-border-default bg-bg-secondary p-4">
             <div>
