@@ -33,14 +33,15 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
 
-  if (task === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
-  if (task === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Task not found</p><Link href="/" className="mt-2 text-sm text-accent-orange hover:underline">Back to dashboard</Link></div>;
-
   useEffect(() => {
+    if (!task) return;
     if (!isEditingDescription) {
       setDescriptionDraft(task.description ?? "");
     }
-  }, [task.description, isEditingDescription]);
+  }, [task, task?.description, isEditingDescription]);
+
+  if (task === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
+  if (task === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Task not found</p><Link href="/" className="mt-2 text-sm text-accent-orange hover:underline">Back to dashboard</Link></div>;
 
   const assignees = agents.filter((a) => task.assigneeIds.includes(a._id as Id<"agents">));
 
