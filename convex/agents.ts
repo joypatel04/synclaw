@@ -79,15 +79,18 @@ export const updateStatus = mutation({
     }
     await ctx.db.patch(args.id, updates);
 
-    await ctx.db.insert("activities", {
-      workspaceId: args.workspaceId,
-      type: "agent_status",
-      agentId: args.id,
-      taskId: null,
-      message: `${agent.emoji} ${agent.name} is now ${args.status}`,
-      metadata: { previousStatus: agent.status, newStatus: args.status },
-      createdAt: Date.now(),
-    });
+    // Avoid logging routine active/idle churn as activity noise.
+    if (args.status === "error" || args.status === "offline") {
+      await ctx.db.insert("activities", {
+        workspaceId: args.workspaceId,
+        type: "agent_status",
+        agentId: args.id,
+        taskId: null,
+        message: `${agent.emoji} ${agent.name} is now ${args.status}`,
+        metadata: { previousStatus: agent.status, newStatus: args.status },
+        createdAt: Date.now(),
+      });
+    }
   },
 });
 
@@ -156,7 +159,10 @@ export const agentPulse = mutation({
 
     await ctx.db.patch(args.id, patch);
 
-    if (agent.status !== args.status) {
+    if (
+      agent.status !== args.status &&
+      (args.status === "error" || args.status === "offline")
+    ) {
       await ctx.db.insert("activities", {
         workspaceId: agent.workspaceId,
         type: "agent_status",

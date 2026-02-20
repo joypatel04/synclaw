@@ -13,6 +13,12 @@ const activityType = v.union(
   v.literal("document_updated"),
 );
 
+function isRelevantActivity(activity: { type: string }) {
+  // Status transitions are high-volume noise for both UI feeds and agent wake cycles.
+  // Keep task/doc/comment/broadcast/mention activity as the primary signal.
+  return activity.type !== "agent_status";
+}
+
 /** Log an activity (internal use, no direct auth check). */
 export const log = mutation({
   args: {
@@ -54,7 +60,7 @@ export const recent = query({
       .collect();
 
     return activities
-      .filter((a) => a.createdAt >= sevenDaysAgo)
+      .filter((a) => a.createdAt >= sevenDaysAgo && isRelevantActivity(a))
       .slice(0, limit);
   },
 });
@@ -82,6 +88,7 @@ export const getByAgent = query({
 
     return activities
       .filter((activity) => {
+        if (!isRelevantActivity(activity)) return false;
         if (args.agentId && activity.agentId !== args.agentId) return false;
         if (typeSet && !typeSet.has(activity.type)) return false;
         if (args.taskId && activity.taskId !== args.taskId) return false;
@@ -150,6 +157,8 @@ export const getUnseen = query({
       .collect();
 
     // Filter to only unseen, then reverse to chronological order (oldest first)
-    return activities.filter((a) => a.createdAt > watermark).reverse();
+    return activities
+      .filter((a) => a.createdAt > watermark && isRelevantActivity(a))
+      .reverse();
   },
 });
