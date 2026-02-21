@@ -1,0 +1,20 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" fill="#0F1217"/>
+  <rect x="40" y="40" width="1120" height="640" rx="20" fill="#171B22" stroke="#2B3442"/>
+  <rect x="80" y="100" width="220" height="540" rx="14" fill="#10151D" stroke="#2B3442"/>
+  <rect x="330" y="100" width="220" height="540" rx="14" fill="#10151D" stroke="#2B3442"/>
+  <rect x="580" y="100" width="220" height="540" rx="14" fill="#10151D" stroke="#2B3442"/>
+  <rect x="830" y="100" width="220" height="540" rx="14" fill="#10151D" stroke="#2B3442"/>
+  <rect x="96" y="140" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="96" y="230" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="346" y="140" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="346" y="230" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="596" y="140" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="596" y="230" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="846" y="140" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="846" y="230" width="188" height="74" rx="10" fill="#1C2430"/>
+  <rect x="96" y="118" width="98" height="10" rx="5" fill="#FA7A33"/>
+  <text x="80" y="78" fill="#B5C0CF" font-family="Arial, sans-serif" font-size="24" font-weight="700">
+    Replace with your Mission Board screenshot
+  </text>
+</svg>

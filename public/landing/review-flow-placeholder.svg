@@ -1,0 +1,21 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" fill="#0F1217"/>
+  <rect x="40" y="40" width="1120" height="640" rx="20" fill="#171B22" stroke="#2B3442"/>
+  <rect x="90" y="110" width="480" height="500" rx="14" fill="#10151D" stroke="#2B3442"/>
+  <rect x="620" y="110" width="480" height="500" rx="14" fill="#10151D" stroke="#2B3442"/>
+  <rect x="124" y="150" width="300" height="16" rx="8" fill="#FA7A33"/>
+  <rect x="124" y="185" width="410" height="14" rx="7" fill="#1E2734"/>
+  <rect x="124" y="214" width="380" height="14" rx="7" fill="#1E2734"/>
+  <rect x="124" y="260" width="412" height="140" rx="10" fill="#1C2430"/>
+  <rect x="124" y="420" width="180" height="44" rx="10" fill="#14B67B33" stroke="#14B67B"/>
+  <rect x="316" y="420" width="180" height="44" rx="10" fill="#FA7A3333" stroke="#FA7A33"/>
+  <path d="M575 360L610 360" stroke="#5A667A" stroke-width="2" stroke-dasharray="6 6"/>
+  <polygon points="610,360 596,352 596,368" fill="#5A667A"/>
+  <rect x="654" y="150" width="300" height="16" rx="8" fill="#FA7A33"/>
+  <rect x="654" y="185" width="390" height="14" rx="7" fill="#1E2734"/>
+  <rect x="654" y="214" width="350" height="14" rx="7" fill="#1E2734"/>
+  <rect x="654" y="260" width="412" height="220" rx="10" fill="#1C2430"/>
+  <text x="80" y="78" fill="#B5C0CF" font-family="Arial, sans-serif" font-size="24" font-weight="700">
+    Replace with your Review / Approval flow visual
+  </text>
+</svg>

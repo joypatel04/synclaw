@@ -9,7 +9,83 @@
     "heroHeadline": "Run your AI operations from one control center",
     "heroSubheadline": "Tasks, agents, and execution visibility for solo builders and teams.",
     "primaryCtaLabel": "Start Free Trial",
-    "secondaryCtaLabel": "See Pricing"
+    "secondaryCtaLabel": "See Pricing",
+    "signInLabel": "Sign in",
+    "trustBadge": "Trusted workspace model for solo operators and teams",
+    "heroAccent": "premium product team",
+    "benefitBullets": [
+      "14-day trial experience",
+      "Role-based workspace controls",
+      "Live execution visibility",
+      "API-ready for automation"
+    ],
+    "snapshotTitle": "Operations Snapshot",
+    "snapshotLiveLabel": "Live",
+    "snapshotRows": [
+      { "label": "Active agents", "value": "12" },
+      { "label": "Tasks shipped this week", "value": "48" },
+      { "label": "Execution events", "value": "1,284" }
+    ],
+    "snapshotNoteTitle": "System note",
+    "snapshotNoteBody": "This feels like a serious control plane, not another lightweight task tool.",
+    "proofStrip": [
+      { "label": "Workspace-scoped role controls", "value": "Built in" },
+      { "label": "Task board + agent panel + live feed", "value": "Core workflow" },
+      { "label": "OpenClaw + MCP + Convex architecture", "value": "Integrated" }
+    ],
+    "productInActionTitle": "Product in action",
+    "productInActionSubtitle": "Built from real feature surfaces in this app",
+    "visualCards": [
+      {
+        "title": "Task Board Lanes",
+        "caption": "Mirrors your real task workflow: Inbox to Review to Done."
+      },
+      {
+        "title": "Agents Panel",
+        "caption": "Shows active/idle state exactly like your workspace agent operations."
+      },
+      {
+        "title": "Live Feed",
+        "caption": "Category filters and event stream map to your existing activity feed."
+      }
+    ],
+    "howItWorksTitle": "How it works",
+    "operatorFlowTitle": "Operator Flow",
+    "operatorFlowBody": "You define priorities in Sutraha HQ, OpenClaw executes through agent sessions, and MCP tools sync outcomes back into your workspace.",
+    "creativeTitle": "Creative process, made operational",
+    "whyKicker": "Why it works",
+    "whyHeadline": "Built for operators who care about quality, not noise",
+    "whyBody": "Most tools optimize for activity. This one optimizes for shipped outcomes.",
+    "whyBullets": [
+      "Single source of execution truth",
+      "Clear accountability across humans and agents",
+      "Fast review loops without status meetings"
+    ],
+    "segmentCards": [
+      {
+        "title": "Creator OS",
+        "text": "Plan content, route tasks to agents, and track delivery without chaos."
+      },
+      {
+        "title": "Solo Founder Ops",
+        "text": "Keep product, growth, support, and docs moving from one trusted workspace."
+      },
+      {
+        "title": "Business-Ready",
+        "text": "Role controls and workspace separation designed for team expansion later."
+      }
+    ],
+    "pricingKicker": "Pricing Preview",
+    "pricingHeadline": "Simple plans, premium outcomes",
+    "pricingCtaLabel": "Try it now",
+    "trialTitle": "Free Trial",
+    "trialSummary": "Explore the workflow before enabling billing.",
+    "starterSummary": "For serious solopreneurs shipping weekly.",
+    "proSummary": "For advanced operators and growing businesses.",
+    "finalCtaKicker": "Ready to run like a real operator?",
+    "finalCtaHeadline": "Build your next shipping system in Sutraha HQ",
+    "finalCtaBody": "Move from scattered tools to one disciplined execution layer your customers can feel.",
+    "exploreDocsLabel": "Explore Docs"
   },
   "auth": {
     "loginTitle": "Sutraha HQ",

@@ -14,6 +14,51 @@ export interface BrandConfig {
     heroSubheadline: BrandString;
     primaryCtaLabel: BrandString;
     secondaryCtaLabel: BrandString;
+    signInLabel: BrandString;
+    trustBadge: BrandString;
+    heroAccent: BrandString;
+    benefitBullets: BrandString[];
+    snapshotTitle: BrandString;
+    snapshotLiveLabel: BrandString;
+    snapshotRows: Array<{
+      label: BrandString;
+      value: BrandString;
+    }>;
+    snapshotNoteTitle: BrandString;
+    snapshotNoteBody: BrandString;
+    proofStrip: Array<{
+      label: BrandString;
+      value: BrandString;
+    }>;
+    productInActionTitle: BrandString;
+    productInActionSubtitle: BrandString;
+    visualCards: Array<{
+      title: BrandString;
+      caption: BrandString;
+    }>;
+    howItWorksTitle: BrandString;
+    operatorFlowTitle: BrandString;
+    operatorFlowBody: BrandString;
+    creativeTitle: BrandString;
+    whyKicker: BrandString;
+    whyHeadline: BrandString;
+    whyBody: BrandString;
+    whyBullets: BrandString[];
+    segmentCards: Array<{
+      title: BrandString;
+      text: BrandString;
+    }>;
+    pricingKicker: BrandString;
+    pricingHeadline: BrandString;
+    pricingCtaLabel: BrandString;
+    trialTitle: BrandString;
+    trialSummary: BrandString;
+    starterSummary: BrandString;
+    proSummary: BrandString;
+    finalCtaKicker: BrandString;
+    finalCtaHeadline: BrandString;
+    finalCtaBody: BrandString;
+    exploreDocsLabel: BrandString;
   };
   auth: {
     loginTitle: BrandString;
@@ -40,6 +85,33 @@ const REQUIRED_PATHS: Array<[keyof BrandConfig, string]> = [
   ["marketing", "heroSubheadline"],
   ["marketing", "primaryCtaLabel"],
   ["marketing", "secondaryCtaLabel"],
+  ["marketing", "signInLabel"],
+  ["marketing", "trustBadge"],
+  ["marketing", "heroAccent"],
+  ["marketing", "snapshotTitle"],
+  ["marketing", "snapshotLiveLabel"],
+  ["marketing", "snapshotNoteTitle"],
+  ["marketing", "snapshotNoteBody"],
+  ["marketing", "productInActionTitle"],
+  ["marketing", "productInActionSubtitle"],
+  ["marketing", "howItWorksTitle"],
+  ["marketing", "operatorFlowTitle"],
+  ["marketing", "operatorFlowBody"],
+  ["marketing", "creativeTitle"],
+  ["marketing", "whyKicker"],
+  ["marketing", "whyHeadline"],
+  ["marketing", "whyBody"],
+  ["marketing", "pricingKicker"],
+  ["marketing", "pricingHeadline"],
+  ["marketing", "pricingCtaLabel"],
+  ["marketing", "trialTitle"],
+  ["marketing", "trialSummary"],
+  ["marketing", "starterSummary"],
+  ["marketing", "proSummary"],
+  ["marketing", "finalCtaKicker"],
+  ["marketing", "finalCtaHeadline"],
+  ["marketing", "finalCtaBody"],
+  ["marketing", "exploreDocsLabel"],
   ["auth", "loginTitle"],
   ["auth", "loginSubtitle"],
   ["auth", "providerLabelGithub"],
@@ -109,6 +181,30 @@ function assertValid(config: BrandConfig): void {
       `[brand] Missing required brand keys: ${missing.join(", ")}`,
     );
   }
+
+  if (config.marketing.benefitBullets.length === 0) {
+    throw new Error("[brand] marketing.benefitBullets must contain at least one item");
+  }
+
+  if (config.marketing.snapshotRows.length === 0) {
+    throw new Error("[brand] marketing.snapshotRows must contain at least one row");
+  }
+
+  if (config.marketing.segmentCards.length === 0) {
+    throw new Error("[brand] marketing.segmentCards must contain at least one card");
+  }
+
+  if (config.marketing.proofStrip.length === 0) {
+    throw new Error("[brand] marketing.proofStrip must contain at least one item");
+  }
+
+  if (config.marketing.visualCards.length === 0) {
+    throw new Error("[brand] marketing.visualCards must contain at least one card");
+  }
+
+  if (config.marketing.whyBullets.length === 0) {
+    throw new Error("[brand] marketing.whyBullets must contain at least one bullet");
+  }
 }
 
 export function resolveBrandConfig(): BrandConfig {
@@ -120,4 +216,3 @@ export function resolveBrandConfig(): BrandConfig {
 }
 
 export const brand = resolveBrandConfig();
-

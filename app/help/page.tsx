@@ -15,6 +15,11 @@ import {
   ShieldCheck,
   TrendingUp,
   Rocket,
+  BookOpen,
+  Cloud,
+  HardDrive,
+  Coins,
+  HelpCircle,
 } from "lucide-react";
 
 type UseCase = {
@@ -116,6 +121,69 @@ function HelpContent() {
             <Button asChild variant="outline">
               <Link href="/agents/new">Create agent (recipe)</Link>
             </Button>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">Product docs</h2>
+          <p className="mt-2 text-xs text-text-muted">
+            Launch docs aligned to your current app theme and commercial model.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[
+              {
+                title: "Getting started",
+                description: "Choose Cloud or Self-hosted path.",
+                href: "/help/getting-started",
+                icon: BookOpen,
+              },
+              {
+                title: "Public hosting guide",
+                description: "Detailed public docs for setup and deployment.",
+                href: "/docs/hosting",
+                icon: Cloud,
+              },
+              {
+                title: "Cloud setup",
+                description: "Fast path for non-technical users.",
+                href: "/help/cloud",
+                icon: Cloud,
+              },
+              {
+                title: "Self-hosted setup",
+                description: "Developer-grade setup checklist.",
+                href: "/help/self-hosted",
+                icon: HardDrive,
+              },
+              {
+                title: "Pricing strategy",
+                description: "Cloud, OSS, and support model.",
+                href: "/help/pricing",
+                icon: Coins,
+              },
+              {
+                title: "FAQ",
+                description: "Cloud vs self-hosted answers.",
+                href: "/help/faq",
+                icon: HelpCircle,
+              },
+            ].map((doc) => (
+              <Link
+                key={doc.href}
+                href={doc.href}
+                className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-accent-orange/40 hover:bg-bg-hover"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-primary text-text-primary">
+                    <doc.icon className="h-4 w-4 text-accent-orange" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-text-primary">{doc.title}</p>
+                    <p className="mt-1 text-xs text-text-muted">{doc.description}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
 
