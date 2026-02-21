@@ -1,0 +1,24 @@
+{
+  "product": {
+    "name": "Sutraha HQ",
+    "tagline": "Multi-Agent Orchestration Dashboard",
+    "shortName": "Sutraha",
+    "websiteUrl": "https://yourdomain.com"
+  },
+  "marketing": {
+    "heroHeadline": "Run your AI operations from one control center",
+    "heroSubheadline": "Tasks, agents, and execution visibility for solo builders and teams.",
+    "primaryCtaLabel": "Start Free Trial",
+    "secondaryCtaLabel": "See Pricing"
+  },
+  "auth": {
+    "loginTitle": "Sutraha HQ",
+    "loginSubtitle": "Multi-Agent Orchestration Dashboard",
+    "providerLabelGithub": "Continue with GitHub",
+    "footerNote": "Secure authentication powered by Convex Auth"
+  },
+  "seo": {
+    "titleDefault": "Sutraha HQ",
+    "descriptionDefault": "Multi-Agent Orchestration Dashboard"
+  }
+}

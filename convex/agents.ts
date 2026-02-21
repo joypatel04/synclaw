@@ -1,6 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireRole, requireMember, resolveActorName } from "./lib/permissions";
+import {
+  requireRole,
+  requireMember,
+  resolveActorName,
+} from "./lib/permissions";
+import { maxAgentsForWorkspace } from "./lib/billing";
 
 const defaultTelemetry = {
   currentModel: "unknown",
@@ -348,6 +353,21 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "owner");
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace not found");
+
+    const existingAgents = await ctx.db
+      .query("agents")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+    const activeCount = existingAgents.filter((a) => !a.isArchived).length;
+    const maxAgents = maxAgentsForWorkspace(workspace);
+    if (activeCount >= maxAgents) {
+      throw new Error(
+        "Free workspaces can run up to 3 active agents. Upgrade in Settings -> Billing for more.",
+      );
+    }
+
     const now = Date.now();
     const id = await ctx.db.insert("agents", {
       workspaceId: args.workspaceId,
@@ -384,10 +404,7 @@ export const create = mutation({
       ) ?? null;
 
     const assigneeIds = mainAgent ? [mainAgent._id] : [];
-    const status =
-      assigneeIds.length > 0
-        ? "assigned"
-        : ("inbox" as const);
+    const status = assigneeIds.length > 0 ? "assigned" : ("inbox" as const);
 
     const title = `Setup agent: ${args.name} (${args.sessionKey})`;
     const description = `Checklist:

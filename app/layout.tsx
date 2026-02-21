@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { brand } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,8 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sutraha HQ",
-  description: "Multi-Agent Orchestration Dashboard",
+  title: brand.seo.titleDefault,
+  description: brand.seo.descriptionDefault,
 };
 
 export default function RootLayout({

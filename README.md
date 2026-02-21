@@ -5,6 +5,7 @@ Sutraha HQ is a Next.js + Convex dashboard for managing an OpenClaw-powered agen
 - Tasks, documents, broadcasts, and activity feed (Convex)
 - Chat UI streaming directly from OpenClaw Gateway over WebSocket (no Convex chat persistence)
 - Settings / workspace membership management
+- Razorpay per-workspace billing (`/settings/billing`)
 - MCP server package (see `packages/mcp-server`)
 
 ## Local Dev
@@ -21,7 +22,8 @@ bun install
 cp .env.local.example .env.local
 ```
 
-Update `.env.local` values for your Convex deployment + GitHub OAuth.
+Update `.env.local` values for your Convex deployment + Convex Auth GitHub OAuth keys.
+If you want billing enabled, configure Razorpay keys and plan IDs.
 
 ### 3) Start Convex + Next.js
 
@@ -42,6 +44,11 @@ Open the app (see the dev URL printed by Next.js).
 ### 4) Configure OpenClaw (per workspace)
 
 Open **Settings -> OpenClaw** (`/settings/openclaw`) and set your gateway URL/token/scopes.
+
+Open **Settings -> Billing** (`/settings/billing`) to manage plan checkout/portal flows.
+
+Webhook endpoint:
+- Razorpay: `/api/v1/billing/razorpay/webhook`
 
 Note: to encrypt tokens at rest, set the Convex env var:
 

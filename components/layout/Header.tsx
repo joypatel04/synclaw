@@ -6,6 +6,7 @@ import {
   Bot,
   Check,
   ChevronDown,
+  CreditCard,
   FileText,
   Key,
   LifeBuoy,
@@ -43,6 +44,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BILLING_ENABLED } from "@/lib/features";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Activity },
@@ -193,47 +195,58 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                   <Users className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-48 bg-bg-tertiary border-border-default"
-            >
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-2 text-text-secondary"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/settings/members"
-                  className="flex items-center gap-2 text-text-secondary"
-                >
-                  <Users className="h-4 w-4" />
-                  Members
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/settings/api-keys"
-                  className="flex items-center gap-2 text-text-secondary"
-                >
-                  <Key className="h-4 w-4" />
-                  API Keys
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border-default" />
-              <DropdownMenuItem
-                onClick={() => void signOut()}
-                className="flex items-center gap-2 text-status-blocked cursor-pointer"
+              <DropdownMenuContent
+                align="end"
+                className="w-48 bg-bg-tertiary border-border-default"
               >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 text-text-secondary"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/settings/members"
+                    className="flex items-center gap-2 text-text-secondary"
+                  >
+                    <Users className="h-4 w-4" />
+                    Members
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/settings/api-keys"
+                    className="flex items-center gap-2 text-text-secondary"
+                  >
+                    <Key className="h-4 w-4" />
+                    API Keys
+                  </Link>
+                </DropdownMenuItem>
+                {BILLING_ENABLED ? (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/settings/billing"
+                      className="flex items-center gap-2 text-text-secondary"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuSeparator className="bg-border-default" />
+                <DropdownMenuItem
+                  onClick={() => void signOut()}
+                  className="flex items-center gap-2 text-status-blocked cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

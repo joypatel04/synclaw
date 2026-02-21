@@ -6,6 +6,7 @@ import {
   requireMember,
   getUserDisplayName,
 } from "./lib/permissions";
+import { defaultTrialEndsAt } from "./lib/billing";
 
 // ─── Queries ─────────────────────────────────────────────────────
 
@@ -106,6 +107,9 @@ export const create = mutation({
       name: args.name.trim(),
       slug: finalSlug,
       createdAt: now,
+      plan: "free",
+      billingStatus: "trialing",
+      trialEndsAt: defaultTrialEndsAt(now),
     });
 
     // Add creator as owner
@@ -161,6 +165,9 @@ export const getOrCreateDefault = mutation({
       name,
       slug,
       createdAt: now,
+      plan: "free",
+      billingStatus: "trialing",
+      trialEndsAt: defaultTrialEndsAt(now),
     });
 
     await ctx.db.insert("workspaceMembers", {
@@ -179,11 +186,7 @@ export const invite = mutation({
   args: {
     workspaceId: v.id("workspaces"),
     email: v.string(),
-    role: v.union(
-      v.literal("admin"),
-      v.literal("member"),
-      v.literal("viewer"),
-    ),
+    role: v.union(v.literal("admin"), v.literal("member"), v.literal("viewer")),
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "admin");
@@ -194,8 +197,7 @@ export const invite = mutation({
       .withIndex("byEmail", (q) => q.eq("email", args.email.toLowerCase()))
       .collect();
     const duplicate = existingInvite.find(
-      (inv) =>
-        inv.workspaceId === args.workspaceId && inv.status === "pending",
+      (inv) => inv.workspaceId === args.workspaceId && inv.status === "pending",
     );
     if (duplicate) throw new Error("Invite already pending for this email");
 
@@ -328,6 +330,29 @@ export const cancelInvite = mutation({
   },
 });
 
+/** Internal-safe helper used by billing flows to initialize defaults for older workspaces. */
+export const setBillingDefaults = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    trialEndsAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.workspaceId, "owner");
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace not found");
+
+    const patch: Record<string, unknown> = {};
+    if (!workspace.plan) patch.plan = "free";
+    if (!workspace.billingStatus) patch.billingStatus = "trialing";
+    if (!workspace.trialEndsAt) {
+      patch.trialEndsAt = args.trialEndsAt ?? defaultTrialEndsAt();
+    }
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.workspaceId, patch);
+    }
+  },
+});
+
 /** Update workspace name (owner only). */
 export const updateName = mutation({
   args: {
@@ -337,5 +362,41 @@ export const updateName = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx, args.workspaceId, "owner");
     await ctx.db.patch(args.workspaceId, { name: args.name.trim() });
+  },
+});
+
+/** Patch billing-related workspace fields (owner/admin). */
+export const patchBillingState = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    patch: v.object({
+      plan: v.optional(
+        v.union(v.literal("free"), v.literal("starter"), v.literal("pro")),
+      ),
+      billingStatus: v.optional(
+        v.union(
+          v.literal("trialing"),
+          v.literal("active"),
+          v.literal("past_due"),
+          v.literal("canceled"),
+          v.literal("incomplete"),
+        ),
+      ),
+      providerCustomerId: v.optional(v.string()),
+      providerSubscriptionId: v.optional(v.string()),
+      billingCurrency: v.optional(v.union(v.literal("INR"), v.literal("USD"))),
+      graceEndsAt: v.optional(v.number()),
+      currentPeriodEnd: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.workspaceId, "admin");
+    const patch: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(args.patch)) {
+      if (value !== undefined) patch[key] = value;
+    }
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.workspaceId, patch);
+    }
   },
 });

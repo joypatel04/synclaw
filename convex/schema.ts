@@ -32,7 +32,38 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     createdAt: v.number(),
-  }).index("bySlug", ["slug"]),
+    plan: v.optional(
+      v.union(v.literal("free"), v.literal("starter"), v.literal("pro")),
+    ),
+    billingStatus: v.optional(
+      v.union(
+        v.literal("trialing"),
+        v.literal("active"),
+        v.literal("past_due"),
+        v.literal("canceled"),
+        v.literal("incomplete"),
+      ),
+    ),
+    providerCustomerId: v.optional(v.string()),
+    providerSubscriptionId: v.optional(v.string()),
+    billingCurrency: v.optional(v.union(v.literal("INR"), v.literal("USD"))),
+    graceEndsAt: v.optional(v.number()),
+    trialEndsAt: v.optional(v.number()),
+    currentPeriodEnd: v.optional(v.number()),
+  })
+    .index("bySlug", ["slug"])
+    .index("byProviderCustomerId", ["providerCustomerId"])
+    .index("byProviderSubscriptionId", ["providerSubscriptionId"]),
+
+  razorpayEvents: defineTable({
+    workspaceId: v.id("workspaces"),
+    eventType: v.string(),
+    providerEventId: v.string(),
+    payloadDigest: v.string(),
+    createdAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byProviderEventId", ["providerEventId"]),
 
   workspaceMembers: defineTable({
     workspaceId: v.id("workspaces"),

@@ -22,19 +22,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Check,
-  Copy,
-  Key,
-  Plus,
-  ShieldAlert,
-  Trash2,
-} from "lucide-react";
+import { Check, Copy, Key, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
+import Link from "next/link";
 
 function ApiKeysContent() {
   const { workspaceId, canAdmin } = useWorkspace();
+  const canUseApiKeys =
+    useQuery(api.billing_razorpay.canUseFeature, {
+      workspaceId,
+      featureKey: "api_keys",
+    }) ?? false;
   const keys = useQuery(api.apiKeys.list, { workspaceId }) ?? [];
   const createKey = useMutation(api.apiKeys.create);
   const revokeKey = useMutation(api.apiKeys.revoke);
@@ -110,6 +109,28 @@ function ApiKeysContent() {
     );
   }
 
+  if (!canUseApiKeys) {
+    return (
+      <div className="mx-auto max-w-2xl p-3 sm:p-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-6 text-center">
+          <h2 className="text-base font-semibold text-text-primary">
+            API keys require Starter or Pro
+          </h2>
+          <p className="mt-2 text-sm text-text-muted">
+            Upgrade this workspace to unlock server-to-server keys for OpenClaw
+            and integrations.
+          </p>
+          <Button
+            asChild
+            className="mt-4 bg-accent-orange hover:bg-accent-orange/90 text-white"
+          >
+            <Link href="/settings/billing">Go to Billing</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl p-3 sm:p-6">
       {/* Header */}
@@ -119,7 +140,9 @@ function ApiKeysContent() {
             <Key className="h-4 w-4 text-accent-orange" />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-text-primary">API Keys</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">
+              API Keys
+            </h1>
             <p className="text-xs text-text-muted hidden sm:block">
               Server-to-server authentication for agents and integrations
             </p>
@@ -169,8 +192,7 @@ function ApiKeysContent() {
                   {key.keyPrefix}
                 </p>
                 <p className="text-[11px] text-text-dim">
-                  Created{" "}
-                  {new Date(key.createdAt).toLocaleDateString()}
+                  Created {new Date(key.createdAt).toLocaleDateString()}
                   {key.lastUsedAt && (
                     <>
                       {" "}

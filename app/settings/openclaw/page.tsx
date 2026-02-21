@@ -27,10 +27,14 @@ import {
   CANONICAL_AGENT_TEMPLATES,
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
-import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import {
+  buildSutrahaProtocolMd,
+  SUTRAHA_PROTOCOL_FILENAME,
+} from "@/lib/sutrahaProtocol";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
+import { BILLING_ENABLED } from "@/lib/features";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -39,9 +43,12 @@ function parseScopesCsv(input: string): string[] {
     .filter(Boolean);
 }
 
-function SettingsTabs({ active }: { active: "general" | "members" | "openclaw" }) {
-  const base =
-    "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
+function SettingsTabs({
+  active,
+}: {
+  active: "general" | "members" | "openclaw" | "billing";
+}) {
+  const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
   const activeCls = "border-accent-orange text-accent-orange";
   const inactiveCls =
     "border-transparent text-text-muted hover:text-text-primary";
@@ -66,6 +73,14 @@ function SettingsTabs({ active }: { active: "general" | "members" | "openclaw" }
       >
         OpenClaw
       </Link>
+      {BILLING_ENABLED ? (
+        <Link
+          href="/settings/billing"
+          className={`${base} ${active === "billing" ? activeCls : inactiveCls}`}
+        >
+          Billing
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -77,8 +92,10 @@ function OpenClawSettingsContent() {
 
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
   const agents =
-    useQuery(api.agents.list, canAdmin ? { workspaceId, includeArchived: true } : "skip") ??
-    [];
+    useQuery(
+      api.agents.list,
+      canAdmin ? { workspaceId, includeArchived: true } : "skip",
+    ) ?? [];
   const upsert = useMutation(api.openclaw.upsertConfig);
   const createAgent = useMutation(api.agents.create);
 
@@ -105,7 +122,9 @@ function OpenClawSettingsContent() {
     | { status: "ok"; message: string }
     | { status: "error"; message: string }
   >({ status: "idle" });
-  const [testStatus, setTestStatus] = useState<OpenClawConnectionStatus | null>(null);
+  const [testStatus, setTestStatus] = useState<OpenClawConnectionStatus | null>(
+    null,
+  );
   const [diagnosticsText, setDiagnosticsText] = useState("");
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -160,7 +179,10 @@ function OpenClawSettingsContent() {
     }
   }, [wsUrl, role, localAuthRev]);
 
-  const localIdentity = useMemo(() => readStoredDeviceIdentityV2(), [localAuthRev]);
+  const localIdentity = useMemo(
+    () => readStoredDeviceIdentityV2(),
+    [localAuthRev],
+  );
 
   const deviceAuthEnabled = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -204,7 +226,9 @@ function OpenClawSettingsContent() {
   }, [agents]);
 
   const missingSpecialists = useMemo(() => {
-    return canonicalSpecialists.filter((a) => !existingSessionKeys.has(a.sessionKey));
+    return canonicalSpecialists.filter(
+      (a) => !existingSessionKeys.has(a.sessionKey),
+    );
   }, [canonicalSpecialists, existingSessionKeys]);
 
   const specialistPrompts = useMemo(() => {
@@ -266,7 +290,9 @@ function OpenClawSettingsContent() {
         clientId: "openclaw-control-ui",
         clientMode: "webchat",
         clientPlatform:
-          typeof navigator !== "undefined" ? navigator.platform || "web" : "web",
+          typeof navigator !== "undefined"
+            ? navigator.platform || "web"
+            : "web",
         role,
         scopes,
         subscribeOnConnect: false,
@@ -274,7 +300,11 @@ function OpenClawSettingsContent() {
         includeCron,
         historyPollMs: Number(historyPollMs || "0"),
         authToken: tokenClear ? null : tokenDraft ? tokenDraft : undefined,
-        password: passwordClear ? null : passwordDraft ? passwordDraft : undefined,
+        password: passwordClear
+          ? null
+          : passwordDraft
+            ? passwordDraft
+            : undefined,
       });
       setTokenDraft("");
       setTokenClear(false);
@@ -296,7 +326,9 @@ function OpenClawSettingsContent() {
     setDiagnosticsText("");
     let client: OpenClawBrowserGatewayClient | null = null;
     try {
-      const cfg = await convex.query(api.openclaw.getClientConfig, { workspaceId });
+      const cfg = await convex.query(api.openclaw.getClientConfig, {
+        workspaceId,
+      });
       if (!cfg) {
         setTestResult({
           status: "error",
@@ -331,7 +363,10 @@ function OpenClawSettingsContent() {
         const status = client.getConnectionStatus();
         setTestStatus(status);
         setDiagnosticsText(JSON.stringify(client.getDiagnostics(), null, 2));
-        setTestResult({ status: "ok", message: status?.message ?? "Connected." });
+        setTestResult({
+          status: "ok",
+          message: status?.message ?? "Connected.",
+        });
       } finally {
         await client.disconnect().catch(() => {});
       }
@@ -405,7 +440,7 @@ function OpenClawSettingsContent() {
               <Input
                 value={wsUrl}
                 onChange={(e) => setWsUrl(e.target.value)}
-                placeholder='wss://claw.sahayoga.in'
+                placeholder="wss://claw.sahayoga.in"
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
               />
               <p className="text-[11px] text-text-dim">
@@ -436,7 +471,9 @@ function OpenClawSettingsContent() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-text-secondary">Scopes (comma-separated)</Label>
+              <Label className="text-text-secondary">
+                Scopes (comma-separated)
+              </Label>
               <Input
                 value={scopesCsv}
                 onChange={(e) => setScopesCsv(e.target.value)}
@@ -471,13 +508,16 @@ function OpenClawSettingsContent() {
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
               />
               <p className="text-[11px] text-text-dim">
-                Used to hydrate tool calls and missed messages via <code className="font-mono">chat.history</code>.
-                Recommended: 3000-5000ms. Set 0 to disable background polling.
+                Used to hydrate tool calls and missed messages via{" "}
+                <code className="font-mono">chat.history</code>. Recommended:
+                3000-5000ms. Set 0 to disable background polling.
               </p>
             </div>
 
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">Client identity (managed automatically)</p>
+              <p className="text-[11px] text-text-dim">
+                Client identity (managed automatically)
+              </p>
               <p className="mt-1 font-mono text-[11px] text-text-primary">
                 openclaw-control-ui / webchat / req
               </p>
@@ -492,10 +532,16 @@ function OpenClawSettingsContent() {
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm text-text-primary font-medium">Auth token</p>
+                <p className="text-sm text-text-primary font-medium">
+                  Auth token
+                </p>
                 <p className="text-xs text-text-dim">
                   Status:{" "}
-                  <span className={hasToken ? "text-status-active" : "text-text-muted"}>
+                  <span
+                    className={
+                      hasToken ? "text-status-active" : "text-text-muted"
+                    }
+                  >
                     {hasToken ? "Set" : "Not set"}
                   </span>
                 </p>
@@ -533,10 +579,16 @@ function OpenClawSettingsContent() {
 
             <div className="mt-6 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm text-text-primary font-medium">Password (optional)</p>
+                <p className="text-sm text-text-primary font-medium">
+                  Password (optional)
+                </p>
                 <p className="text-xs text-text-dim">
                   Status:{" "}
-                  <span className={hasPassword ? "text-status-active" : "text-text-muted"}>
+                  <span
+                    className={
+                      hasPassword ? "text-status-active" : "text-text-muted"
+                    }
+                  >
                     {hasPassword ? "Set" : "Not set"}
                   </span>
                 </p>
@@ -583,8 +635,12 @@ function OpenClawSettingsContent() {
             >
               {saving ? "Saving..." : "Save"}
             </Button>
-            {saveOk && <span className="text-xs text-status-active">Saved</span>}
-            {saveError && <span className="text-xs text-status-blocked">{saveError}</span>}
+            {saveOk && (
+              <span className="text-xs text-status-active">Saved</span>
+            )}
+            {saveError && (
+              <span className="text-xs text-status-blocked">{saveError}</span>
+            )}
           </div>
 
           <Button
@@ -606,8 +662,12 @@ function OpenClawSettingsContent() {
                 : "border-status-blocked/40 bg-status-blocked/10"
             }`}
           >
-            <p className="text-sm text-text-primary font-medium">Connection test</p>
-            <p className="mt-1 text-xs text-text-secondary">{testResult.message}</p>
+            <p className="text-sm text-text-primary font-medium">
+              Connection test
+            </p>
+            <p className="mt-1 text-xs text-text-secondary">
+              {testResult.message}
+            </p>
           </div>
         )}
 
@@ -621,7 +681,9 @@ function OpenClawSettingsContent() {
 
           <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
             <li>
-              Save gateway URL + token, then click <span className="font-medium">Initiate pairing handshake</span> (Test connection).
+              Save gateway URL + token, then click{" "}
+              <span className="font-medium">Initiate pairing handshake</span>{" "}
+              (Test connection).
             </li>
             <li>
               Add this Sutraha origin to OpenClaw allowed origins:
@@ -648,14 +710,14 @@ function OpenClawSettingsContent() {
             <li>
               Approve this device in OpenClaw:
               <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-{`openclaw devices list
+                {`openclaw devices list
 openclaw devices approve <requestId>`}
               </pre>
             </li>
             <li>
               Rotate required scopes for this exact device id:
               <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-{`openclaw devices rotate \\
+                {`openclaw devices rotate \\
   --device <deviceId> \\
   --role operator \\
   --scope operator.read \\
@@ -664,7 +726,8 @@ openclaw devices approve <requestId>`}
               </pre>
             </li>
             <li>
-              Verify read + admin access by clicking <span className="font-medium">Test connection</span> again.
+              Verify read + admin access by clicking{" "}
+              <span className="font-medium">Test connection</span> again.
             </li>
           </ol>
 
@@ -682,7 +745,8 @@ openclaw devices approve <requestId>`}
                   disabled={!localIdentity?.deviceId}
                   title={copiedId === "device-id" ? "Copied" : "Copy device id"}
                   onClick={() =>
-                    localIdentity?.deviceId && void copy("device-id", localIdentity.deviceId)
+                    localIdentity?.deviceId &&
+                    void copy("device-id", localIdentity.deviceId)
                   }
                 >
                   {copiedId === "device-id" ? (
@@ -697,26 +761,30 @@ openclaw devices approve <requestId>`}
               <p className="text-[11px] text-text-dim">Connection status</p>
               <p className="mt-1 text-xs text-text-primary">
                 {testStatus?.state ?? "Not verified"}
-                {testStatus?.missingScope ? ` (${testStatus.missingScope})` : ""}
+                {testStatus?.missingScope
+                  ? ` (${testStatus.missingScope})`
+                  : ""}
               </p>
             </div>
           </div>
         </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">Local auth state</h2>
+          <h2 className="text-sm font-semibold text-text-primary">
+            Local auth state
+          </h2>
           <p className="mt-1 text-xs text-text-muted">
             Diagnostics for this browser session.
           </p>
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">Device-auth pairing mode</p>
+              <p className="text-[11px] text-text-dim">
+                Device-auth pairing mode
+              </p>
               <p
                 className={`text-xs ${
-                  deviceAuthEnabled
-                    ? "text-status-active"
-                    : "text-text-muted"
+                  deviceAuthEnabled ? "text-status-active" : "text-text-muted"
                 }`}
               >
                 {deviceAuthEnabled ? "Enabled" : "Disabled (token-only mode)"}
@@ -735,7 +803,9 @@ openclaw devices approve <requestId>`}
               </p>
             </div>
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">Device token (current wsUrl/role)</p>
+              <p className="text-[11px] text-text-dim">
+                Device token (current wsUrl/role)
+              </p>
               <p
                 className={`text-xs ${
                   localAuthState.hasDeviceToken
@@ -778,7 +848,9 @@ openclaw devices approve <requestId>`}
 
           <div className="mt-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-text-primary">Diagnostics</p>
+              <p className="text-xs font-medium text-text-primary">
+                Diagnostics
+              </p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -789,7 +861,8 @@ openclaw devices approve <requestId>`}
               </Button>
             </div>
             <pre className="mt-2 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-              {diagnosticsText || "Run Test connection to generate diagnostics."}
+              {diagnosticsText ||
+                "Run Test connection to generate diagnostics."}
             </pre>
           </div>
         </div>
@@ -802,7 +875,8 @@ openclaw devices approve <requestId>`}
                   Setup guide
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Open Chat setup guide for the canonical workflow. Templates below are minimal references.
+                  Open Chat setup guide for the canonical workflow. Templates
+                  below are minimal references.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">
@@ -816,7 +890,8 @@ openclaw devices approve <requestId>`}
                   Main bootstrap
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  Where to paste: OpenClaw main agent prompt (or first chat message).
+                  Where to paste: OpenClaw main agent prompt (or first chat
+                  message).
                 </p>
                 <div className="mt-2 flex justify-end">
                   <Button
@@ -826,7 +901,11 @@ openclaw devices approve <requestId>`}
                     className="h-8 w-8 p-0"
                     title={copiedId === "bootstrap" ? "Copied" : "Copy"}
                   >
-                    {copiedId === "bootstrap" ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
+                    {copiedId === "bootstrap" ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -846,7 +925,11 @@ openclaw devices approve <requestId>`}
                     className="h-8 w-8 p-0"
                     title={copiedId === "mcporter" ? "Copied" : "Copy"}
                   >
-                    {copiedId === "mcporter" ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
+                    {copiedId === "mcporter" ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -866,7 +949,11 @@ openclaw devices approve <requestId>`}
                     className="h-8 w-8 p-0"
                     title={copiedId === "protocol" ? "Copied" : "Copy"}
                   >
-                    {copiedId === "protocol" ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
+                    {copiedId === "protocol" ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </details>

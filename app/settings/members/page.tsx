@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useState } from "react";
+import { BILLING_ENABLED } from "@/lib/features";
 
 const roleIcons: Record<string, React.ElementType> = {
   owner: Crown,
@@ -59,8 +60,7 @@ const roleBadgeColors: Record<string, string> = {
 
 function MembersContent() {
   const { workspaceId, role: myRole, canManage } = useWorkspace();
-  const members =
-    useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
+  const members = useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
   const invites = canManage
     ? (useQuery(api.workspaces.getInvites, { workspaceId }) ?? [])
     : [];
@@ -153,6 +153,14 @@ function MembersContent() {
         >
           OpenClaw
         </Link>
+        {BILLING_ENABLED ? (
+          <Link
+            href="/settings/billing"
+            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+          >
+            Billing
+          </Link>
+        ) : null}
       </div>
 
       {/* Members */}
@@ -286,9 +294,7 @@ function MembersContent() {
                       )}
                       <DropdownMenuItem
                         onClick={() =>
-                          handleRemove(
-                            member._id as Id<"workspaceMembers">,
-                          )
+                          handleRemove(member._id as Id<"workspaceMembers">)
                         }
                         className="text-status-blocked cursor-pointer"
                       >
@@ -324,8 +330,7 @@ function MembersContent() {
                     {invite.email}
                   </p>
                   <p className="text-xs text-text-muted">
-                    Invited as{" "}
-                    <span className="capitalize">{invite.role}</span>
+                    Invited as <span className="capitalize">{invite.role}</span>
                   </p>
                 </div>
                 <Button
