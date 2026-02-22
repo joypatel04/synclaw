@@ -14,7 +14,7 @@ import { z } from "zod";
 import { api } from "./api.js";
 import { createClientFromEnv } from "./convex-client.js";
 
-const MCP_SERVER_VERSION = "0.6.0";
+const MCP_SERVER_VERSION = "0.6.2";
 const MCP_PROTOCOL_VERSION = "0.1.0";
 const MCP_SESSION_KEY_MODE = "sessionKey_preferred";
 
