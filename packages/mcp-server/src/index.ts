@@ -14,7 +14,7 @@ import { z } from "zod";
 import { api } from "./api.js";
 import { createClientFromEnv } from "./convex-client.js";
 
-const MCP_SERVER_VERSION = "0.6.3";
+const MCP_SERVER_VERSION = "0.6.4";
 const MCP_PROTOCOL_VERSION = "0.1.0";
 const MCP_SESSION_KEY_MODE = "sessionKey_preferred";
 
@@ -172,19 +172,42 @@ server.tool(
   }) => {
     const trimmedName = name.trim();
     const trimmedRole = role.trim();
+    if (!trimmedName) {
+      throw new Error("Invalid input: name cannot be empty.");
+    }
+    if (!trimmedRole) {
+      throw new Error("Invalid input: role cannot be empty.");
+    }
+
+    const trimmedWorkspaceId = workspaceId?.trim();
+    if (workspaceId !== undefined && !trimmedWorkspaceId) {
+      throw new Error(
+        "Invalid input: workspaceId was provided but empty. Omit it to use SUTRAHA_WORKSPACE_ID.",
+      );
+    }
+
     const defaultSessionKey = `agent:${trimmedName.toLowerCase().replace(/\s+/g, "-")}:main`;
-    const resolvedSessionKey = sessionKey ?? defaultSessionKey;
+    const resolvedSessionKey = sessionKey?.trim() || defaultSessionKey;
+    const resolvedExternalAgentId = externalAgentId?.trim();
     const createArgs = {
-      ...(workspaceId ? { workspaceId: workspaceId.trim() } : {}),
+      ...(trimmedWorkspaceId ? { workspaceId: trimmedWorkspaceId } : {}),
       name: trimmedName,
       role: trimmedRole,
       emoji: emoji ?? "🤖",
       sessionKey: resolvedSessionKey,
-      ...(externalAgentId ? { externalAgentId: externalAgentId.trim() } : {}),
+      ...(resolvedExternalAgentId
+        ? { externalAgentId: resolvedExternalAgentId }
+        : {}),
     };
-    const id = createSetupTask
-      ? await client.mutation(api.agents.create, createArgs)
-      : await client.mutation(api.agents.createManual, createArgs);
+    let id: string;
+    try {
+      id = createSetupTask
+        ? await client.mutation(api.agents.create, createArgs)
+        : await client.mutation(api.agents.createManual, createArgs);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`sutraha_create_agent failed: ${message}`);
+    }
     return {
       content: [
         {

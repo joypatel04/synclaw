@@ -168,7 +168,7 @@ export function AgentRecipeWizard() {
       });
       setManualCreateOk(true);
       setTimeout(() => setManualCreateOk(false), 2200);
-      router.push("/agents");
+      setSpec("");
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -194,8 +194,8 @@ export function AgentRecipeWizard() {
             New agent (recipe)
           </h1>
           <p className="mt-1 text-xs text-text-muted">
-            Create agent metadata + SPEC prompt. Complete heartbeat/cron setup
-            in Chat.
+            Create agent metadata + SPEC prompt. You can either register only
+            (no redirect) or continue guided setup in Chat.
           </p>
         </div>
         <Button asChild variant="outline" size="sm" className="h-8">
@@ -363,10 +363,10 @@ export function AgentRecipeWizard() {
                 title={
                   collision
                     ? "Session key must be unique"
-                    : "Register agent only"
+                    : "Create on Convex only (stay on this page)"
                 }
               >
-                {creating ? "Creating..." : "Register only (no chat setup)"}
+                {creating ? "Creating..." : "Create on Convex only"}
               </Button>
             </div>
             {createError ? (

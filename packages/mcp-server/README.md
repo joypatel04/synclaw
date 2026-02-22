@@ -23,7 +23,7 @@ Add to your MCPorter config:
   "servers": {
     "sutraha-hq": {
       "command": "npx",
-      "args": ["@sutraha/mcp-server@0.6.3"],
+      "args": ["@sutraha/mcp-server@0.6.4"],
       "env": {
         "CONVEX_URL": "https://your-deployment.convex.cloud",
         "CONVEX_SITE_URL": "https://your-deployment.convex.site",
@@ -48,7 +48,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 
 ## Versioning / Compatibility Policy
 
-- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.3`).
+- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.4`).
 - Use `sessionKey` for identity on all tool calls.
 - Keep local files short and stable:
   - `SUTRAHA_PROTOCOL.md` (shared operating contract)
