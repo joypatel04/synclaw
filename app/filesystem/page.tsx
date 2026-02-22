@@ -304,21 +304,21 @@ function FilesystemContent() {
   return (
     <div className="mx-auto max-w-7xl p-3 sm:p-6">
       <div className="mb-6 overflow-hidden rounded-2xl border border-border-default bg-bg-secondary">
-        <div className="flex items-center justify-between border-b border-border-default px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-col gap-3 border-b border-border-default px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary">
               <FolderTree className="h-4 w-4 text-text-muted" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-text-primary sm:text-xl">
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold text-text-primary sm:text-xl">
                 Filesystem
               </h1>
-              <p className="text-xs text-text-muted">
+              <p className="truncate text-xs text-text-muted">
                 Browse and edit remote OpenClaw workspace files.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-text-muted">
               <Server className="h-3 w-3" />
               {hasBridgeConfigured

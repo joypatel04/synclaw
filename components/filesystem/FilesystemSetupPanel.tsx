@@ -89,12 +89,18 @@ export function FilesystemSetupPanel({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-text-primary font-medium">Bridge token</p>
+            <p className="text-sm text-text-primary font-medium">
+              Bridge token
+            </p>
             <p className="text-xs text-text-dim">
               Status:{" "}
-              <span className={hasFilesBridgeToken ? "text-status-active" : "text-text-muted"}>
+              <span
+                className={
+                  hasFilesBridgeToken ? "text-status-active" : "text-text-muted"
+                }
+              >
                 {hasFilesBridgeToken ? "Set" : "Not set"}
               </span>
             </p>
@@ -143,12 +149,17 @@ export function FilesystemSetupPanel({
             <Activity className="h-4 w-4" />
             {testing ? "Testing..." : "Test bridge"}
           </Button>
-          {saveOk ? <span className="text-xs text-status-active">Saved</span> : null}
-          {saveError ? <span className="text-xs text-status-blocked">{saveError}</span> : null}
-          {statusText ? <span className="text-xs text-status-active">{statusText}</span> : null}
+          {saveOk ? (
+            <span className="text-xs text-status-active">Saved</span>
+          ) : null}
+          {saveError ? (
+            <span className="text-xs text-status-blocked">{saveError}</span>
+          ) : null}
+          {statusText ? (
+            <span className="text-xs text-status-active">{statusText}</span>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
-

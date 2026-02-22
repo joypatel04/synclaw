@@ -1,17 +1,22 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { ListChecks } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useState } from "react";
+import { ChatInterface } from "@/components/chat/ChatInterface";
+import { ChatSetupRail } from "@/components/chat/ChatSetupRail";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
-import { ChatInterface } from "@/components/chat/ChatInterface";
-import type { Id } from "@/convex/_generated/dataModel";
-import { useParams } from "next/navigation";
-import { ChatSetupRail } from "@/components/chat/ChatSetupRail";
-import { ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 
 function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId, canAdmin } = useWorkspace();
@@ -27,30 +32,49 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
       </div>
     );
-  if (agent === null) return <div className="flex items-center justify-center py-20"><p className="text-text-muted">Agent not found</p></div>;
+  if (agent === null)
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-text-muted">Agent not found</p>
+      </div>
+    );
 
   return (
     <div className="mx-auto max-w-7xl p-3 sm:p-6">
       <div className="min-w-0">
-        <div className="mb-3 flex items-center justify-end">
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           {canAdmin ? (
-            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => setSetupOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={() => setSetupOpen(true)}
+            >
               <ListChecks className="h-4 w-4" />
               Setup Guide
             </Button>
           ) : null}
         </div>
-        <ChatInterface agent={agent} />
+        <ChatInterface
+          agent={agent}
+          className="h-[calc(100dvh-10rem)] sm:h-[calc(100dvh-6rem)]"
+        />
       </div>
 
       {canAdmin ? (
         <Sheet open={setupOpen} onOpenChange={setSetupOpen}>
-          <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-bg-primary border-border-default p-0">
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-xl overflow-y-auto bg-bg-primary border-border-default p-0"
+          >
             <SheetHeader className="border-b border-border-default">
               <SheetTitle className="text-text-primary">Setup Guide</SheetTitle>
             </SheetHeader>
             <div className="p-4">
-              <ChatSetupRail selectedAgentId={agentId} className="border-0 bg-transparent p-0 shadow-none" />
+              <ChatSetupRail
+                selectedAgentId={agentId}
+                className="border-0 bg-transparent p-0 shadow-none"
+              />
             </div>
           </SheetContent>
         </Sheet>
@@ -69,9 +93,7 @@ export default function ChatDetailPage() {
     return (
       <AppLayout>
         <div className="mx-auto max-w-3xl p-6">
-          <p className="text-sm text-text-muted">
-            Missing chat id in route.
-          </p>
+          <p className="text-sm text-text-muted">Missing chat id in route.</p>
         </div>
       </AppLayout>
     );

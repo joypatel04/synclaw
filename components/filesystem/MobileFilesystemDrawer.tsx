@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -29,8 +30,10 @@ export function MobileFilesystemDrawer({
   onToggleDirectory: (path: string) => void;
   onOpenFile: (path: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 lg:hidden">
           Browse Files
@@ -38,7 +41,7 @@ export function MobileFilesystemDrawer({
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="w-[320px] p-0 bg-bg-secondary border-border-default"
+        className="w-full max-w-[360px] p-0 bg-bg-secondary border-border-default"
       >
         <SheetHeader className="px-4 py-3 border-b border-border-default">
           <SheetTitle className="text-sm text-text-primary">
@@ -54,7 +57,10 @@ export function MobileFilesystemDrawer({
             loadingDirs={loadingDirs}
             onRefreshRoot={onRefreshRoot}
             onToggleDirectory={onToggleDirectory}
-            onOpenFile={onOpenFile}
+            onOpenFile={(path) => {
+              onOpenFile(path);
+              setOpen(false);
+            }}
           />
         </div>
       </SheetContent>

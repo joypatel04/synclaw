@@ -2,38 +2,42 @@
 
 import { useQuery } from "convex/react";
 import { ChevronDown, MessageSquare } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { clearChatDraft, consumeChatDraft } from "@/lib/chatDraft";
 import {
-  mapGatewayEventForIngest,
-  type OpenClawConnectionStatus,
-  OpenClawBrowserGatewayClient,
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
+  mapGatewayEventForIngest,
+  OpenClawBrowserGatewayClient,
+  type OpenClawConnectionStatus,
   pickHistoryMessages,
   pickRunId,
   pickText,
 } from "@/lib/openclaw-gateway-client";
-import { clearChatDraft, consumeChatDraft } from "@/lib/chatDraft";
+import { cn } from "@/lib/utils";
 import { ChatInput } from "./ChatInput";
 import { ChatMessage, type UiChatMessage } from "./ChatMessage";
 
 interface ChatInterfaceProps {
-  agent: Pick<Doc<"agents">, "name" | "emoji" | "role" | "status" | "sessionKey">;
+  agent: Pick<
+    Doc<"agents">,
+    "name" | "emoji" | "role" | "status" | "sessionKey"
+  >;
+  className?: string;
 }
 
-export function ChatInterface({ agent }: ChatInterfaceProps) {
+export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   const { workspaceId, canEdit, membershipId } = useWorkspace();
   const searchParams = useSearchParams();
-  const members =
-    useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
+  const members = useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
   const me = useMemo(
     () => members.find((m) => m._id === membershipId),
     [members, membershipId],
@@ -44,12 +48,19 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
   const connectRef = useRef<Promise<void> | null>(null);
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
-  const [gatewayBlock, setGatewayBlock] = useState<OpenClawConnectionStatus | null>(null);
+  const [gatewayBlock, setGatewayBlock] =
+    useState<OpenClawConnectionStatus | null>(null);
   const [showGatewayPanel, setShowGatewayPanel] = useState(false);
-  const [gatewayDefaultModel, setGatewayDefaultModel] = useState<string | null>(null);
-  const [gatewayModelProvider, setGatewayModelProvider] = useState<string | null>(null);
+  const [gatewayDefaultModel, setGatewayDefaultModel] = useState<string | null>(
+    null,
+  );
+  const [gatewayModelProvider, setGatewayModelProvider] = useState<
+    string | null
+  >(null);
   const [gatewayChannels, setGatewayChannels] = useState<string[]>([]);
-  const [gatewayAgentCount, setGatewayAgentCount] = useState<number | null>(null);
+  const [gatewayAgentCount, setGatewayAgentCount] = useState<number | null>(
+    null,
+  );
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
 
@@ -63,7 +74,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   const includeCron = openclawConfig?.includeCron ?? false;
   const historyPollMs = openclawConfig?.historyPollMs ?? 0;
 
-  const canChatBase = Boolean(canEdit && openclawConfig && openclawConfig.wsUrl);
+  const canChatBase = Boolean(
+    canEdit && openclawConfig && openclawConfig.wsUrl,
+  );
   const gatewayBlocked = Boolean(
     gatewayBlock &&
       gatewayBlock.state !== "CONNECTED" &&
@@ -131,7 +144,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   }, [gatewayConfigKey]);
 
   const parseRecord = (value: unknown): Record<string, unknown> | null => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      return null;
     return value as Record<string, unknown>;
   };
 
@@ -257,7 +271,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           content: preferRicherContent(keep.content, incoming.content),
           errorMessage: incoming.errorMessage ?? keep.errorMessage,
           externalRunId: incoming.externalRunId ?? keep.externalRunId,
-          externalMessageId: keep.externalMessageId ?? incoming.externalMessageId,
+          externalMessageId:
+            keep.externalMessageId ?? incoming.externalMessageId,
         };
         out[out.length - 1] = merged;
         continue;
@@ -294,7 +309,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     // If we have a runId for assistant messages, prefer merging by runId first.
     if (candidate.role === "assistant" && candidate.externalRunId) {
       const byRun = messages.findIndex(
-        (m) => m.role === "assistant" && m.externalRunId === candidate.externalRunId,
+        (m) =>
+          m.role === "assistant" && m.externalRunId === candidate.externalRunId,
       );
       if (byRun !== -1) return byRun;
     }
@@ -302,7 +318,11 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     // Scan from the end (most likely duplicates are recent).
     // Cap the scan to keep this O(1)ish in steady-state.
     const scanLimit = 250;
-    for (let i = messages.length - 1; i >= 0 && messages.length - i <= scanLimit; i--) {
+    for (
+      let i = messages.length - 1;
+      i >= 0 && messages.length - i <= scanLimit;
+      i--
+    ) {
       const m = messages[i];
       if (m.role !== candidate.role) continue;
       if (m.fromUser !== candidate.fromUser) continue;
@@ -315,7 +335,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     return undefined;
   };
 
-  const upsertLocal = (partial: Omit<UiChatMessage, "id"> & { id?: string }) => {
+  const upsertLocal = (
+    partial: Omit<UiChatMessage, "id"> & { id?: string },
+  ) => {
     setLocalMessages((prev) => {
       // Canonicalize assistant IDs by runId when possible to avoid duplicates coming
       // from different gateway id formats (WS vs history vs ack frames).
@@ -335,7 +357,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         partial.externalRunId
       ) {
         const byRunId = prev.findIndex(
-          (m) => m.role === "assistant" && m.externalRunId === partial.externalRunId,
+          (m) =>
+            m.role === "assistant" && m.externalRunId === partial.externalRunId,
         );
         if (byRunId !== -1) idx = byRunId;
       }
@@ -353,20 +376,20 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         });
         if (dupIdx !== undefined) {
           const existingDup = prev[dupIdx];
-        const merged: UiChatMessage = {
-          ...existingDup,
-          ...partial,
-          id: existingDup.id,
+          const merged: UiChatMessage = {
+            ...existingDup,
+            ...partial,
+            id: existingDup.id,
             // Prefer the most advanced state.
             state:
               stateRank(partial.state) > stateRank(existingDup.state)
                 ? partial.state
                 : existingDup.state,
             // Prefer longer content (streaming -> final).
-          content: preferRicherContent(
-            existingDup.content,
-            partial.content ?? "",
-          ),
+            content: preferRicherContent(
+              existingDup.content,
+              partial.content ?? "",
+            ),
             // Promote the canonical ids when we learn them.
             externalRunId: partial.externalRunId ?? existingDup.externalRunId,
             externalMessageId:
@@ -410,15 +433,17 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           ? partial.content
           : (partial.content ?? existing.content);
 
-        const updated: UiChatMessage = {
-          ...existing,
-          ...partial,
-          id: existing.id,
-          content: preferRicherContent(existing.content, nextContent),
-          createdAt: existing.createdAt,
-          externalMessageId:
-            canonicalExternalId ?? partial.externalMessageId ?? existing.externalMessageId,
-        };
+      const updated: UiChatMessage = {
+        ...existing,
+        ...partial,
+        id: existing.id,
+        content: preferRicherContent(existing.content, nextContent),
+        createdAt: existing.createdAt,
+        externalMessageId:
+          canonicalExternalId ??
+          partial.externalMessageId ??
+          existing.externalMessageId,
+      };
       const next = prev.slice();
       next[idx] = updated;
       const collapsed = collapseNearDuplicates(
@@ -480,7 +505,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
             const payload = parseRecord((event as any)?.payload);
             if (payload) {
               const channelOrder = Array.isArray(payload.channelOrder)
-                ? payload.channelOrder.filter((v): v is string => typeof v === "string")
+                ? payload.channelOrder.filter(
+                    (v): v is string => typeof v === "string",
+                  )
                 : [];
               const labelsRec = parseRecord(payload.channelLabels);
               if (channelOrder.length > 0 && labelsRec) {
@@ -500,7 +527,9 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                 ? parseRecord(sessions.defaults)
                 : null;
               const modelFromHealth =
-                (defaults && typeof defaults.model === "string" && defaults.model) ||
+                (defaults &&
+                  typeof defaults.model === "string" &&
+                  defaults.model) ||
                 (sessionDefaults &&
                   typeof sessionDefaults.model === "string" &&
                   sessionDefaults.model) ||
@@ -514,7 +543,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                   sessionDefaults.modelProvider) ||
                 null;
               if (modelFromHealth) setGatewayDefaultModel(modelFromHealth);
-              if (providerFromHealth) setGatewayModelProvider(providerFromHealth);
+              if (providerFromHealth)
+                setGatewayModelProvider(providerFromHealth);
             }
           }
 
@@ -650,7 +680,8 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         if (expectedRunId) {
           const assistantKey = `${expectedRunId}:assistant`;
           const already = localIndexRef.current.get(assistantKey);
-          const existing = already !== undefined ? localMessagesRef.current[already] : null;
+          const existing =
+            already !== undefined ? localMessagesRef.current[already] : null;
           if (!existing || existing.state !== "completed") {
             const historyMessages = pickHistoryMessages(history);
             const match = historyMessages
@@ -729,7 +760,10 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
     return localMessages
       .slice()
       .reverse()
-      .find((m) => m.role === "assistant" && m.state === "streaming" && m.externalRunId);
+      .find(
+        (m) =>
+          m.role === "assistant" && m.state === "streaming" && m.externalRunId,
+      );
   }, [localMessages]);
 
   const enqueueOrSend = async (content: string) => {
@@ -897,7 +931,10 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
 
   const handleSend = async (content: string) => {
     await enqueueOrSend(content);
-    clearChatDraft({ workspaceId: String(workspaceId), sessionKey: agent.sessionKey });
+    clearChatDraft({
+      workspaceId: String(workspaceId),
+      sessionKey: agent.sessionKey,
+    });
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {
@@ -966,18 +1003,25 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
   ]);
 
   return (
-    <div className="flex flex-col min-h-0 overflow-hidden h-[calc(100dvh-3.5rem)]">
+    <div
+      className={cn(
+        "flex h-[calc(100dvh-7rem)] min-h-0 flex-col overflow-hidden sm:h-[calc(100dvh-3.5rem)]",
+        className,
+      )}
+    >
       <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6 sm:py-3">
         <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-bg-tertiary text-lg sm:text-xl">
           {agent.emoji}
         </div>
-        <div>
-          <h2 className="text-sm font-semibold text-text-primary">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-semibold text-text-primary">
             {agent.name}
           </h2>
-          <p className="text-xs text-text-muted hidden sm:block">{agent.role}</p>
+          <p className="text-xs text-text-muted hidden sm:block">
+            {agent.role}
+          </p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {canChatBase && (
             <Button
               variant="outline"
@@ -1001,7 +1045,7 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
           <span
             className={`h-2 w-2 rounded-full ${agent.status === "active" ? "bg-status-active" : agent.status === "error" ? "bg-status-blocked" : agent.status === "offline" ? "bg-text-muted" : "bg-status-idle"}`}
           />
-          <span className="text-xs text-text-muted capitalize">
+          <span className="hidden text-xs capitalize text-text-muted sm:inline">
             {agent.status}
           </span>
         </div>
@@ -1023,7 +1067,10 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
         </div>
       )}
       <div className="relative flex-1 min-h-0">
-        <ScrollArea className="h-full bg-bg-secondary" viewportRef={viewportRef}>
+        <ScrollArea
+          className="h-full bg-bg-secondary"
+          viewportRef={viewportRef}
+        >
           <div className="space-y-3 p-3 sm:space-y-4 sm:p-6">
             {!canEdit ? (
               <EmptyState
@@ -1041,7 +1088,10 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                 title="OpenClaw is not configured"
                 description="Set your gateway URL and token in Settings to enable chat."
               >
-                <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+                <Button
+                  asChild
+                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
                   <Link href="/settings/openclaw">Open Settings</Link>
                 </Button>
               </EmptyState>
@@ -1054,7 +1104,10 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                   "Connection is blocked. Complete pairing and scope setup in OpenClaw settings."
                 }
               >
-                <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+                <Button
+                  asChild
+                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
                   <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
                 </Button>
               </EmptyState>
@@ -1074,18 +1127,20 @@ export function ChatInterface({ agent }: ChatInterfaceProps) {
                     userName={me?.name}
                     userImage={me?.image ?? undefined}
                   />
-                  {msg.state === "failed" && msg.externalMessageId && canChat && (
-                    <div className="mt-1 flex justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => handleRetry(msg.externalMessageId)}
-                      >
-                        Retry
-                      </Button>
-                    </div>
-                  )}
+                  {msg.state === "failed" &&
+                    msg.externalMessageId &&
+                    canChat && (
+                      <div className="mt-1 flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleRetry(msg.externalMessageId)}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    )}
                 </div>
               ))
             )}

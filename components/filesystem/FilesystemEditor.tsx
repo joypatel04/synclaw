@@ -48,11 +48,11 @@ export function FilesystemEditor({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border-default bg-bg-secondary">
-      <div className="flex items-center justify-between border-b border-border-default px-3 py-2">
+      <div className="flex flex-col gap-1 border-b border-border-default px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[11px] font-mono uppercase tracking-wide text-text-dim">
           editor://workspace
         </p>
-        <div className="flex items-center gap-3 text-[11px] text-text-muted">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-muted">
           <span>Size {sizeLabel}</span>
           <span>Modified {modifiedLabel}</span>
         </div>
