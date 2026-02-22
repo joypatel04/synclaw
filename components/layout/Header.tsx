@@ -17,6 +17,7 @@ import {
   Settings,
   Users,
   Zap,
+  Webhook,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -44,7 +45,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BILLING_ENABLED } from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Activity },
@@ -226,6 +227,17 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     API Keys
                   </Link>
                 </DropdownMenuItem>
+                {WEBHOOKS_ENABLED ? (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/settings/webhooks"
+                      className="flex items-center gap-2 text-text-secondary"
+                    >
+                      <Webhook className="h-4 w-4" />
+                      Webhooks
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
                 {BILLING_ENABLED ? (
                   <DropdownMenuItem asChild>
                     <Link

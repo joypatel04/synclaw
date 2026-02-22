@@ -24,11 +24,14 @@ import type * as lib_apiAuth from "../lib/apiAuth.js";
 import type * as lib_billing from "../lib/billing.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_secretCrypto from "../lib/secretCrypto.js";
+import type * as lib_webhooks from "../lib/webhooks.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as openclaw from "../openclaw.js";
 import type * as tasks from "../tasks.js";
+import type * as webhooks from "../webhooks.js";
+import type * as webhooks_internal from "../webhooks_internal.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -54,11 +57,14 @@ declare const fullApi: ApiFromModules<{
   "lib/billing": typeof lib_billing;
   "lib/permissions": typeof lib_permissions;
   "lib/secretCrypto": typeof lib_secretCrypto;
+  "lib/webhooks": typeof lib_webhooks;
   messages: typeof messages;
   notifications: typeof notifications;
   onboarding: typeof onboarding;
   openclaw: typeof openclaw;
   tasks: typeof tasks;
+  webhooks: typeof webhooks;
+  webhooks_internal: typeof webhooks_internal;
   workspaces: typeof workspaces;
 }>;
 

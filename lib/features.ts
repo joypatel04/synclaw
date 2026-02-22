@@ -15,3 +15,7 @@ export const BILLING_ENABLED = parseBooleanEnv(
   false,
 );
 
+export const WEBHOOKS_ENABLED = parseBooleanEnv(
+  process.env.NEXT_PUBLIC_WEBHOOKS_ENABLED,
+  true,
+);

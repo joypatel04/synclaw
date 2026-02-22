@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, Cloud, HardDrive, Server, Settings2, Wrench } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpenCheck,
+  Cloud,
+  HardDrive,
+  Server,
+  Settings2,
+  Webhook,
+  Wrench,
+} from "lucide-react";
 import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDocsShell";
 
 const sections = [
@@ -32,6 +41,12 @@ const sections = [
     title: "Environment reference",
     description: "Every required env var and what it controls.",
     icon: Settings2,
+  },
+  {
+    href: "/docs/hosting/webhooks",
+    title: "Webhook automation",
+    description: "Inbound integrations, mapping rules, security, and retries.",
+    icon: Webhook,
   },
   {
     href: "/docs/hosting/troubleshooting",

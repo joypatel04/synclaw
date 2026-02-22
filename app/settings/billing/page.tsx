@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
-import { BILLING_ENABLED } from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 type Currency = "INR" | "USD";
 type Cadence = "monthly" | "yearly";
@@ -129,6 +129,14 @@ function BillingContent() {
         >
           OpenClaw
         </Link>
+        {WEBHOOKS_ENABLED ? (
+          <Link
+            href="/settings/webhooks"
+            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+          >
+            Webhooks
+          </Link>
+        ) : null}
         <Link
           href="/settings/billing"
           className="border-b-2 border-accent-orange px-4 py-2.5 text-sm font-medium text-accent-orange"
@@ -291,6 +299,14 @@ function BillingComingSoonContent() {
         >
           OpenClaw
         </Link>
+        {WEBHOOKS_ENABLED ? (
+          <Link
+            href="/settings/webhooks"
+            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+          >
+            Webhooks
+          </Link>
+        ) : null}
         <Link
           href="/settings/billing"
           className="border-b-2 border-accent-orange px-4 py-2.5 text-sm font-medium text-accent-orange"

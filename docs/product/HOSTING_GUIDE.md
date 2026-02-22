@@ -36,4 +36,7 @@ This guide documents production-style setup for both Cloud and Self-hosted deplo
 - `/docs/hosting/self-hosted/convex`
 - `/docs/hosting/self-hosted/mcp`
 - `/docs/hosting/environment`
+- `/docs/hosting/webhooks`
+- `/docs/hosting/webhooks/security`
+- `/docs/hosting/webhooks/providers`
 - `/docs/hosting/troubleshooting`

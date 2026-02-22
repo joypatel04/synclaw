@@ -9,6 +9,13 @@ const workspaceRole = v.union(
   v.literal("viewer"),
 );
 
+const webhookActionTemplate = v.union(
+  v.literal("create_task"),
+  v.literal("create_document"),
+  v.literal("log_activity"),
+  v.literal("task_and_nudge_main"),
+);
+
 export default defineSchema({
   // Override authTables.users to accept null email/name from OAuth providers.
   // GitHub returns email:null when the user's email is private.
@@ -89,6 +96,68 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byEmail", ["email"]),
+
+  workspaceWebhooks: defineTable({
+    workspaceId: v.id("workspaces"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    enabled: v.boolean(),
+    secretHash: v.string(),
+    eventFilter: v.array(v.string()),
+    actionTemplate: webhookActionTemplate,
+    mappingConfig: v.object({
+      titlePath: v.optional(v.string()),
+      bodyPath: v.optional(v.string()),
+      priority: v.optional(
+        v.union(
+          v.literal("high"),
+          v.literal("medium"),
+          v.literal("low"),
+          v.literal("none"),
+        ),
+      ),
+      status: v.optional(
+        v.union(
+          v.literal("inbox"),
+          v.literal("assigned"),
+          v.literal("in_progress"),
+          v.literal("review"),
+          v.literal("done"),
+          v.literal("blocked"),
+        ),
+      ),
+    }),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndEnabled", ["workspaceId", "enabled"])
+    .index("byWorkspaceAndName", ["workspaceId", "name"]),
+
+  webhookPayloads: defineTable({
+    workspaceId: v.id("workspaces"),
+    webhookId: v.id("workspaceWebhooks"),
+    providerEventId: v.optional(v.string()),
+    headers: v.any(),
+    payload: v.any(),
+    contentType: v.string(),
+    status: v.union(
+      v.literal("received"),
+      v.literal("processed"),
+      v.literal("failed"),
+      v.literal("ignored"),
+    ),
+    errorMessage: v.optional(v.string()),
+    receivedAt: v.number(),
+    processedAt: v.optional(v.number()),
+    actionResult: v.optional(v.any()),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWebhook", ["webhookId"])
+    .index("byWebhookAndReceivedAt", ["webhookId", "receivedAt"])
+    .index("byWorkspaceAndStatus", ["workspaceId", "status"])
+    .index("byWebhookAndProviderEventId", ["webhookId", "providerEventId"]),
 
   // ─── API Keys (server-to-server auth for OpenClaw etc.) ────────
 
@@ -237,6 +306,7 @@ export default defineSchema({
       v.literal("mention_alert"),
       v.literal("document_created"),
       v.literal("document_updated"),
+      v.literal("webhook_event"),
     ),
     agentId: v.union(v.id("agents"), v.null()),
     taskId: v.union(v.id("tasks"), v.null()),

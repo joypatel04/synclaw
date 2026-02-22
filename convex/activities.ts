@@ -11,6 +11,7 @@ const activityType = v.union(
   v.literal("mention_alert"),
   v.literal("document_created"),
   v.literal("document_updated"),
+  v.literal("webhook_event"),
 );
 
 function isRelevantActivity(activity: { type: string }) {

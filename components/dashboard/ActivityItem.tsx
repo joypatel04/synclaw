@@ -23,6 +23,7 @@ const typeIcons = {
   mention_alert: AlertTriangle,
   document_created: FileText,
   document_updated: FileText,
+  webhook_event: Zap,
 };
 
 const typeColors = {
@@ -34,6 +35,7 @@ const typeColors = {
   mention_alert: "text-status-blocked",
   document_created: "text-text-secondary",
   document_updated: "text-text-secondary",
+  webhook_event: "text-teal",
 };
 
 interface ActivityItemProps {

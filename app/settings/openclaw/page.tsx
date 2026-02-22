@@ -34,7 +34,7 @@ import {
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
-import { BILLING_ENABLED } from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -73,6 +73,14 @@ function SettingsTabs({
       >
         OpenClaw
       </Link>
+      {WEBHOOKS_ENABLED ? (
+        <Link
+          href="/settings/webhooks"
+          className={`${base} ${inactiveCls}`}
+        >
+          Webhooks
+        </Link>
+      ) : null}
       {BILLING_ENABLED ? (
         <Link
           href="/settings/billing"

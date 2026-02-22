@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useState } from "react";
-import { BILLING_ENABLED } from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 const roleIcons: Record<string, React.ElementType> = {
   owner: Crown,
@@ -153,6 +153,14 @@ function MembersContent() {
         >
           OpenClaw
         </Link>
+        {WEBHOOKS_ENABLED ? (
+          <Link
+            href="/settings/webhooks"
+            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+          >
+            Webhooks
+          </Link>
+        ) : null}
         {BILLING_ENABLED ? (
           <Link
             href="/settings/billing"
