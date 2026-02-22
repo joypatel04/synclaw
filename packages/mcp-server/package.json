@@ -1,6 +1,6 @@
 {
   "name": "@sutraha/mcp-server",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "MCP server for Sutraha HQ — connects AI agents to the orchestration dashboard",
   "type": "module",
   "bin": {
