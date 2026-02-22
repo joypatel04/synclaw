@@ -25,7 +25,7 @@ export function AgentPanel() {
         </span>
       </div>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-3 px-3 pb-4">
+        <div className="space-y-3 px-4 pb-4 pr-5">
           {agents.length === 0 ? (
             <EmptyState
               icon={Bot}

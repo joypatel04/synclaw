@@ -1,7 +1,6 @@
 "use client";
 
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -17,6 +16,7 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
   const showTelemetry =
     (model && model !== "unknown") ||
     (openclawVersion && openclawVersion !== "unknown");
+  const isActive = agent.status === "active";
 
   return (
     <div
@@ -47,7 +47,13 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
             </p>
           </div>
         </div>
-        <StatusBadge status={agent.status} className="ml-auto shrink-0" />
+        <span
+          className={cn(
+            "ml-auto mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full",
+            isActive ? "bg-status-active" : "bg-status-review",
+          )}
+          title={isActive ? "Active" : "Idle"}
+        />
       </div>
 
       {currentTask && agent.status === "active" && (
