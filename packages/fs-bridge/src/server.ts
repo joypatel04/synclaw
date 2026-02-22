@@ -9,7 +9,7 @@ const TOKEN = (process.env.FS_BRIDGE_TOKEN ?? "").trim();
 const ROOT_PATH = (process.env.WORKSPACE_ROOT_PATH ?? "").trim();
 const MAX_FILE_BYTES = Number(process.env.FS_MAX_FILE_BYTES ?? `${1024 * 1024}`);
 const ALLOWED_EXTENSIONS = (process.env.FS_ALLOWED_EXTENSIONS ??
-  ".md,.txt,.json,.yaml,.yml,.toml,.config")
+  ".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx")
   .split(",")
   .map((ext) => ext.trim().toLowerCase())
   .filter(Boolean);

@@ -12,6 +12,11 @@ const ALLOWED_EXTENSIONS = [
   ".yml",
   ".toml",
   ".config",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".ts",
+  ".tsx",
 ];
 
 function normalizeRelativePath(input?: string): string {
