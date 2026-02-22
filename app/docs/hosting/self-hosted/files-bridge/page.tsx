@@ -17,7 +17,7 @@ export default function HostingSelfHostedFilesBridgePage() {
         <ul className="list-disc space-y-2 pl-5">
           <li>Browse remote workspace directory tree from Sutraha HQ.</li>
           <li>Edit and save text files (`.md`, `.txt`, `.json`, `.yaml`, `.yml`, `.toml`, `.config`).</li>
-          <li>Edit `openclaw.config` directly in <code className="rounded bg-bg-primary px-1 py-0.5">Settings -&gt; OpenClaw</code>.</li>
+          <li>Edit `openclaw.config` directly in <code className="rounded bg-bg-primary px-1 py-0.5">/filesystem</code>.</li>
           <li>Keep bridge token server-side (never exposed to browser).</li>
         </ul>
       </PublicDocsCard>
@@ -53,7 +53,7 @@ docker push ghcr.io/sutraha/sutraha-fs-bridge:0.1.0`}
       <PublicDocsCard title="3) Configure Sutraha HQ">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Enable feature flag: <code className="rounded bg-bg-primary px-1 py-0.5">NEXT_PUBLIC_OPENCLAW_FILES_ENABLED=true</code>.</li>
-          <li>Open <code className="rounded bg-bg-primary px-1 py-0.5">Settings -&gt; OpenClaw</code>.</li>
+          <li>Open <code className="rounded bg-bg-primary px-1 py-0.5">/filesystem</code>.</li>
           <li>Enable <span className="font-medium">Workspace Files Bridge</span>.</li>
           <li>Set bridge URL and workspace root path.</li>
           <li>Set bridge token and click Save.</li>
@@ -87,4 +87,3 @@ curl -H "Authorization: Bearer <token>" "https://<bridge-host>/v1/file?path=open
     </PublicDocsShell>
   );
 }
-

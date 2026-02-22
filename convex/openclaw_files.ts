@@ -74,6 +74,7 @@ type BridgeConfig = {
   baseUrl: string;
   rootPath: string;
   token: string;
+  role: "owner" | "admin" | "member" | "viewer";
 };
 
 async function getBridgeConfig(
@@ -90,7 +91,10 @@ async function getBridgeConfig(
   }
   if (!cfg.baseUrl) throw new Error("filesBridgeBaseUrl is not configured");
   if (!cfg.token) throw new Error("files bridge token is not configured");
-  return cfg as BridgeConfig;
+  return {
+    ...(cfg as Omit<BridgeConfig, "role">),
+    role: workspace.role as BridgeConfig["role"],
+  };
 }
 
 export const testBridge = action({
@@ -122,10 +126,23 @@ export const listTree = action({
   handler: async (ctx, args) => {
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
     const path = normalizeRelativePath(args.path);
-    return await fetchBridge({
+    const result = await fetchBridge({
       url: `${cfg.baseUrl}/v1/tree?path=${encodeURIComponent(path)}`,
       token: cfg.token,
     });
+    const items = Array.isArray((result as any)?.items)
+      ? (result as any).items.map((item: any) => ({
+          name: String(item?.name ?? ""),
+          path: String(item?.path ?? ""),
+          type: item?.type === "directory" ? "directory" : "file",
+          size: typeof item?.size === "number" ? item.size : null,
+          mtimeMs: typeof item?.mtimeMs === "number" ? item.mtimeMs : null,
+        }))
+      : [];
+    return {
+      path: String((result as any)?.path ?? path),
+      items,
+    };
   },
 });
 
@@ -138,10 +155,23 @@ export const readFile = action({
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
     const path = normalizeRelativePath(args.path);
     assertTextExtension(path);
-    return await fetchBridge({
+    const result = await fetchBridge({
       url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(path)}`,
       token: cfg.token,
     });
+    return {
+      path: String((result as any)?.path ?? path),
+      content: String((result as any)?.content ?? ""),
+      hash:
+        typeof (result as any)?.hash === "string"
+          ? (result as any).hash
+          : undefined,
+      size: typeof (result as any)?.size === "number" ? (result as any).size : 0,
+      mtimeMs:
+        typeof (result as any)?.mtimeMs === "number"
+          ? (result as any).mtimeMs
+          : undefined,
+    };
   },
 });
 
@@ -154,13 +184,16 @@ export const writeFile = action({
   },
   handler: async (ctx, args) => {
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
+    if (cfg.role !== "owner" && cfg.role !== "admin") {
+      throw new Error("Only owner/admin can edit workspace files");
+    }
     const path = normalizeRelativePath(args.path);
     assertTextExtension(path);
     const size = new TextEncoder().encode(args.content).byteLength;
     if (size > DEFAULT_MAX_FILE_BYTES) {
       throw new Error(`File too large. Max ${DEFAULT_MAX_FILE_BYTES} bytes`);
     }
-    return await fetchBridge({
+    const result = await fetchBridge({
       url: `${cfg.baseUrl}/v1/file`,
       token: cfg.token,
       method: "PUT",
@@ -170,5 +203,18 @@ export const writeFile = action({
         expectedHash: args.expectedHash,
       },
     });
+    return {
+      ok: true,
+      path: String((result as any)?.path ?? path),
+      hash:
+        typeof (result as any)?.hash === "string"
+          ? (result as any).hash
+          : undefined,
+      size: typeof (result as any)?.size === "number" ? (result as any).size : size,
+      mtimeMs:
+        typeof (result as any)?.mtimeMs === "number"
+          ? (result as any).mtimeMs
+          : undefined,
+    };
   },
 });

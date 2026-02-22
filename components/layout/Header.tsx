@@ -8,6 +8,7 @@ import {
   ChevronDown,
   CreditCard,
   FileText,
+  FolderTree,
   Key,
   LifeBuoy,
   LogOut,
@@ -45,9 +46,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import {
+  BILLING_ENABLED,
+  OPENCLAW_FILES_ENABLED,
+  WEBHOOKS_ENABLED,
+} from "@/lib/features";
 
-const navItems = [
+const baseNavItems = [
   { href: "/", label: "Dashboard", icon: Activity },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/broadcasts", label: "Broadcasts", icon: Radio },
@@ -63,6 +68,13 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
   const createWorkspace = useMutation(api.workspaces.create);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
+  const navItems = OPENCLAW_FILES_ENABLED
+    ? [
+        ...baseNavItems.slice(0, 5),
+        { href: "/filesystem", label: "Filesystem", icon: FolderTree },
+        baseNavItems[5],
+      ]
+    : baseNavItems;
 
   const handleCreateWorkspace = async () => {
     if (!newName.trim()) return;

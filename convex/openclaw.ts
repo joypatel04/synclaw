@@ -154,7 +154,6 @@ export const upsertConfig = mutation({
 
     const now = Date.now();
     const wsUrl = validateWsUrl(args.wsUrl);
-    const filesBridgeBaseUrl = validateHttpUrl(args.filesBridgeBaseUrl ?? "");
     const scopes = normalizeScopes(args.scopes, args.role);
 
     const existing = await ctx.db
@@ -198,6 +197,17 @@ export const upsertConfig = mutation({
       }
     }
 
+    const nextFilesBridgeEnabled =
+      args.filesBridgeEnabled ?? existing?.filesBridgeEnabled ?? false;
+    const nextFilesBridgeBaseUrl =
+      args.filesBridgeBaseUrl !== undefined
+        ? validateHttpUrl(args.filesBridgeBaseUrl)
+        : (existing?.filesBridgeBaseUrl ?? "");
+    const nextFilesBridgeRootPath =
+      args.filesBridgeRootPath !== undefined
+        ? (args.filesBridgeRootPath ?? "").trim()
+        : (existing?.filesBridgeRootPath ?? "");
+
     const base = {
       workspaceId: args.workspaceId,
       wsUrl,
@@ -211,9 +221,9 @@ export const upsertConfig = mutation({
       subscribeMethod: args.subscribeMethod || "chat.subscribe",
       includeCron: args.includeCron,
       historyPollMs: Math.max(0, Math.floor(args.historyPollMs)),
-      filesBridgeEnabled: Boolean(args.filesBridgeEnabled),
-      filesBridgeBaseUrl,
-      filesBridgeRootPath: (args.filesBridgeRootPath ?? "").trim(),
+      filesBridgeEnabled: nextFilesBridgeEnabled,
+      filesBridgeBaseUrl: nextFilesBridgeBaseUrl,
+      filesBridgeRootPath: nextFilesBridgeRootPath,
       updatedAt: now,
       updatedBy: membership.userId,
     };

@@ -33,7 +33,7 @@ docker run --rm -p 8787:8787 \
 ## Configure Sutraha HQ
 
 1. Set `NEXT_PUBLIC_OPENCLAW_FILES_ENABLED=true`.
-2. Open `Settings -> OpenClaw`.
+2. Open `/filesystem`.
 3. Enable Files Bridge.
 4. Enter bridge URL + workspace root path.
 5. Set bridge token and save.
@@ -43,4 +43,3 @@ docker run --rm -p 8787:8787 \
 
 Each self-hosted customer can set their own `WORKSPACE_ROOT_PATH` based on their server layout.  
 Sutraha HQ uses per-workspace bridge config, so this works across different customer environments.
-

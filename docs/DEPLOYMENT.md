@@ -163,7 +163,7 @@ docker run --rm -p 8787:8787 \
 
 ### Sutraha HQ Setup
 
-1. In `Settings -> OpenClaw`, enable **Workspace Files Bridge**.
+1. In `/filesystem`, enable **Workspace Files Bridge**.
 2. Set bridge URL + root path and save.
 3. Set bridge token and save.
 4. Use **Workspace Files (Remote)** panel to test and edit files.
