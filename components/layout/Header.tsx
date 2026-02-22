@@ -15,6 +15,7 @@ import {
   Plus,
   Radio,
   Settings,
+  Sparkles,
   Users,
   Zap,
   Webhook,
@@ -45,7 +46,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { AUTOPILOT_ENABLED, BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Activity },
@@ -235,6 +236,17 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     >
                       <Webhook className="h-4 w-4" />
                       Webhooks
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {AUTOPILOT_ENABLED ? (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/settings/autopilot"
+                      className="flex items-center gap-2 text-text-secondary"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Autopilot
                     </Link>
                   </DropdownMenuItem>
                 ) : null}

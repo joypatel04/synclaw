@@ -19,3 +19,8 @@ export const WEBHOOKS_ENABLED = parseBooleanEnv(
   process.env.NEXT_PUBLIC_WEBHOOKS_ENABLED,
   true,
 );
+
+export const AUTOPILOT_ENABLED = parseBooleanEnv(
+  process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED,
+  false,
+);

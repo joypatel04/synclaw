@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
 import { AgentPanel } from "@/components/dashboard/AgentPanel";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
+import { AutopilotCard } from "@/components/dashboard/AutopilotCard";
 // import { BurnRateCard } from "@/components/dashboard/BurnRateCard";
 import {
   Activity,
@@ -46,6 +47,7 @@ function DashboardContent() {
         </div>
         {/* Main area: Kanban */}
         <div className="flex-1 overflow-auto p-6">
+          <AutopilotCard />
           {/* <div className="mb-4">
             <BurnRateCard />
           </div> */}
@@ -63,6 +65,7 @@ function DashboardContent() {
         <div className="flex-1 overflow-hidden">
           {activeTab === "board" && (
             <div className="h-full overflow-auto p-3">
+              <AutopilotCard />
               <KanbanBoard />
             </div>
           )}

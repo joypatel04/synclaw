@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "./Header";
 import { BillingBanner } from "./BillingBanner";
+import { AutopilotBanner } from "./AutopilotBanner";
 import {
   WorkspaceProvider,
   useWorkspace,
@@ -41,6 +42,7 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
       <OnboardingGate shouldRedirect={shouldRedirect} />
       <Header onboardingLocked={onboardingLocked} />
       <BillingBanner />
+      <AutopilotBanner />
       <main className="flex-1">
         {blocking ? (
           <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center">

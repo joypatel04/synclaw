@@ -34,7 +34,7 @@ import {
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { AUTOPILOT_ENABLED, BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -46,7 +46,7 @@ function parseScopesCsv(input: string): string[] {
 function SettingsTabs({
   active,
 }: {
-  active: "general" | "members" | "openclaw" | "billing";
+  active: "general" | "members" | "openclaw" | "autopilot" | "billing";
 }) {
   const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
   const activeCls = "border-accent-orange text-accent-orange";
@@ -73,6 +73,14 @@ function SettingsTabs({
       >
         OpenClaw
       </Link>
+      {AUTOPILOT_ENABLED ? (
+        <Link
+          href="/settings/autopilot"
+          className={`${base} ${active === "autopilot" ? activeCls : inactiveCls}`}
+        >
+          Autopilot
+        </Link>
+      ) : null}
       {WEBHOOKS_ENABLED ? (
         <Link
           href="/settings/webhooks"

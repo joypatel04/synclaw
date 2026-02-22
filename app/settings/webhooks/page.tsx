@@ -17,7 +17,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { WebhookCreateDialog } from "@/components/settings/WebhookCreateDialog";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { AUTOPILOT_ENABLED, BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 import {
   Select,
   SelectContent,
@@ -41,6 +41,11 @@ function SettingsTabs() {
       <Link href="/settings/openclaw" className={`${base} ${inactive}`}>
         OpenClaw
       </Link>
+      {AUTOPILOT_ENABLED ? (
+        <Link href="/settings/autopilot" className={`${base} ${inactive}`}>
+          Autopilot
+        </Link>
+      ) : null}
       <Link
         href="/settings/webhooks"
         className={`${base} border-accent-orange text-accent-orange`}
