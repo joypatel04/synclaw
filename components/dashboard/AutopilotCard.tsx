@@ -44,6 +44,16 @@ export function AutopilotCard() {
               ? `Last run: ${new Date(latest.startedAt).toLocaleString()} (${latest.status})`
               : "No runs yet."}
           </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {profile?.modeOfWork ? (
+              <span className="rounded-md border border-border-default bg-bg-primary px-2 py-0.5 text-[10px] text-text-secondary">
+                mode: {String(profile.modeOfWork).replaceAll("_", " ")}
+              </span>
+            ) : null}
+            <span className="rounded-md border border-border-default bg-bg-primary px-2 py-0.5 text-[10px] text-text-secondary">
+              blocked: {latest?.outputSummary?.blockedCategories?.length ?? 0}
+            </span>
+          </div>
           {reminder?.isStale ? (
             <p className="mt-1 text-xs text-status-review">
               Plan is stale. Refresh this week to keep the main agent focused.

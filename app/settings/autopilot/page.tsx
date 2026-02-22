@@ -28,6 +28,12 @@ type BusinessStage =
   | "growth";
 
 type RiskTolerance = "low" | "medium" | "high";
+type ModeOfWork =
+  | "building"
+  | "operations_execution"
+  | "closing"
+  | "strategic_planning"
+  | "technical_debt";
 
 const stageOptions: Array<{ value: BusinessStage; label: string }> = [
   { value: "idea", label: "Idea" },
@@ -35,6 +41,14 @@ const stageOptions: Array<{ value: BusinessStage; label: string }> = [
   { value: "onboarding", label: "Onboarding" },
   { value: "early_revenue", label: "Early revenue" },
   { value: "growth", label: "Growth" },
+];
+
+const modeOptions: Array<{ value: ModeOfWork; label: string }> = [
+  { value: "building", label: "Building" },
+  { value: "operations_execution", label: "Operations Execution" },
+  { value: "closing", label: "Closing" },
+  { value: "strategic_planning", label: "Strategic Planning" },
+  { value: "technical_debt", label: "Technical Debt" },
 ];
 
 function SettingsTabs() {
@@ -87,9 +101,11 @@ function AutopilotContent() {
   const reprocessRun = useAction((api as any).autopilot.reprocessRun);
 
   const [businessStage, setBusinessStage] = useState<BusinessStage>("onboarding");
+  const [modeOfWork, setModeOfWork] = useState<ModeOfWork>("operations_execution");
   const [northStarMetric, setNorthStarMetric] = useState("");
   const [weeklyGoal, setWeeklyGoal] = useState("");
   const [constraints, setConstraints] = useState("");
+  const [negativeConstraints, setNegativeConstraints] = useState("");
   const [channels, setChannels] = useState("website, linkedin");
   const [targetAudience, setTargetAudience] = useState("");
   const [timeBudgetHoursPerWeek, setTimeBudgetHoursPerWeek] = useState("12");
@@ -103,9 +119,11 @@ function AutopilotContent() {
   useEffect(() => {
     if (!profile) return;
     setBusinessStage(profile.businessStage);
+    setModeOfWork(profile.modeOfWork ?? "operations_execution");
     setNorthStarMetric(profile.northStarMetric);
     setWeeklyGoal(profile.weeklyGoal);
     setConstraints(profile.constraints.join("\n"));
+    setNegativeConstraints((profile.negativeConstraints ?? []).join("\n"));
     setChannels(profile.channels.join(", "));
     setTargetAudience(profile.targetAudience);
     setTimeBudgetHoursPerWeek(String(profile.timeBudgetHoursPerWeek));
@@ -117,6 +135,10 @@ function AutopilotContent() {
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
+    const negativeConstraintRows = negativeConstraints
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
     const channelRows = channels
       .split(",")
       .map((line) => line.trim())
@@ -125,9 +147,11 @@ function AutopilotContent() {
 
     return {
       businessStage,
+      modeOfWork,
       northStarMetric: northStarMetric.trim(),
       weeklyGoal: weeklyGoal.trim(),
       constraints: constraintRows,
+      negativeConstraints: negativeConstraintRows,
       channels: channelRows,
       targetAudience: targetAudience.trim(),
       timeBudgetHoursPerWeek: Number.isFinite(hours) ? hours : 0,
@@ -135,9 +159,11 @@ function AutopilotContent() {
     };
   }, [
     businessStage,
+    modeOfWork,
     northStarMetric,
     weeklyGoal,
     constraints,
+    negativeConstraints,
     channels,
     targetAudience,
     timeBudgetHoursPerWeek,
@@ -238,6 +264,25 @@ function AutopilotContent() {
               </Select>
             </div>
             <div className="space-y-1.5">
+              <Label>Mode of Work</Label>
+              <Select
+                value={modeOfWork}
+                onValueChange={(value) => setModeOfWork(value as ModeOfWork)}
+                disabled={!canManage}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-bg-tertiary border-border-default text-text-primary">
+                  {modeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label>North-star Metric</Label>
               <Input
                 value={northStarMetric}
@@ -293,6 +338,16 @@ function AutopilotContent() {
                 value={constraints}
                 onChange={(event) => setConstraints(event.target.value)}
                 placeholder="No paid ads this week\nMax 12 hours team capacity"
+                disabled={!canManage}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Negative Constraints (hard blocks, one per line)</Label>
+              <Textarea
+                rows={4}
+                value={negativeConstraints}
+                onChange={(event) => setNegativeConstraints(event.target.value)}
+                placeholder="No outreach tasks\nNo interviews this week\nNo A/B tests"
                 disabled={!canManage}
               />
             </div>
@@ -383,6 +438,52 @@ function AutopilotContent() {
                   {latestRun.outputSummary?.skippedCount ?? 0}
                 </p>
               </div>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-border-default bg-bg-primary p-3">
+                <p className="text-xs text-text-muted">Mode</p>
+                <p className="text-sm text-text-primary">
+                  {(latestRun.outputSummary?.modeOfWork ?? "-").replaceAll("_", " ")}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border-default bg-bg-primary p-3">
+                <p className="text-xs text-text-muted">Blocked categories</p>
+                <p className="text-sm text-text-primary">
+                  {latestRun.outputSummary?.blockedCategories?.length ?? 0}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-lg border border-border-default bg-bg-primary p-3">
+              <p className="text-xs text-text-muted mb-1">Deferred suggestions</p>
+              {(latestRun.outputSummary?.deferredSuggestions ?? []).length > 0 ? (
+                <div className="space-y-1">
+                  {(latestRun.outputSummary?.deferredSuggestions ?? []).map(
+                    (item: any, index: number) => (
+                      <p key={index} className="text-xs text-text-secondary">
+                        {item.title} [{item.category}] · {item.reason}
+                      </p>
+                    ),
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">None</p>
+              )}
+            </div>
+            <div className="mt-3 rounded-lg border border-border-default bg-bg-primary p-3">
+              <p className="text-xs text-text-muted mb-1">Quality flags</p>
+              {(latestRun.outputSummary?.qualityFlags ?? []).length > 0 ? (
+                <div className="space-y-1">
+                  {(latestRun.outputSummary?.qualityFlags ?? []).map(
+                    (flag: string, index: number) => (
+                      <p key={index} className="text-xs text-status-review">
+                        {flag}
+                      </p>
+                    ),
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">None</p>
+              )}
             </div>
             {latestRun.createdDocumentId ? (
               <div className="mt-3">

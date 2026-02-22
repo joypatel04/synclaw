@@ -37,6 +37,14 @@ const autopilotRunStatus = v.union(
   v.literal("failed"),
 );
 
+const autopilotModeOfWork = v.union(
+  v.literal("building"),
+  v.literal("operations_execution"),
+  v.literal("closing"),
+  v.literal("strategic_planning"),
+  v.literal("technical_debt"),
+);
+
 export default defineSchema({
   // Override authTables.users to accept null email/name from OAuth providers.
   // GitHub returns email:null when the user's email is private.
@@ -186,9 +194,11 @@ export default defineSchema({
     isActive: v.boolean(),
     template: v.literal("business_onboarding_growth"),
     businessStage: autopilotBusinessStage,
+    modeOfWork: v.optional(autopilotModeOfWork),
     northStarMetric: v.string(),
     weeklyGoal: v.string(),
     constraints: v.array(v.string()),
+    negativeConstraints: v.optional(v.array(v.string())),
     channels: v.array(v.string()),
     targetAudience: v.string(),
     timeBudgetHoursPerWeek: v.number(),
