@@ -28,7 +28,7 @@ Sutraha HQ CLI
 Usage: sutraha-cli <resource> <action> [options]
 
 Resources:
-  agents     list | get --id <id> | create --name <n> --role <r> [--emoji <e>] [--session-key <sk>] [--external-agent-id <id>] | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
+  agents     list | get --id <id> | create --name <n> --role <r> [--emoji <e>] [--session-key <sk>] [--external-agent-id <id>] [--create-setup-task] | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
   tasks      list | get --id <id> | create --title <t> | update-status --id <id> --status <s> [--blocked-reason <text>]
   messages   list --task-id <id> | send --task-id <id> --agent-id <id> --content <msg>
   chat       send --session-id <sid> --message <msg>
@@ -58,6 +58,10 @@ function requireArg(args: string[], flag: string, name: string): string {
     process.exit(1);
   }
   return val;
+}
+
+function hasFlag(args: string[], flag: string): boolean {
+  return args.includes(flag);
 }
 
 async function main() {
@@ -92,13 +96,17 @@ async function main() {
               getArg(rest, "--session-key") ??
               `agent:${name.toLowerCase().replace(/\s+/g, "-")}:main`;
             const externalAgentId = getArg(rest, "--external-agent-id");
-            result = await client.mutation(api.agents.create, {
+            const createSetupTask = hasFlag(rest, "--create-setup-task");
+            const createArgs = {
               name: name.trim(),
               role: role.trim(),
               emoji,
               sessionKey,
-              externalAgentId: sessionKey.trim(),
-            });
+              externalAgentId: externalAgentId?.trim() || sessionKey.trim(),
+            };
+            result = createSetupTask
+              ? await client.mutation(api.agents.create, createArgs)
+              : await client.mutation(api.agents.createManual, createArgs);
             break;
           }
           case "heartbeat":

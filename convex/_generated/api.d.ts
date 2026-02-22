@@ -32,6 +32,8 @@ import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as openclaw from "../openclaw.js";
+import type * as openclaw_files from "../openclaw_files.js";
+import type * as openclaw_files_internal from "../openclaw_files_internal.js";
 import type * as tasks from "../tasks.js";
 import type * as webhooks from "../webhooks.js";
 import type * as webhooks_internal from "../webhooks_internal.js";
@@ -68,6 +70,8 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   onboarding: typeof onboarding;
   openclaw: typeof openclaw;
+  openclaw_files: typeof openclaw_files;
+  openclaw_files_internal: typeof openclaw_files_internal;
   tasks: typeof tasks;
   webhooks: typeof webhooks;
   webhooks_internal: typeof webhooks_internal;

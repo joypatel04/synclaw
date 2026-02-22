@@ -27,7 +27,9 @@ async function resolveAgentId(input: {
   const { agentId, sessionKey } = input;
 
   if (sessionKey) {
-    const agent = await client.query(api.agents.getBySessionKey, { sessionKey });
+    const agent = await client.query(api.agents.getBySessionKey, {
+      sessionKey,
+    });
     if (!agent?._id) {
       throw new Error(
         `Agent not found for sessionKey=${sessionKey}. Register the agent in Sutraha HQ first.`,
@@ -127,14 +129,21 @@ server.tool(
 
 server.tool(
   "sutraha_create_agent",
-  "Create a new agent in the workspace. Requires workspace owner. Use this to register an agent so it can identify via sessionKey (e.g. agent:main:main) and send heartbeats/pulses.",
+  "Create/register a new agent. By default this is registration-only (no setup task). Set createSetupTask=true to also generate the setup checklist task. Requires workspace owner.",
   {
-    name: z.string().describe("Display name for the agent"),
-    role: z.string().describe("Short role description (e.g. 'Backend engineer', 'Code reviewer')"),
-    emoji: z
+    workspaceId: z
       .string()
       .optional()
-      .describe("Emoji for the agent (default: 🤖)"),
+      .describe(
+        "Target workspace ID. Defaults to SUTRAHA_WORKSPACE_ID from MCP server env.",
+      ),
+    name: z.string().describe("Display name for the agent"),
+    role: z
+      .string()
+      .describe(
+        "Short role description (e.g. 'Backend engineer', 'Code reviewer')",
+      ),
+    emoji: z.string().optional().describe("Emoji for the agent (default: 🤖)"),
     sessionKey: z
       .string()
       .optional()
@@ -145,23 +154,42 @@ server.tool(
       .string()
       .optional()
       .describe("External system agent ID for linking"),
+    createSetupTask: z
+      .boolean()
+      .optional()
+      .describe(
+        "When true, creates the setup checklist task in Sutraha. Defaults to false.",
+      ),
   },
-  async ({ name, role, emoji, sessionKey, externalAgentId }) => {
+  async ({
+    workspaceId,
+    name,
+    role,
+    emoji,
+    sessionKey,
+    externalAgentId,
+    createSetupTask,
+  }) => {
     const trimmedName = name.trim();
     const trimmedRole = role.trim();
     const defaultSessionKey = `agent:${trimmedName.toLowerCase().replace(/\s+/g, "-")}:main`;
-    const id = await client.mutation(api.agents.create, {
+    const resolvedSessionKey = sessionKey ?? defaultSessionKey;
+    const createArgs = {
+      ...(workspaceId ? { workspaceId: workspaceId.trim() } : {}),
       name: trimmedName,
       role: trimmedRole,
       emoji: emoji ?? "🤖",
-      sessionKey: sessionKey ?? defaultSessionKey,
+      sessionKey: resolvedSessionKey,
       ...(externalAgentId ? { externalAgentId: externalAgentId.trim() } : {}),
-    });
+    };
+    const id = createSetupTask
+      ? await client.mutation(api.agents.create, createArgs)
+      : await client.mutation(api.agents.createManual, createArgs);
     return {
       content: [
         {
           type: "text",
-          text: `Agent created with ID: ${id}. Use sessionKey "${sessionKey ?? defaultSessionKey}" to identify this agent in other tools.`,
+          text: `Agent created with ID: ${id}. Use sessionKey "${resolvedSessionKey}" to identify this agent in other tools.`,
         },
       ],
     };
@@ -172,10 +200,7 @@ server.tool(
   "sutraha_update_agent_status",
   "Update an agent's status",
   {
-    agentId: z
-      .string()
-      .optional()
-      .describe("Deprecated: prefer sessionKey"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
     sessionKey: z
       .string()
       .optional()
@@ -240,7 +265,7 @@ server.tool(
       .number()
       .optional()
       .describe("Duration of last run in milliseconds"),
-    lastRunCost: z.number().optional().describe("Cost of last run in USD"),  
+    lastRunCost: z.number().optional().describe("Cost of last run in USD"),
     telemetry: z
       .object({
         currentModel: z
@@ -276,7 +301,12 @@ server.tool(
     lastRunCost,
   }) => {
     const mergedTelemetry =
-      telemetry || currentModel || openclawVersion || totalTokensUsed || lastRunDurationMs || lastRunCost
+      telemetry ||
+      currentModel ||
+      openclawVersion ||
+      totalTokensUsed ||
+      lastRunDurationMs ||
+      lastRunCost
         ? {
             ...(telemetry ?? {}),
             ...(currentModel ? { currentModel } : {}),
@@ -501,7 +531,12 @@ server.tool(
       .string()
       .optional()
       .describe("Preferred: agent session key (e.g. agent:main:main)"),
-    limit: z.number().int().positive().optional().describe("Max tasks to return"),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Max tasks to return"),
     status: z
       .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
       .optional(),
@@ -520,7 +555,15 @@ server.tool(
     includeDone: z.boolean().optional(),
     since: z.number().optional(),
   },
-  async ({ agentId, sessionKey, limit, status, statuses, includeDone, since }) => {
+  async ({
+    agentId,
+    sessionKey,
+    limit,
+    status,
+    statuses,
+    includeDone,
+    since,
+  }) => {
     const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
     const tasks = await client.query(api.tasks.getByAssignee, {
       agentId: resolvedAgentId,
@@ -557,7 +600,15 @@ server.tool(
       .optional()
       .describe("Preferred: agent session key (for attribution)"),
   },
-  async ({ title, description, status, priority, assigneeIds, agentId, sessionKey }) => {
+  async ({
+    title,
+    description,
+    status,
+    priority,
+    assigneeIds,
+    agentId,
+    sessionKey,
+  }) => {
     const actingAgentId = await resolveAgentId({ agentId, sessionKey });
     const normalizedAssigneeIds = assigneeIds ?? [];
     const normalizedStatus =
@@ -966,7 +1017,9 @@ server.tool(
   },
   async ({ agentId, sessionKey }) => {
     const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
-    await client.mutation(api.agents.ackActivities, { agentId: resolvedAgentId });
+    await client.mutation(api.agents.ackActivities, {
+      agentId: resolvedAgentId,
+    });
     return {
       content: [
         { type: "text", text: "Activities acknowledged. Watermark updated." },

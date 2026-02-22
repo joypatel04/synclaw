@@ -1,11 +1,11 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { maxAgentsForWorkspace } from "./lib/billing";
 import {
-  requireRole,
   requireMember,
+  requireRole,
   resolveActorName,
 } from "./lib/permissions";
-import { maxAgentsForWorkspace } from "./lib/billing";
 
 const defaultTelemetry = {
   currentModel: "unknown",
@@ -368,6 +368,15 @@ export const create = mutation({
       );
     }
 
+    const duplicate = existingAgents.find(
+      (a) => !a.isArchived && a.sessionKey === args.sessionKey,
+    );
+    if (duplicate) {
+      throw new Error(
+        `An active agent with session key "${args.sessionKey}" already exists in this workspace.`,
+      );
+    }
+
     const now = Date.now();
     const id = await ctx.db.insert("agents", {
       workspaceId: args.workspaceId,
@@ -443,6 +452,80 @@ Notes:
       taskId,
       message: `${displayName} created task "${title}"`,
       metadata: { priority: "medium", status, source: "agent_create_setup" },
+      createdAt: now,
+    });
+
+    return id;
+  },
+});
+
+/** Register a new agent without creating setup tasks/chats (owner only). */
+export const createManual = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    name: v.string(),
+    role: v.string(),
+    emoji: v.string(),
+    sessionKey: v.string(),
+    externalAgentId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const membership = await requireRole(ctx, args.workspaceId, "owner");
+    const workspace = await ctx.db.get(args.workspaceId);
+    if (!workspace) throw new Error("Workspace not found");
+
+    const existingAgents = await ctx.db
+      .query("agents")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+    const activeCount = existingAgents.filter((a) => !a.isArchived).length;
+    const maxAgents = maxAgentsForWorkspace(workspace);
+    if (activeCount >= maxAgents) {
+      throw new Error(
+        "Free workspaces can run up to 3 active agents. Upgrade in Settings -> Billing for more.",
+      );
+    }
+
+    const duplicate = existingAgents.find(
+      (a) => !a.isArchived && a.sessionKey === args.sessionKey,
+    );
+    if (duplicate) {
+      throw new Error(
+        `An active agent with session key "${args.sessionKey}" already exists in this workspace.`,
+      );
+    }
+
+    const now = Date.now();
+    const id = await ctx.db.insert("agents", {
+      workspaceId: args.workspaceId,
+      name: args.name,
+      role: args.role,
+      emoji: args.emoji,
+      sessionKey: args.sessionKey,
+      externalAgentId: args.externalAgentId,
+      isArchived: false,
+      status: "idle",
+      currentTaskId: null,
+      lastHeartbeat: 0,
+      telemetry: defaultTelemetry,
+      createdAt: now,
+    });
+
+    const { displayName } = await resolveActorName(
+      ctx,
+      membership.userId,
+      null,
+    );
+    await ctx.db.insert("activities", {
+      workspaceId: args.workspaceId,
+      type: "agent_status",
+      agentId: id,
+      taskId: null,
+      message: `${displayName} registered ${args.emoji} ${args.name}`,
+      metadata: {
+        action: "agent_registered_manual",
+        sessionKey: args.sessionKey,
+      },
       createdAt: now,
     });
 

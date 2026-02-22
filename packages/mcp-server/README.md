@@ -23,7 +23,7 @@ Add to your MCPorter config:
   "servers": {
     "sutraha-hq": {
       "command": "npx",
-      "args": ["@sutraha/mcp-server@0.6.0"],
+      "args": ["@sutraha/mcp-server@0.6.2"],
       "env": {
         "CONVEX_URL": "https://your-deployment.convex.cloud",
         "CONVEX_SITE_URL": "https://your-deployment.convex.site",
@@ -48,7 +48,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 
 ## Versioning / Compatibility Policy
 
-- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.0`).
+- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.2`).
 - Use `sessionKey` for identity on all tool calls.
 - Keep local files short and stable:
   - `SUTRAHA_PROTOCOL.md` (shared operating contract)
@@ -65,6 +65,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 | `sutraha_list_agents` | — | List all active agents |
 | `sutraha_get_agent` | `agentId` | Get agent by ID |
 | `sutraha_get_agent_by_session_key` | `sessionKey` | Find agent by session key (use at startup) |
+| `sutraha_create_agent` | `workspaceId?`, `name`, `role`, `emoji?`, `sessionKey?`, `externalAgentId?`, `createSetupTask?` | Create/register an agent. Default is registration-only (no setup task). Set `createSetupTask=true` to also create the setup checklist task. |
 | `sutraha_update_agent_status` | `sessionKey?`, `agentId?`, `status` | Set agent status (`active`, `idle`, `error`, `offline`) |
 | `sutraha_agent_heartbeat` | `sessionKey?`, `agentId?` | Send heartbeat to indicate agent is alive |
 | `sutraha_agent_pulse` | `sessionKey?`, `agentId?`, `status`, `telemetry?` | Send pulse with status and telemetry. Updates `lastPulseAt` (dead man's switch). Use at startup or during work. Also accepts flat fields (`currentModel`, `openclawVersion`, etc.) mapped into `telemetry`. |
@@ -185,6 +186,25 @@ mcporter call sutraha-hq.sutraha_get_my_tasks \
   includeDone=false
 ```
 
+Create/register an agent (manual registration only):
+
+```bash
+mcporter call sutraha-hq.sutraha_create_agent \
+  name="OpenClaw Backend Agent" \
+  role="Backend engineer" \
+  sessionKey="agent:backend:main"
+```
+
+Create an agent and auto-generate setup checklist task:
+
+```bash
+mcporter call sutraha-hq.sutraha_create_agent \
+  name="QA Agent" \
+  role="Quality analyst" \
+  sessionKey="agent:qa:main" \
+  createSetupTask=true
+```
+
 ## CLI
 
 ```bash
@@ -194,6 +214,8 @@ export SUTRAHA_API_KEY=sk_your_api_key_here
 export SUTRAHA_WORKSPACE_ID=your_workspace_id
 
 npx @sutraha/mcp-server cli agents list
+npx @sutraha/mcp-server cli agents create --name "Backend Agent" --role "Backend engineer" --session-key "agent:backend:main"
+npx @sutraha/mcp-server cli agents create --name "QA Agent" --role "QA" --create-setup-task
 npx @sutraha/mcp-server cli tasks create --title "Fix bug" --priority high
 npx @sutraha/mcp-server cli tasks update-status --id <taskId> --status done
 npx @sutraha/mcp-server cli tasks update-status --id <taskId> --status blocked --blocked-reason "Waiting on env keys"
