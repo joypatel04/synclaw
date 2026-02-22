@@ -1,7 +1,7 @@
-import { action } from "./_generated/server";
-import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { action } from "./_generated/server";
 
 const DEFAULT_MAX_FILE_BYTES = 1024 * 1024;
 const ALLOWED_EXTENSIONS = [
@@ -52,7 +52,7 @@ function parseBridgeResponse(status: number, text: string): never {
 async function fetchBridge(args: {
   url: string;
   token: string;
-  method?: "GET" | "PUT";
+  method?: "GET" | "PUT" | "DELETE";
   body?: Record<string, unknown>;
 }) {
   const controller = new AbortController();
@@ -88,9 +88,12 @@ async function getBridgeConfig(
 ): Promise<BridgeConfig> {
   const workspace = await ctx.runQuery(api.workspaces.getById, { workspaceId });
   if (!workspace) throw new Error("Workspace not found or access denied");
-  const cfg = await ctx.runQuery((internal as any).openclaw_files_internal.getBridgeConfig, {
-    workspaceId,
-  });
+  const cfg = await ctx.runQuery(
+    (internal as any).openclaw_files_internal.getBridgeConfig,
+    {
+      workspaceId,
+    },
+  );
   if (!cfg) {
     throw new Error("Remote files bridge is not enabled for this workspace");
   }
@@ -171,7 +174,8 @@ export const readFile = action({
         typeof (result as any)?.hash === "string"
           ? (result as any).hash
           : undefined,
-      size: typeof (result as any)?.size === "number" ? (result as any).size : 0,
+      size:
+        typeof (result as any)?.size === "number" ? (result as any).size : 0,
       mtimeMs:
         typeof (result as any)?.mtimeMs === "number"
           ? (result as any).mtimeMs
@@ -215,11 +219,36 @@ export const writeFile = action({
         typeof (result as any)?.hash === "string"
           ? (result as any).hash
           : undefined,
-      size: typeof (result as any)?.size === "number" ? (result as any).size : size,
+      size:
+        typeof (result as any)?.size === "number" ? (result as any).size : size,
       mtimeMs:
         typeof (result as any)?.mtimeMs === "number"
           ? (result as any).mtimeMs
           : undefined,
+    };
+  },
+});
+
+export const deleteFile = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    path: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const cfg = await getBridgeConfig(ctx, args.workspaceId);
+    if (cfg.role !== "owner" && cfg.role !== "admin") {
+      throw new Error("Only owner/admin can delete workspace files");
+    }
+    const path = normalizeRelativePath(args.path);
+    assertTextExtension(path);
+    const result = await fetchBridge({
+      url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(path)}`,
+      token: cfg.token,
+      method: "DELETE",
+    });
+    return {
+      ok: true,
+      path: String((result as any)?.path ?? path),
     };
   },
 });

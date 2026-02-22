@@ -14,11 +14,15 @@ import { z } from "zod";
 import { api } from "./api.js";
 import { createClientFromEnv } from "./convex-client.js";
 
-const MCP_SERVER_VERSION = "0.6.4";
+const MCP_SERVER_VERSION = "0.6.5";
 const MCP_PROTOCOL_VERSION = "0.1.0";
 const MCP_SESSION_KEY_MODE = "sessionKey_preferred";
 
 const client = createClientFromEnv();
+
+type TaskRow = {
+  _id: string;
+};
 
 async function resolveAgentId(input: {
   agentId?: string;
@@ -547,7 +551,7 @@ server.tool(
 
 server.tool(
   "sutraha_get_my_tasks",
-  "Get tasks assigned to a specific agent",
+  "Get tasks assigned to a specific agent. By default, this returns only tasks updated since you last checked and then marks returned tasks as seen.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
     sessionKey: z
@@ -595,7 +599,26 @@ server.tool(
       statuses,
       includeDone,
       since,
+      onlyUpdatedSinceLastSeen: true,
     });
+    const seenTaskIds = Array.isArray(tasks)
+      ? tasks
+          .map((row) =>
+            row &&
+            typeof row === "object" &&
+            "_id" in row &&
+            typeof (row as TaskRow)._id === "string"
+              ? (row as TaskRow)._id
+              : null,
+          )
+          .filter((id): id is string => Boolean(id))
+      : [];
+    if (seenTaskIds.length > 0) {
+      await client.mutation(api.tasks.markSeenByAssignee, {
+        agentId: resolvedAgentId,
+        taskIds: seenTaskIds,
+      });
+    }
     return {
       content: [{ type: "text", text: JSON.stringify(tasks, null, 2) }],
     };
@@ -1051,6 +1074,37 @@ server.tool(
   },
 );
 
+server.tool(
+  "sutraha_ack_specific_activity",
+  "Acknowledge only specific activity IDs as seen. Use this when you handled some items but intentionally want to keep others unseen.",
+  {
+    activityIds: z
+      .array(z.string())
+      .min(1)
+      .describe("Activity IDs to mark seen"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ activityIds, agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
+    await client.mutation(api.activities.ackSpecific, {
+      agentId: resolvedAgentId,
+      activityIds,
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Acknowledged ${activityIds.length} specific activities.`,
+        },
+      ],
+    };
+  },
+);
+
 // ═══════════════════════════════════════════════════════════
 //  Notification Tools
 // ═══════════════════════════════════════════════════════════
@@ -1102,6 +1156,37 @@ server.tool(
     return {
       content: [
         { type: "text", text: "All notifications marked as delivered." },
+      ],
+    };
+  },
+);
+
+server.tool(
+  "sutraha_ack_specific_notification",
+  "Mark only specific notification IDs as delivered. Use this when you handled some mentions but want to keep others pending.",
+  {
+    notificationIds: z
+      .array(z.string())
+      .min(1)
+      .describe("Notification IDs to mark delivered"),
+    agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
+    sessionKey: z
+      .string()
+      .optional()
+      .describe("Preferred: agent session key (e.g. agent:main:main)"),
+  },
+  async ({ notificationIds, agentId, sessionKey }) => {
+    const resolvedAgentId = await resolveAgentId({ agentId, sessionKey });
+    await client.mutation(api.notifications.markDeliveredMany, {
+      agentId: resolvedAgentId,
+      notificationIds,
+    });
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Marked ${notificationIds.length} specific notifications as delivered.`,
+        },
       ],
     };
   },

@@ -7,12 +7,18 @@ export function FilesystemContextMenu({
   x,
   y,
   path,
+  canDelete,
+  deleting,
+  onDelete,
   onClose,
 }: {
   open: boolean;
   x: number;
   y: number;
   path: string | null;
+  canDelete: boolean;
+  deleting: boolean;
+  onDelete: (path: string) => Promise<void>;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -35,7 +41,6 @@ export function FilesystemContextMenu({
     <div
       className="fixed z-50 w-52 rounded-lg border border-border-default bg-bg-secondary p-1 shadow-xl"
       style={{ left: x, top: y }}
-      onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
@@ -47,7 +52,18 @@ export function FilesystemContextMenu({
       >
         Copy path
       </button>
+      {canDelete ? (
+        <button
+          type="button"
+          className="w-full rounded-md px-3 py-2 text-left text-xs text-status-blocked hover:bg-bg-tertiary disabled:opacity-60"
+          disabled={deleting}
+          onClick={() => {
+            void onDelete(path);
+          }}
+        >
+          {deleting ? "Deleting..." : "Delete file"}
+        </button>
+      ) : null}
     </div>
   );
 }
-

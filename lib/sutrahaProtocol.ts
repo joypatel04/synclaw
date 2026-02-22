@@ -1,7 +1,7 @@
 import { SUTRAHA_MCP_SERVER_VERSION } from "@/lib/mcpServerSpec";
 
 export const SUTRAHA_PROTOCOL_FILENAME = "SUTRAHA_PROTOCOL.md";
-export const SUTRAHA_PROTOCOL_VERSION = "0.1.1";
+export const SUTRAHA_PROTOCOL_VERSION = "0.1.2";
 
 export function buildSutrahaProtocolMd(args: {
   workspaceName: string;
@@ -37,10 +37,14 @@ Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
    - \`sutraha_get_notifications(sessionKey)\`
 5) Work:
    - \`sutraha_get_my_tasks(sessionKey, includeDone=false, limit=10)\`
+   - Note: this returns only tasks updated since this agent last checked and auto-marks returned tasks as seen.
    - If work is blocked, set status with reason:
      \`sutraha_update_task_status(taskId, status="blocked", blockedReason="...")\`
 6) Idempotency:
-   - After processing unseen items: \`sutraha_ack_activities(sessionKey)\` + \`sutraha_ack_notifications(sessionKey)\`
+   - If all unseen items were handled:
+     \`sutraha_ack_activities(sessionKey)\` + \`sutraha_ack_notifications(sessionKey)\`
+   - If only some were handled:
+     \`sutraha_ack_specific_activity(activityIds, sessionKey)\` + \`sutraha_ack_specific_notification(notificationIds, sessionKey)\`
 7) End cleanly:
    - \`sutraha_end_task_session(sessionKey, status="idle"|"error", runSummary?)\`
 

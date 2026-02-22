@@ -43,6 +43,8 @@ mcporter call sutraha-hq.sutraha_get_notifications sessionKey="<YOUR_SESSION_KEY
 
 ### 4) Pull Assigned Work (Keep It Small)
 
+`sutraha_get_my_tasks` now returns only tasks updated since this agent last checked them, and marks returned tasks as seen.
+
 ```bash
 mcporter call sutraha-hq.sutraha_get_my_tasks sessionKey="<YOUR_SESSION_KEY>" status="assigned"
 mcporter call sutraha-hq.sutraha_get_my_tasks sessionKey="<YOUR_SESSION_KEY>" status="in_progress"
@@ -100,9 +102,23 @@ mcporter call sutraha-hq.sutraha_update_task_status \
 
 ### 6) Acknowledge (Only After Successful Processing)
 
+If you handled everything:
+
 ```bash
 mcporter call sutraha-hq.sutraha_ack_activities sessionKey="<YOUR_SESSION_KEY>"
 mcporter call sutraha-hq.sutraha_ack_notifications sessionKey="<YOUR_SESSION_KEY>"
+```
+
+If you handled only some items and want the rest to stay pending:
+
+```bash
+mcporter call sutraha-hq.sutraha_ack_specific_activity \
+  sessionKey="<YOUR_SESSION_KEY>" \
+  activityIds='["<ACTIVITY_ID_1>","<ACTIVITY_ID_2>"]'
+
+mcporter call sutraha-hq.sutraha_ack_specific_notification \
+  sessionKey="<YOUR_SESSION_KEY>" \
+  notificationIds='["<NOTIFICATION_ID_1>"]'
 ```
 
 ### 7) Check-Out (Required)

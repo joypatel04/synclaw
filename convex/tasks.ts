@@ -163,7 +163,8 @@ export const updateStatus = mutation({
       metadata: {
         from: existing.status,
         to: args.status,
-        blockedReason: args.status === "blocked" ? (trimmedReason ?? null) : null,
+        blockedReason:
+          args.status === "blocked" ? (trimmedReason ?? null) : null,
       },
       createdAt: now,
     });
@@ -192,9 +193,7 @@ export const list = query({
     const limit = args.limit ?? 0;
     const includeDone = args.includeDone ?? true;
     const statusSet =
-      args.statuses && args.statuses.length > 0
-        ? new Set(args.statuses)
-        : null;
+      args.statuses && args.statuses.length > 0 ? new Set(args.statuses) : null;
 
     return all
       .filter((t) => {
@@ -220,6 +219,7 @@ export const getByAssignee = query({
     limit: v.optional(v.number()),
     since: v.optional(v.number()),
     includeDone: v.optional(v.boolean()),
+    onlyUpdatedSinceLastSeen: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
@@ -231,10 +231,21 @@ export const getByAssignee = query({
 
     const limit = args.limit ?? 0;
     const includeDone = args.includeDone ?? true;
+    const onlyUpdatedSinceLastSeen = args.onlyUpdatedSinceLastSeen ?? false;
     const statusSet =
-      args.statuses && args.statuses.length > 0
-        ? new Set(args.statuses)
-        : null;
+      args.statuses && args.statuses.length > 0 ? new Set(args.statuses) : null;
+    const seenByTask = new Map<string, number>();
+    if (onlyUpdatedSinceLastSeen) {
+      const seenRows = await ctx.db
+        .query("taskSeenByAgent")
+        .withIndex("byWorkspaceAgent", (q) =>
+          q.eq("workspaceId", args.workspaceId).eq("agentId", args.agentId),
+        )
+        .collect();
+      for (const row of seenRows) {
+        seenByTask.set(row.taskId, row.lastSeenAt);
+      }
+    }
 
     return all
       .filter((t) => {
@@ -243,9 +254,53 @@ export const getByAssignee = query({
         if (args.status && t.status !== args.status) return false;
         if (statusSet && !statusSet.has(t.status)) return false;
         if (args.since !== undefined && t.updatedAt < args.since) return false;
+        if (onlyUpdatedSinceLastSeen) {
+          const lastSeenAt = seenByTask.get(t._id) ?? 0;
+          if (t.updatedAt <= lastSeenAt) return false;
+        }
         return true;
       })
       .slice(0, limit > 0 ? limit : undefined);
+  },
+});
+
+/** Mark specific tasks as seen for an agent (member+). */
+export const markSeenByAssignee = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    taskIds: v.array(v.id("tasks")),
+    seenAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const timestamp = args.seenAt ?? Date.now();
+
+    for (const taskId of args.taskIds) {
+      const task = await ctx.db.get(taskId);
+      if (!task || task.workspaceId !== args.workspaceId) continue;
+      if (!task.assigneeIds.includes(args.agentId)) continue;
+
+      const existing = await ctx.db
+        .query("taskSeenByAgent")
+        .withIndex("byAgentTask", (q) =>
+          q.eq("agentId", args.agentId).eq("taskId", taskId),
+        )
+        .first();
+
+      if (existing) {
+        if (existing.lastSeenAt < timestamp) {
+          await ctx.db.patch(existing._id, { lastSeenAt: timestamp });
+        }
+      } else {
+        await ctx.db.insert("taskSeenByAgent", {
+          workspaceId: args.workspaceId,
+          agentId: args.agentId,
+          taskId,
+          lastSeenAt: timestamp,
+        });
+      }
+    }
   },
 });
 

@@ -50,6 +50,11 @@ type TestBridgeResponse = {
   ok: boolean;
 };
 
+type DeleteFileResponse = {
+  ok: boolean;
+  path: string;
+};
+
 function FilesystemContent() {
   const { workspaceId, canAdmin, role } = useWorkspace();
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
@@ -58,6 +63,7 @@ function FilesystemContent() {
   const listTree = useAction(api.openclaw_files.listTree);
   const readFile = useAction(api.openclaw_files.readFile);
   const writeFile = useAction(api.openclaw_files.writeFile);
+  const deleteFile = useAction(api.openclaw_files.deleteFile);
 
   const canEditFiles = role === "owner" || role === "admin";
 
@@ -85,6 +91,7 @@ function FilesystemContent() {
   const [testing, setTesting] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [deletingPath, setDeletingPath] = useState<string | null>(null);
 
   const [contextOpen, setContextOpen] = useState(false);
   const [contextX, setContextX] = useState(0);
@@ -211,6 +218,39 @@ function FilesystemContent() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setTesting(false);
+    }
+  };
+
+  const deletePathFromContext = async (path: string) => {
+    if (!canEditFiles || deletingPath) return;
+    const confirmed = window.confirm(
+      `Delete file?\n\n${path}\n\nThis action cannot be undone.`,
+    );
+    if (!confirmed) {
+      setContextOpen(false);
+      return;
+    }
+    setDeletingPath(path);
+    setError(null);
+    try {
+      const result = await deleteFile({ workspaceId, path });
+      const typed = result as DeleteFileResponse;
+      const deletedPath = typed.path ?? path;
+      if (selectedPath === deletedPath) {
+        setSelectedPath(null);
+        setContent("");
+        setExpectedHash(undefined);
+        setSelectedSize(undefined);
+        setSelectedMtimeMs(undefined);
+        setDirty(false);
+      }
+      setStatusText(`Deleted ${deletedPath}`);
+      await openDirectory(parentPath(deletedPath), true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeletingPath(null);
+      setContextOpen(false);
     }
   };
 
@@ -485,6 +525,9 @@ function FilesystemContent() {
         x={contextX}
         y={contextY}
         path={contextPath}
+        canDelete={canEditFiles}
+        deleting={Boolean(deletingPath)}
+        onDelete={deletePathFromContext}
         onClose={() => setContextOpen(false)}
       />
     </div>

@@ -324,6 +324,15 @@ export default defineSchema({
     .index("byWorkspace", ["workspaceId"])
     .index("recent", ["createdAt"]),
 
+  activitySeenByAgent: defineTable({
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    activityId: v.id("activities"),
+    seenAt: v.number(),
+  })
+    .index("byWorkspaceAgent", ["workspaceId", "agentId"])
+    .index("byAgentActivity", ["agentId", "activityId"]),
+
   notifications: defineTable({
     workspaceId: v.id("workspaces"),
     mentionedAgentId: v.id("agents"),
@@ -334,6 +343,15 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("undeliveredForAgent", ["mentionedAgentId", "delivered"]),
+
+  taskSeenByAgent: defineTable({
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    taskId: v.id("tasks"),
+    lastSeenAt: v.number(),
+  })
+    .index("byWorkspaceAgent", ["workspaceId", "agentId"])
+    .index("byAgentTask", ["agentId", "taskId"]),
 
   folders: defineTable({
     name: v.string(),

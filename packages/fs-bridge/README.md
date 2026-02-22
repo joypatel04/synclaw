@@ -8,6 +8,7 @@ Remote filesystem bridge for Sutraha HQ OpenClaw workspaces.
 - `GET /v1/tree?path=<relative>`
 - `GET /v1/file?path=<relative>`
 - `PUT /v1/file` with `{ path, content, expectedHash? }`
+- `DELETE /v1/file?path=<relative>`
 - `GET /v1/meta?path=<relative>`
 
 ## Security defaults

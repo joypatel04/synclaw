@@ -22,8 +22,8 @@ Add to your MCPorter config:
 {
   "servers": {
     "sutraha-hq": {
-      "command": "npx",
-      "args": ["@sutraha/mcp-server@0.6.4"],
+      "command": "npx", 
+      "args": ["@sutraha/mcp-server@0.6.5"],
       "env": {
         "CONVEX_URL": "https://your-deployment.convex.cloud",
         "CONVEX_SITE_URL": "https://your-deployment.convex.site",
@@ -48,7 +48,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 
 ## Versioning / Compatibility Policy
 
-- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.4`).
+- **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.5`).
 - Use `sessionKey` for identity on all tool calls.
 - Keep local files short and stable:
   - `SUTRAHA_PROTOCOL.md` (shared operating contract)
@@ -84,7 +84,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 |------|--------|-------------|
 | `sutraha_list_tasks` | `limit?`, `status?`, `statuses?`, `assigneeId?`, `assigneeSessionKey?`, `includeDone?`, `since?` | List tasks (filtered) |
 | `sutraha_get_task` | `taskId` | Get task by ID |
-| `sutraha_get_my_tasks` | `sessionKey?`, `agentId?`, `limit?`, `status?`, `statuses?`, `includeDone?`, `since?` | Get tasks assigned to an agent (filtered) |
+| `sutraha_get_my_tasks` | `sessionKey?`, `agentId?`, `limit?`, `status?`, `statuses?`, `includeDone?`, `since?` | Get tasks assigned to an agent that changed since the agent last checked (results are auto-marked seen) |
 | `sutraha_create_task` | `title`, `description?`, `status?`, `priority?`, `assigneeIds?`, `sessionKey?`, `agentId?` | Create a task (attributed to the caller). If `assigneeIds` is non-empty and `status` is omitted (or `inbox`), status is auto-set to `assigned`. |
 | `sutraha_update_task` | `taskId`, `title?`, `description?`, `priority?`, `assigneeIds?`, `sessionKey?`, `agentId?` | Update task fields (attributed to the caller) |
 | `sutraha_update_task_status` | `taskId`, `status`, `blockedReason?`, `sessionKey?`, `agentId?` | Change task status (attributed to the caller). Provide `blockedReason` when moving to `blocked`. |
@@ -120,6 +120,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 | `sutraha_get_activities_with_mention` | `sessionKey?`, `agentId?`, `since?`, `limit?` | Get activities where this agent was @mentioned (from message metadata) |
 | `sutraha_get_unseen_activities` | `sessionKey?`, `agentId?` | Get activities since last acknowledgment (oldest first). Use at startup to catch up. |
 | `sutraha_ack_activities` | `sessionKey?`, `agentId?` | Mark all activities as seen. Call after processing unseen activities. |
+| `sutraha_ack_specific_activity` | `activityIds`, `sessionKey?`, `agentId?` | Mark only specific activity IDs as seen. |
 
 ### Notification Tools
 
@@ -127,6 +128,13 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 |------|--------|-------------|
 | `sutraha_get_notifications` | `sessionKey?`, `agentId?` | Get undelivered @mention notifications for this agent |
 | `sutraha_ack_notifications` | `sessionKey?`, `agentId?` | Mark all @mention notifications as delivered |
+| `sutraha_ack_specific_notification` | `notificationIds`, `sessionKey?`, `agentId?` | Mark only specific notification IDs as delivered. |
+
+### Acknowledgment Strategy (Recommended)
+
+- Use `sutraha_ack_activities` / `sutraha_ack_notifications` when you fully processed all returned items.
+- Use `sutraha_ack_specific_activity` / `sutraha_ack_specific_notification` when you processed only part of the backlog and want the rest to remain pending.
+- `sutraha_get_my_tasks` is task-delta aware: it returns only tasks updated since the agent last checked and automatically marks returned tasks as seen.
 
 ## Agent output expectations
 
@@ -149,9 +157,9 @@ In task comments (`sutraha_send_message`), you can tag people so they see it in 
 3. **Send pulse:** Call `sutraha_agent_pulse` with `sessionKey` (preferred), `status: "active"`, and optional telemetry.
 4. **Catch up:** Call `sutraha_get_unseen_activities` with `sessionKey`
 5. **Check mentions:** Call `sutraha_get_notifications` with `sessionKey`
-6. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` and `sutraha_ack_notifications` with `sessionKey`
+6. **Process and acknowledge:** After handling unseen items, call `sutraha_ack_activities` / `sutraha_ack_notifications`, or the specific-ID variants if you only handled part of the list
 7. **Optional — who to tag:** Call `sutraha_list_members` to learn human members and their `atMention` (e.g. `@Joy`) for when you need to escalate
-8. **Check tasks:** Call `sutraha_get_my_tasks` with filters (use `limit`, `statuses`, `includeDone=false`) to keep context small
+8. **Check tasks:** Call `sutraha_get_my_tasks`; it returns only tasks updated since your last check and marks returned tasks as seen
 9. **Work and report:** 
    - When picking up a task: Call `sutraha_start_task_session` with `sessionKey` + `taskId`
    - Use task/message/document tools, passing `sessionKey` (preferred) for attribution
@@ -184,6 +192,18 @@ mcporter call sutraha-hq.sutraha_get_my_tasks \
   limit=10 \
   statuses='["assigned","in_progress","review","blocked"]' \
   includeDone=false
+```
+
+Partial acknowledgments (only some items handled):
+
+```bash
+mcporter call sutraha-hq.sutraha_ack_specific_activity \
+  sessionKey="agent:main:main" \
+  activityIds='["<ACTIVITY_ID_1>","<ACTIVITY_ID_2>"]'
+
+mcporter call sutraha-hq.sutraha_ack_specific_notification \
+  sessionKey="agent:main:main" \
+  notificationIds='["<NOTIFICATION_ID_1>"]'
 ```
 
 Create/register an agent (manual registration only):

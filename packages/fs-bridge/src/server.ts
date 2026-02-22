@@ -1,15 +1,23 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import path from "node:path";
 import { URL } from "node:url";
 
 const PORT = Number(process.env.PORT ?? "8787");
 const TOKEN = (process.env.FS_BRIDGE_TOKEN ?? "").trim();
 const ROOT_PATH = (process.env.WORKSPACE_ROOT_PATH ?? "").trim();
-const MAX_FILE_BYTES = Number(process.env.FS_MAX_FILE_BYTES ?? `${1024 * 1024}`);
-const ALLOWED_EXTENSIONS = (process.env.FS_ALLOWED_EXTENSIONS ??
-  ".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx")
+const MAX_FILE_BYTES = Number(
+  process.env.FS_MAX_FILE_BYTES ?? `${1024 * 1024}`,
+);
+const ALLOWED_EXTENSIONS = (
+  process.env.FS_ALLOWED_EXTENSIONS ??
+  ".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx"
+)
   .split(",")
   .map((ext) => ext.trim().toLowerCase())
   .filter(Boolean);
@@ -53,8 +61,11 @@ function ensureConfigured() {
 
 async function resolveSafePath(relativePath: string) {
   const rootReal = await fs.realpath(ROOT_PATH);
-  const normalized = path.posix.normalize(relativePath.replace(/\\/g, "/")).replace(/^\/+/, "");
-  if (normalized.includes("..")) throw new Error("Path traversal is not allowed");
+  const normalized = path.posix
+    .normalize(relativePath.replace(/\\/g, "/"))
+    .replace(/^\/+/, "");
+  if (normalized.includes(".."))
+    throw new Error("Path traversal is not allowed");
   const candidate = path.resolve(rootReal, normalized || ".");
   const candidateReal = await fs.realpath(candidate).catch(() => candidate);
   const relative = path.relative(rootReal, candidateReal);
@@ -133,7 +144,9 @@ async function handleReadFile(
   const stat = await fs.stat(candidate);
   if (!stat.isFile()) return json(res, 422, { error: "Path is not a file" });
   if (stat.size > MAX_FILE_BYTES) {
-    return json(res, 413, { error: `File too large. Max ${MAX_FILE_BYTES} bytes` });
+    return json(res, 413, {
+      error: `File too large. Max ${MAX_FILE_BYTES} bytes`,
+    });
   }
 
   const content = await fs.readFile(candidate, "utf8");
@@ -153,7 +166,9 @@ async function handleMeta(req: IncomingMessage, res: ServerResponse, url: URL) {
   const stat = await fs.stat(candidate);
   if (!stat.isFile()) return json(res, 422, { error: "Path is not a file" });
   if (stat.size > MAX_FILE_BYTES) {
-    return json(res, 413, { error: `File too large. Max ${MAX_FILE_BYTES} bytes` });
+    return json(res, 413, {
+      error: `File too large. Max ${MAX_FILE_BYTES} bytes`,
+    });
   }
   const content = await fs.readFile(candidate, "utf8");
   return json(res, 200, {
@@ -178,7 +193,9 @@ async function handleWriteFile(req: IncomingMessage, res: ServerResponse) {
     });
   }
   if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) {
-    return json(res, 413, { error: `File too large. Max ${MAX_FILE_BYTES} bytes` });
+    return json(res, 413, {
+      error: `File too large. Max ${MAX_FILE_BYTES} bytes`,
+    });
   }
 
   const { rootReal, candidate } = await resolveSafePath(relativePath);
@@ -208,6 +225,31 @@ async function handleWriteFile(req: IncomingMessage, res: ServerResponse) {
     hash,
     size: Buffer.byteLength(content, "utf8"),
     mtimeMs: newStat.mtimeMs,
+  });
+}
+
+async function handleDeleteFile(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+) {
+  const queryPath = url.searchParams.get("path");
+  if (!queryPath) return json(res, 400, { error: "Missing path query param" });
+  if (!isAllowedExtension(queryPath)) {
+    return json(res, 422, {
+      error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+    });
+  }
+
+  const { rootReal, candidate } = await resolveSafePath(queryPath);
+  const stat = await fs.stat(candidate).catch(() => null);
+  if (!stat) return json(res, 404, { error: "File not found" });
+  if (!stat.isFile()) return json(res, 422, { error: "Path is not a file" });
+
+  await fs.unlink(candidate);
+  return json(res, 200, {
+    ok: true,
+    path: toRelative(rootReal, candidate),
   });
 }
 
@@ -246,6 +288,9 @@ async function main() {
       }
       if (req.method === "PUT" && url.pathname === "/v1/file") {
         return await handleWriteFile(req, res);
+      }
+      if (req.method === "DELETE" && url.pathname === "/v1/file") {
+        return await handleDeleteFile(req, res, url);
       }
 
       return json(res, 404, { error: "Not found" });

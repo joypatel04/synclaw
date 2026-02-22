@@ -150,6 +150,13 @@ export const getUnseen = query({
     }
 
     const watermark = agent.lastSeenActivityAt ?? 0;
+    const specificallySeen = await ctx.db
+      .query("activitySeenByAgent")
+      .withIndex("byWorkspaceAgent", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("agentId", args.agentId),
+      )
+      .collect();
+    const seenIds = new Set(specificallySeen.map((row) => row.activityId));
 
     const activities = await ctx.db
       .query("activities")
@@ -159,7 +166,56 @@ export const getUnseen = query({
 
     // Filter to only unseen, then reverse to chronological order (oldest first)
     return activities
-      .filter((a) => a.createdAt > watermark && isRelevantActivity(a))
+      .filter(
+        (a) =>
+          a.createdAt > watermark &&
+          isRelevantActivity(a) &&
+          !seenIds.has(a._id),
+      )
       .reverse();
+  },
+});
+
+/** Acknowledge specific activities as seen for an agent (member+). */
+export const ackSpecific = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    activityIds: v.array(v.id("activities")),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      throw new Error("Agent not found");
+    }
+
+    const now = Date.now();
+    for (const activityId of args.activityIds) {
+      const activity = await ctx.db.get(activityId);
+      if (!activity || activity.workspaceId !== args.workspaceId) continue;
+      if (!isRelevantActivity(activity)) continue;
+
+      const existing = await ctx.db
+        .query("activitySeenByAgent")
+        .withIndex("byAgentActivity", (q) =>
+          q.eq("agentId", args.agentId).eq("activityId", activityId),
+        )
+        .first();
+
+      if (existing) {
+        if (existing.seenAt < now) {
+          await ctx.db.patch(existing._id, { seenAt: now });
+        }
+      } else {
+        await ctx.db.insert("activitySeenByAgent", {
+          workspaceId: args.workspaceId,
+          agentId: args.agentId,
+          activityId,
+          seenAt: now,
+        });
+      }
+    }
   },
 });
