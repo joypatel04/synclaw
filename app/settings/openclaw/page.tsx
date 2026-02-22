@@ -36,7 +36,6 @@ import { RemoteWorkspaceFiles } from "@/components/openclaw/RemoteWorkspaceFiles
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
 import {
-  AUTOPILOT_ENABLED,
   BILLING_ENABLED,
   OPENCLAW_FILES_ENABLED,
   WEBHOOKS_ENABLED,
@@ -52,7 +51,7 @@ function parseScopesCsv(input: string): string[] {
 function SettingsTabs({
   active,
 }: {
-  active: "general" | "members" | "openclaw" | "autopilot" | "billing";
+  active: "general" | "members" | "openclaw" | "billing";
 }) {
   const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
   const activeCls = "border-accent-orange text-accent-orange";
@@ -79,19 +78,8 @@ function SettingsTabs({
       >
         OpenClaw
       </Link>
-      {AUTOPILOT_ENABLED ? (
-        <Link
-          href="/settings/autopilot"
-          className={`${base} ${active === "autopilot" ? activeCls : inactiveCls}`}
-        >
-          Autopilot
-        </Link>
-      ) : null}
       {WEBHOOKS_ENABLED ? (
-        <Link
-          href="/settings/webhooks"
-          className={`${base} ${inactiveCls}`}
-        >
+        <Link href="/settings/webhooks" className={`${base} ${inactiveCls}`}>
           Webhooks
         </Link>
       ) : null}
@@ -696,7 +684,9 @@ function OpenClawSettingsContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-text-secondary">Workspace root path</Label>
+                  <Label className="text-text-secondary">
+                    Workspace root path
+                  </Label>
                   <Input
                     value={filesBridgeRootPath}
                     onChange={(e) => setFilesBridgeRootPath(e.target.value)}
@@ -739,7 +729,9 @@ function OpenClawSettingsContent() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-text-secondary">Replace bridge token</Label>
+                <Label className="text-text-secondary">
+                  Replace bridge token
+                </Label>
                 <Input
                   value={filesBridgeTokenDraft}
                   onChange={(e) => {

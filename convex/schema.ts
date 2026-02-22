@@ -16,35 +16,6 @@ const webhookActionTemplate = v.union(
   v.literal("task_and_nudge_main"),
 );
 
-const autopilotBusinessStage = v.union(
-  v.literal("idea"),
-  v.literal("pre_launch"),
-  v.literal("onboarding"),
-  v.literal("early_revenue"),
-  v.literal("growth"),
-);
-
-const autopilotRiskTolerance = v.union(
-  v.literal("low"),
-  v.literal("medium"),
-  v.literal("high"),
-);
-
-const autopilotRunStatus = v.union(
-  v.literal("queued"),
-  v.literal("processing"),
-  v.literal("completed"),
-  v.literal("failed"),
-);
-
-const autopilotModeOfWork = v.union(
-  v.literal("building"),
-  v.literal("operations_execution"),
-  v.literal("closing"),
-  v.literal("strategic_planning"),
-  v.literal("technical_debt"),
-);
-
 export default defineSchema({
   // Override authTables.users to accept null email/name from OAuth providers.
   // GitHub returns email:null when the user's email is private.
@@ -187,56 +158,6 @@ export default defineSchema({
     .index("byWebhookAndReceivedAt", ["webhookId", "receivedAt"])
     .index("byWorkspaceAndStatus", ["workspaceId", "status"])
     .index("byWebhookAndProviderEventId", ["webhookId", "providerEventId"]),
-
-  autopilotProfiles: defineTable({
-    workspaceId: v.id("workspaces"),
-    version: v.number(),
-    isActive: v.boolean(),
-    template: v.literal("business_onboarding_growth"),
-    businessStage: autopilotBusinessStage,
-    modeOfWork: v.optional(autopilotModeOfWork),
-    northStarMetric: v.string(),
-    weeklyGoal: v.string(),
-    constraints: v.array(v.string()),
-    negativeConstraints: v.optional(v.array(v.string())),
-    channels: v.array(v.string()),
-    targetAudience: v.string(),
-    timeBudgetHoursPerWeek: v.number(),
-    riskTolerance: autopilotRiskTolerance,
-    updatedBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("byWorkspaceAndActive", ["workspaceId", "isActive"]),
-
-  autopilotRuns: defineTable({
-    workspaceId: v.id("workspaces"),
-    triggeredBy: v.id("users"),
-    triggerType: v.union(v.literal("manual"), v.literal("reprocess")),
-    status: autopilotRunStatus,
-    profileVersion: v.number(),
-    inputSnapshot: v.any(),
-    outputSummary: v.any(),
-    errorMessage: v.optional(v.string()),
-    createdTaskIds: v.array(v.id("tasks")),
-    createdDocumentId: v.optional(v.id("documents")),
-    startedAt: v.number(),
-    completedAt: v.optional(v.number()),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("byWorkspaceAndCreatedAt", ["workspaceId", "startedAt"])
-    .index("byWorkspaceAndStatus", ["workspaceId", "status"]),
-
-  autopilotTaskLinks: defineTable({
-    workspaceId: v.id("workspaces"),
-    runId: v.id("autopilotRuns"),
-    taskId: v.id("tasks"),
-    dedupeKey: v.string(),
-    createdAt: v.number(),
-  })
-    .index("byWorkspaceAndDedupeKey", ["workspaceId", "dedupeKey"])
-    .index("byRun", ["runId"]),
 
   // ─── API Keys (server-to-server auth for OpenClaw etc.) ────────
 

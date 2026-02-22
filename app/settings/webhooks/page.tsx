@@ -17,7 +17,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { WebhookCreateDialog } from "@/components/settings/WebhookCreateDialog";
-import { AUTOPILOT_ENABLED, BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 import {
   Select,
   SelectContent,
@@ -28,8 +28,7 @@ import {
 
 function SettingsTabs() {
   const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
-  const inactive =
-    "border-transparent text-text-muted hover:text-text-primary";
+  const inactive = "border-transparent text-text-muted hover:text-text-primary";
   return (
     <div className="flex gap-1 mb-8 border-b border-border-default overflow-x-auto">
       <Link href="/settings" className={`${base} ${inactive}`}>
@@ -41,11 +40,6 @@ function SettingsTabs() {
       <Link href="/settings/openclaw" className={`${base} ${inactive}`}>
         OpenClaw
       </Link>
-      {AUTOPILOT_ENABLED ? (
-        <Link href="/settings/autopilot" className={`${base} ${inactive}`}>
-          Autopilot
-        </Link>
-      ) : null}
       <Link
         href="/settings/webhooks"
         className={`${base} border-accent-orange text-accent-orange`}
@@ -68,7 +62,9 @@ function WebhooksContent() {
     "all" | "received" | "processed" | "failed" | "ignored"
   >("all");
   const webhooks = useQuery(api.webhooks.listWebhooks, { workspaceId }) ?? [];
-  const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
+  const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(
+    null,
+  );
   const selectedWebhook = useMemo(
     () =>
       webhooks.find((w: any) => w._id === selectedWebhookId) ??
@@ -175,7 +171,8 @@ function WebhooksContent() {
             <div className="mt-3 rounded-lg border border-border-default bg-bg-primary p-3">
               <p className="text-xs text-text-muted flex items-center gap-2">
                 <ShieldAlert className="h-3.5 w-3.5" />
-                Read-only mode. Owner/admin can create, rotate, delete, or reprocess.
+                Read-only mode. Owner/admin can create, rotate, delete, or
+                reprocess.
               </p>
             </div>
           ) : null}
@@ -204,12 +201,15 @@ function WebhooksContent() {
                         {webhook.name}
                       </p>
                       <p className="text-xs text-text-muted">
-                        {webhook.actionTemplate} · {webhook.enabled ? "enabled" : "disabled"}
+                        {webhook.actionTemplate} ·{" "}
+                        {webhook.enabled ? "enabled" : "disabled"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs text-text-muted">Enabled</Label>
+                        <Label className="text-xs text-text-muted">
+                          Enabled
+                        </Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -465,11 +465,15 @@ function PayloadViewer({
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-border-default bg-bg-primary p-3">
             <p className="text-xs text-text-muted">Status</p>
-            <p className="text-sm text-text-primary">{payload?.status ?? "-"}</p>
+            <p className="text-sm text-text-primary">
+              {payload?.status ?? "-"}
+            </p>
           </div>
           <div className="rounded-lg border border-border-default bg-bg-primary p-3">
             <p className="text-xs text-text-muted">Content-Type</p>
-            <p className="text-sm text-text-primary">{payload?.contentType ?? "-"}</p>
+            <p className="text-sm text-text-primary">
+              {payload?.contentType ?? "-"}
+            </p>
           </div>
         </div>
         <div className="mt-3 rounded-lg border border-border-default bg-bg-primary p-3">

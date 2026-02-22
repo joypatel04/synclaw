@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Header } from "./Header";
 import { BillingBanner } from "./BillingBanner";
-import { AutopilotBanner } from "./AutopilotBanner";
 import {
   WorkspaceProvider,
   useWorkspace,
@@ -42,7 +41,6 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
       <OnboardingGate shouldRedirect={shouldRedirect} />
       <Header onboardingLocked={onboardingLocked} />
       <BillingBanner />
-      <AutopilotBanner />
       <main className="flex-1">
         {blocking ? (
           <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center">
@@ -77,7 +75,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="flex min-h-screen items-center justify-center bg-bg-primary">
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
-          <p className="text-sm text-text-muted">Loading {brand.product.name}...</p>
+          <p className="text-sm text-text-muted">
+            Loading {brand.product.name}...
+          </p>
         </div>
       </div>
     );

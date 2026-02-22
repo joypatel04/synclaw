@@ -7,7 +7,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
 import { AgentPanel } from "@/components/dashboard/AgentPanel";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
-import { AutopilotCard } from "@/components/dashboard/AutopilotCard";
 // import { BurnRateCard } from "@/components/dashboard/BurnRateCard";
 import {
   Activity,
@@ -47,7 +46,6 @@ function DashboardContent() {
         </div>
         {/* Main area: Kanban */}
         <div className="flex-1 overflow-auto p-6">
-          <AutopilotCard />
           {/* <div className="mb-4">
             <BurnRateCard />
           </div> */}
@@ -65,7 +63,6 @@ function DashboardContent() {
         <div className="flex-1 overflow-hidden">
           {activeTab === "board" && (
             <div className="h-full overflow-auto p-3">
-              <AutopilotCard />
               <KanbanBoard />
             </div>
           )}
@@ -97,7 +94,13 @@ function DashboardContent() {
                       : "text-text-muted hover:text-text-secondary",
                   )}
                 >
-                  <tab.icon className={cn("h-5 w-5", isActive && "drop-shadow-[0_0_6px_var(--cw-accent-orange)]")} />
+                  <tab.icon
+                    className={cn(
+                      "h-5 w-5",
+                      isActive &&
+                        "drop-shadow-[0_0_6px_var(--cw-accent-orange)]",
+                    )}
+                  />
                   {tab.label}
                 </button>
               );
@@ -185,7 +188,8 @@ function LandingPage() {
     },
   ] as const;
 
-  const [activePaletteId, setActivePaletteId] = useState<(typeof palettes)[number]["id"]>("obsidian");
+  const [activePaletteId, setActivePaletteId] =
+    useState<(typeof palettes)[number]["id"]>("obsidian");
   const activePalette =
     palettes.find((p) => p.id === activePaletteId) ?? palettes[0];
 
@@ -291,7 +295,9 @@ function LandingPage() {
             </div>
             <div>
               <p className="text-sm font-semibold">{brand.product.name}</p>
-              <p className="text-[11px] text-text-dim">{brand.product.tagline}</p>
+              <p className="text-[11px] text-text-dim">
+                {brand.product.tagline}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -329,7 +335,10 @@ function LandingPage() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-        <section data-reveal-delay="0" className="section-reveal grid items-start gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <section
+          data-reveal-delay="0"
+          className="section-reveal grid items-start gap-10 lg:grid-cols-[1.15fr_0.85fr]"
+        >
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border-default bg-bg-secondary px-3 py-1 text-xs text-text-secondary">
               <Shield className="h-3.5 w-3.5 text-teal" />
@@ -337,7 +346,10 @@ function LandingPage() {
             </div>
             <h1 className="max-w-2xl text-[clamp(2.3rem,5.2vw,4.5rem)] font-bold leading-[1.03] tracking-tight">
               {brand.marketing.heroHeadline}{" "}
-              <span className="text-accent-orange">{brand.marketing.heroAccent}</span>.
+              <span className="text-accent-orange">
+                {brand.marketing.heroAccent}
+              </span>
+              .
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-text-muted sm:text-lg">
               {brand.marketing.heroSubheadline}
@@ -369,7 +381,9 @@ function LandingPage() {
 
           <div className="hero-card-motion rounded-2xl border border-border-default bg-bg-secondary p-5 shadow-[0_16px_40px_rgba(0,0,0,0.25)]">
             <div className="mb-4 flex items-center justify-between border-b border-border-default pb-3">
-              <p className="text-sm font-semibold">{brand.marketing.snapshotTitle}</p>
+              <p className="text-sm font-semibold">
+                {brand.marketing.snapshotTitle}
+              </p>
               <span className="pulse-live rounded-md bg-teal/15 px-2 py-1 text-xs font-medium text-teal">
                 {brand.marketing.snapshotLiveLabel}
               </span>
@@ -379,16 +393,18 @@ function LandingPage() {
                 const Icon =
                   index === 0 ? Bot : index === 1 ? LayoutDashboard : Activity;
                 return (
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between rounded-lg border border-border-default bg-bg-primary px-4 py-3"
-                >
-                  <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <Icon className="h-4 w-4 text-accent-orange" />
-                    {row.label}
+                  <div
+                    key={row.label}
+                    className="flex items-center justify-between rounded-lg border border-border-default bg-bg-primary px-4 py-3"
+                  >
+                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                      <Icon className="h-4 w-4 text-accent-orange" />
+                      {row.label}
+                    </div>
+                    <span className="text-sm font-semibold text-text-primary">
+                      {row.value}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-text-primary">{row.value}</span>
-                </div>
                 );
               })}
             </div>
@@ -403,10 +419,18 @@ function LandingPage() {
           </div>
         </section>
 
-        <section data-reveal-delay="1" className="section-reveal mt-8 grid gap-3 border-y border-border-default py-5 sm:grid-cols-3">
+        <section
+          data-reveal-delay="1"
+          className="section-reveal mt-8 grid gap-3 border-y border-border-default py-5 sm:grid-cols-3"
+        >
           {brand.marketing.proofStrip.map((s) => (
-            <div key={s.label} className="rounded-xl border border-border-default bg-bg-secondary px-4 py-3">
-              <p className="text-lg font-semibold text-text-primary">{s.value}</p>
+            <div
+              key={s.label}
+              className="rounded-xl border border-border-default bg-bg-secondary px-4 py-3"
+            >
+              <p className="text-lg font-semibold text-text-primary">
+                {s.value}
+              </p>
               <p className="text-xs text-text-muted">{s.label}</p>
             </div>
           ))}
@@ -414,34 +438,50 @@ function LandingPage() {
 
         <section data-reveal-delay="2" className="section-reveal mt-14">
           <div className="mb-5 flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold sm:text-2xl">{brand.marketing.productInActionTitle}</h2>
-            <p className="text-xs text-text-dim">{brand.marketing.productInActionSubtitle}</p>
+            <h2 className="text-xl font-semibold sm:text-2xl">
+              {brand.marketing.productInActionTitle}
+            </h2>
+            <p className="text-xs text-text-dim">
+              {brand.marketing.productInActionSubtitle}
+            </p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             <article className="overflow-hidden rounded-2xl border border-border-default bg-bg-secondary">
               <div className="border-b border-border-default bg-bg-primary/40 px-4 py-2">
-                <p className="text-xs uppercase tracking-wider text-text-dim">{brand.marketing.visualCards[0]?.title ?? "Task Board Lanes"}</p>
+                <p className="text-xs uppercase tracking-wider text-text-dim">
+                  {brand.marketing.visualCards[0]?.title ?? "Task Board Lanes"}
+                </p>
               </div>
               <div className="grid h-52 grid-cols-5 gap-2 p-3">
-                {["Inbox", "Assigned", "In-Progress", "Review", "Done"].map((col, i) => (
-                  <div key={col} className="rounded-lg border border-border-default bg-bg-primary p-1.5">
-                    <p className="mb-1 text-[10px] text-text-dim">{col}</p>
-                    <div className={cn("space-y-1", i > 2 && "opacity-80")}>
-                      <div className="h-4 rounded bg-bg-secondary" />
-                      <div className="h-4 rounded bg-bg-secondary" />
-                      {i === 3 ? <div className="h-4 rounded bg-accent-orange/30" /> : null}
+                {["Inbox", "Assigned", "In-Progress", "Review", "Done"].map(
+                  (col, i) => (
+                    <div
+                      key={col}
+                      className="rounded-lg border border-border-default bg-bg-primary p-1.5"
+                    >
+                      <p className="mb-1 text-[10px] text-text-dim">{col}</p>
+                      <div className={cn("space-y-1", i > 2 && "opacity-80")}>
+                        <div className="h-4 rounded bg-bg-secondary" />
+                        <div className="h-4 rounded bg-bg-secondary" />
+                        {i === 3 ? (
+                          <div className="h-4 rounded bg-accent-orange/30" />
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
               <p className="px-4 pb-3 text-sm text-text-muted">
-                {brand.marketing.visualCards[0]?.caption ?? "Mirrors your real task workflow: Inbox to Review to Done."}
+                {brand.marketing.visualCards[0]?.caption ??
+                  "Mirrors your real task workflow: Inbox to Review to Done."}
               </p>
             </article>
 
             <article className="overflow-hidden rounded-2xl border border-border-default bg-bg-secondary">
               <div className="border-b border-border-default bg-bg-primary/40 px-4 py-2">
-                <p className="text-xs uppercase tracking-wider text-text-dim">{brand.marketing.visualCards[1]?.title ?? "Agents Panel"}</p>
+                <p className="text-xs uppercase tracking-wider text-text-dim">
+                  {brand.marketing.visualCards[1]?.title ?? "Agents Panel"}
+                </p>
               </div>
               <div className="h-52 space-y-2 p-3">
                 {[
@@ -471,13 +511,16 @@ function LandingPage() {
                 ))}
               </div>
               <p className="px-4 pb-3 text-sm text-text-muted">
-                {brand.marketing.visualCards[1]?.caption ?? "Shows active/idle state exactly like your workspace agent operations."}
+                {brand.marketing.visualCards[1]?.caption ??
+                  "Shows active/idle state exactly like your workspace agent operations."}
               </p>
             </article>
 
             <article className="overflow-hidden rounded-2xl border border-border-default bg-bg-secondary">
               <div className="border-b border-border-default bg-bg-primary/40 px-4 py-2">
-                <p className="text-xs uppercase tracking-wider text-text-dim">{brand.marketing.visualCards[2]?.title ?? "Live Feed"}</p>
+                <p className="text-xs uppercase tracking-wider text-text-dim">
+                  {brand.marketing.visualCards[2]?.title ?? "Live Feed"}
+                </p>
               </div>
               <div className="h-52 p-3">
                 <div className="mb-2 flex gap-1.5">
@@ -512,16 +555,22 @@ function LandingPage() {
                 </div>
               </div>
               <p className="px-4 pb-3 text-sm text-text-muted">
-                {brand.marketing.visualCards[2]?.caption ?? "Category filters and event stream map to your existing activity feed."}
+                {brand.marketing.visualCards[2]?.caption ??
+                  "Category filters and event stream map to your existing activity feed."}
               </p>
             </article>
           </div>
         </section>
 
-        <section data-reveal-delay="3" className="section-reveal mt-14 rounded-2xl border border-border-default bg-bg-secondary p-5 sm:p-7">
+        <section
+          data-reveal-delay="3"
+          className="section-reveal mt-14 rounded-2xl border border-border-default bg-bg-secondary p-5 sm:p-7"
+        >
           <div className="mb-5 flex items-center gap-2">
             <Cable className="h-4 w-4 text-accent-orange" />
-            <h2 className="text-xl font-semibold sm:text-2xl">{brand.marketing.howItWorksTitle}</h2>
+            <h2 className="text-xl font-semibold sm:text-2xl">
+              {brand.marketing.howItWorksTitle}
+            </h2>
           </div>
 
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
@@ -543,7 +592,9 @@ function LandingPage() {
                     {item.subtitle}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-text-primary">{item.title}</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  {item.title}
+                </p>
                 <p className="mt-2 text-sm text-text-muted">{item.text}</p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {item.chips.map((chip) => (
@@ -560,7 +611,9 @@ function LandingPage() {
           </div>
 
           <div className="mt-4 rounded-xl border border-border-default bg-bg-primary p-4">
-            <p className="text-xs uppercase tracking-wider text-text-dim">{brand.marketing.operatorFlowTitle}</p>
+            <p className="text-xs uppercase tracking-wider text-text-dim">
+              {brand.marketing.operatorFlowTitle}
+            </p>
             <p className="mt-2 text-sm text-text-secondary">
               {brand.marketing.operatorFlowBody}
             </p>
@@ -570,7 +623,9 @@ function LandingPage() {
         <section data-reveal-delay="4" className="section-reveal mt-16">
           <div className="mb-5 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-accent-orange" />
-            <h2 className="text-xl font-semibold sm:text-2xl">{brand.marketing.creativeTitle}</h2>
+            <h2 className="text-xl font-semibold sm:text-2xl">
+              {brand.marketing.creativeTitle}
+            </h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {workflowSteps.map((step, idx) => (
@@ -578,17 +633,26 @@ function LandingPage() {
                 key={step.title}
                 className="rounded-xl border border-border-default bg-bg-secondary p-4"
               >
-                <p className="text-[11px] uppercase tracking-wider text-text-dim">Step {idx + 1}</p>
-                <p className="mt-1 text-sm font-semibold text-text-primary">{step.title}</p>
+                <p className="text-[11px] uppercase tracking-wider text-text-dim">
+                  Step {idx + 1}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">
+                  {step.title}
+                </p>
                 <p className="mt-2 text-sm text-text-muted">{step.text}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section data-reveal-delay="5" className="section-reveal mt-16 grid gap-4 lg:grid-cols-12">
+        <section
+          data-reveal-delay="5"
+          className="section-reveal mt-16 grid gap-4 lg:grid-cols-12"
+        >
           <div className="rounded-2xl border border-border-default bg-bg-secondary p-6 lg:col-span-5">
-            <p className="text-xs uppercase tracking-wider text-text-dim">{brand.marketing.whyKicker}</p>
+            <p className="text-xs uppercase tracking-wider text-text-dim">
+              {brand.marketing.whyKicker}
+            </p>
             <h3 className="mt-2 text-2xl font-semibold">
               {brand.marketing.whyHeadline}
             </h3>
@@ -597,7 +661,10 @@ function LandingPage() {
             </p>
             <div className="mt-5 space-y-2">
               {brand.marketing.whyBullets.map((item) => (
-                <div key={item} className="flex items-center gap-2 text-sm text-text-secondary">
+                <div
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-text-secondary"
+                >
                   <CheckCircle2 className="h-4 w-4 text-teal" />
                   <span>{item}</span>
                 </div>
@@ -606,24 +673,41 @@ function LandingPage() {
           </div>
           <div className="grid gap-4 lg:col-span-7 sm:grid-cols-2">
             {capabilities.map((cap) => (
-              <div key={cap.title} className="rounded-2xl border border-border-default bg-bg-secondary p-5">
-                <p className="text-sm font-semibold text-text-primary">{cap.title}</p>
+              <div
+                key={cap.title}
+                className="rounded-2xl border border-border-default bg-bg-secondary p-5"
+              >
+                <p className="text-sm font-semibold text-text-primary">
+                  {cap.title}
+                </p>
                 <p className="mt-2 text-sm text-text-muted">{cap.text}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section data-reveal-delay="6" className="section-reveal mt-16 grid gap-4 sm:grid-cols-3">
+        <section
+          data-reveal-delay="6"
+          className="section-reveal mt-16 grid gap-4 sm:grid-cols-3"
+        >
           {brand.marketing.segmentCards.map((card) => (
-            <div key={card.title} className="rounded-xl border border-border-default bg-bg-secondary p-5">
-              <p className="text-sm font-semibold text-text-primary">{card.title}</p>
+            <div
+              key={card.title}
+              className="rounded-xl border border-border-default bg-bg-secondary p-5"
+            >
+              <p className="text-sm font-semibold text-text-primary">
+                {card.title}
+              </p>
               <p className="mt-2 text-sm text-text-muted">{card.text}</p>
             </div>
           ))}
         </section>
 
-        <section id="pricing" data-reveal-delay="7" className="section-reveal mt-16 rounded-2xl border border-border-default bg-bg-secondary p-6 sm:p-8">
+        <section
+          id="pricing"
+          data-reveal-delay="7"
+          className="section-reveal mt-16 rounded-2xl border border-border-default bg-bg-secondary p-6 sm:p-8"
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider text-text-dim">
@@ -643,8 +727,12 @@ function LandingPage() {
           </div>
           <div className="mt-6 grid gap-3 lg:grid-cols-3">
             <div className="rounded-xl border border-border-default bg-bg-primary p-4">
-              <p className="text-sm font-semibold">{brand.marketing.trialTitle}</p>
-              <p className="mt-2 text-sm text-text-muted">{brand.marketing.trialSummary}</p>
+              <p className="text-sm font-semibold">
+                {brand.marketing.trialTitle}
+              </p>
+              <p className="mt-2 text-sm text-text-muted">
+                {brand.marketing.trialSummary}
+              </p>
             </div>
             <div className="rounded-xl border border-border-default bg-bg-primary p-4">
               <p className="text-sm font-semibold">Starter</p>
@@ -661,17 +749,28 @@ function LandingPage() {
           </div>
         </section>
 
-        <section data-reveal-delay="8" className="section-reveal mt-16 grid gap-4 sm:grid-cols-3">
+        <section
+          data-reveal-delay="8"
+          className="section-reveal mt-16 grid gap-4 sm:grid-cols-3"
+        >
           {faqs.map((faq) => (
-            <div key={faq.q} className="rounded-xl border border-border-default bg-bg-secondary p-5">
+            <div
+              key={faq.q}
+              className="rounded-xl border border-border-default bg-bg-secondary p-5"
+            >
               <p className="text-sm font-semibold text-text-primary">{faq.q}</p>
               <p className="mt-2 text-sm text-text-muted">{faq.a}</p>
             </div>
           ))}
         </section>
 
-        <section data-reveal-delay="9" className="section-reveal mt-16 rounded-2xl border border-border-default bg-bg-secondary p-8 text-center">
-          <p className="text-xs uppercase tracking-wider text-text-dim">{brand.marketing.finalCtaKicker}</p>
+        <section
+          data-reveal-delay="9"
+          className="section-reveal mt-16 rounded-2xl border border-border-default bg-bg-secondary p-8 text-center"
+        >
+          <p className="text-xs uppercase tracking-wider text-text-dim">
+            {brand.marketing.finalCtaKicker}
+          </p>
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
             {brand.marketing.finalCtaHeadline}
           </h2>

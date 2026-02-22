@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
-import { AUTOPILOT_ENABLED, BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 type Currency = "INR" | "USD";
 type Cadence = "monthly" | "yearly";
@@ -129,14 +129,6 @@ function BillingContent() {
         >
           OpenClaw
         </Link>
-        {AUTOPILOT_ENABLED ? (
-          <Link
-            href="/settings/autopilot"
-            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-          >
-            Autopilot
-          </Link>
-        ) : null}
         {WEBHOOKS_ENABLED ? (
           <Link
             href="/settings/webhooks"

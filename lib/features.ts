@@ -20,11 +20,6 @@ export const WEBHOOKS_ENABLED = parseBooleanEnv(
   true,
 );
 
-export const AUTOPILOT_ENABLED = parseBooleanEnv(
-  process.env.NEXT_PUBLIC_AUTOPILOT_ENABLED,
-  false,
-);
-
 export const OPENCLAW_FILES_ENABLED = parseBooleanEnv(
   process.env.NEXT_PUBLIC_OPENCLAW_FILES_ENABLED,
   false,
