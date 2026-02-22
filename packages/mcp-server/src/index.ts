@@ -129,7 +129,7 @@ server.tool(
 
 server.tool(
   "sutraha_create_agent",
-  "Create/register a new agent. By default this is registration-only (no setup task). Set createSetupTask=true to also generate the setup checklist task. Requires workspace owner.",
+  "Create/register a new agent. By default this is registration-only (no setup task). Set createSetupTask=true to also generate the setup checklist task. Requires workspace admin or owner.",
   {
     workspaceId: z
       .string()

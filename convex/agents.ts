@@ -341,7 +341,7 @@ export const ackActivities = mutation({
   },
 });
 
-/** Create a new agent (owner only). */
+/** Create a new agent (admin+). */
 export const create = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -352,7 +352,7 @@ export const create = mutation({
     externalAgentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const membership = await requireRole(ctx, args.workspaceId, "owner");
+    const membership = await requireRole(ctx, args.workspaceId, "admin");
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace not found");
 
@@ -459,7 +459,7 @@ Notes:
   },
 });
 
-/** Register a new agent without creating setup tasks/chats (owner only). */
+/** Register a new agent without creating setup tasks/chats (admin+). */
 export const createManual = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -470,7 +470,7 @@ export const createManual = mutation({
     externalAgentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const membership = await requireRole(ctx, args.workspaceId, "owner");
+    const membership = await requireRole(ctx, args.workspaceId, "admin");
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace not found");
 

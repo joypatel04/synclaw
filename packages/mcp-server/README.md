@@ -65,7 +65,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 | `sutraha_list_agents` | — | List all active agents |
 | `sutraha_get_agent` | `agentId` | Get agent by ID |
 | `sutraha_get_agent_by_session_key` | `sessionKey` | Find agent by session key (use at startup) |
-| `sutraha_create_agent` | `workspaceId?`, `name`, `role`, `emoji?`, `sessionKey?`, `externalAgentId?`, `createSetupTask?` | Create/register an agent. Default is registration-only (no setup task). Set `createSetupTask=true` to also create the setup checklist task. |
+| `sutraha_create_agent` | `workspaceId?`, `name`, `role`, `emoji?`, `sessionKey?`, `externalAgentId?`, `createSetupTask?` | Create/register an agent (admin+). Default is registration-only (no setup task). Set `createSetupTask=true` to also create the setup checklist task. |
 | `sutraha_update_agent_status` | `sessionKey?`, `agentId?`, `status` | Set agent status (`active`, `idle`, `error`, `offline`) |
 | `sutraha_agent_heartbeat` | `sessionKey?`, `agentId?` | Send heartbeat to indicate agent is alive |
 | `sutraha_agent_pulse` | `sessionKey?`, `agentId?`, `status`, `telemetry?` | Send pulse with status and telemetry. Updates `lastPulseAt` (dead man's switch). Use at startup or during work. Also accepts flat fields (`currentModel`, `openclawVersion`, etc.) mapped into `telemetry`. |
