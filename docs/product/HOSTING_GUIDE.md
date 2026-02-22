@@ -10,6 +10,7 @@ This guide documents production-style setup for both Cloud and Self-hosted deplo
   - `docs/product/SELF_HOSTED_PREREQUISITES.md`
   - `docs/product/SELF_HOSTED_SETUP_CONVEX.md`
   - `docs/product/SELF_HOSTED_SETUP_MCP.md`
+  - `docs/product/SELF_HOSTED_SETUP_FILES_BRIDGE.md`
   - `docs/product/SELF_HOSTED_RUN_LOCAL.md`
   - `docs/product/SELF_HOSTED_TROUBLESHOOTING.md`
   - environment reference in app docs: `/docs/hosting/environment`
@@ -35,6 +36,7 @@ This guide documents production-style setup for both Cloud and Self-hosted deplo
 - `/docs/hosting/self-hosted`
 - `/docs/hosting/self-hosted/convex`
 - `/docs/hosting/self-hosted/mcp`
+- `/docs/hosting/self-hosted/files-bridge`
 - `/docs/hosting/environment`
 - `/docs/hosting/webhooks`
 - `/docs/hosting/webhooks/security`

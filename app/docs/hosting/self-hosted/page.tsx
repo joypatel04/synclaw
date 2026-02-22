@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, HardDrive, Server, Settings2, Wrench } from "lucide-react";
+import { ArrowRight, FolderTree, HardDrive, Server, Settings2, Wrench } from "lucide-react";
 import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDocsShell";
 
 export default function HostingSelfHostedOverviewPage() {
@@ -75,6 +75,23 @@ export default function HostingSelfHostedOverviewPage() {
               <div>
                 <p className="text-sm font-semibold text-text-primary">Environment reference</p>
                 <p className="mt-1 text-xs text-text-muted">Variable-by-variable deployment reference.</p>
+              </div>
+            </div>
+            <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">
+              Open <ArrowRight className="h-3.5 w-3.5" />
+            </div>
+          </Link>
+          <Link
+            href="/docs/hosting/self-hosted/files-bridge"
+            className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-accent-orange/40 hover:bg-bg-hover"
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-primary">
+                <FolderTree className="h-4 w-4 text-accent-orange" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-text-primary">OpenClaw Files Bridge</p>
+                <p className="mt-1 text-xs text-text-muted">Remote workspace file browser/editor via Docker bridge.</p>
               </div>
             </div>
             <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">

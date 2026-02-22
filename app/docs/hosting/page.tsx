@@ -37,6 +37,12 @@ const sections = [
     icon: Wrench,
   },
   {
+    href: "/docs/hosting/self-hosted/files-bridge",
+    title: "OpenClaw Files Bridge",
+    description: "Remote workspace file browsing/editing via Dockerized bridge.",
+    icon: HardDrive,
+  },
+  {
     href: "/docs/hosting/environment",
     title: "Environment reference",
     description: "Every required env var and what it controls.",

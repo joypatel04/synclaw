@@ -32,9 +32,15 @@ import {
   SUTRAHA_PROTOCOL_FILENAME,
 } from "@/lib/sutrahaProtocol";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
+import { RemoteWorkspaceFiles } from "@/components/openclaw/RemoteWorkspaceFiles";
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
-import { AUTOPILOT_ENABLED, BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import {
+  AUTOPILOT_ENABLED,
+  BILLING_ENABLED,
+  OPENCLAW_FILES_ENABLED,
+  WEBHOOKS_ENABLED,
+} from "@/lib/features";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -127,6 +133,11 @@ function OpenClawSettingsContent() {
   const [tokenClear, setTokenClear] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState("");
   const [passwordClear, setPasswordClear] = useState(false);
+  const [filesBridgeEnabled, setFilesBridgeEnabled] = useState(false);
+  const [filesBridgeBaseUrl, setFilesBridgeBaseUrl] = useState("");
+  const [filesBridgeRootPath, setFilesBridgeRootPath] = useState("");
+  const [filesBridgeTokenDraft, setFilesBridgeTokenDraft] = useState("");
+  const [filesBridgeTokenClear, setFilesBridgeTokenClear] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -163,11 +174,17 @@ function OpenClawSettingsContent() {
     setTokenClear(false);
     setPasswordDraft("");
     setPasswordClear(false);
+    setFilesBridgeEnabled(Boolean(summary.filesBridgeEnabled));
+    setFilesBridgeBaseUrl(summary.filesBridgeBaseUrl ?? "");
+    setFilesBridgeRootPath(summary.filesBridgeRootPath ?? "");
+    setFilesBridgeTokenDraft("");
+    setFilesBridgeTokenClear(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary?.updatedAt]);
 
   const hasToken = summary?.hasAuthToken ?? false;
   const hasPassword = summary?.hasPassword ?? false;
+  const hasFilesBridgeToken = summary?.hasFilesBridgeToken ?? false;
 
   const scopes = useMemo(() => parseScopesCsv(scopesCsv), [scopesCsv]);
 
@@ -315,6 +332,14 @@ function OpenClawSettingsContent() {
         subscribeMethod: "chat.subscribe",
         includeCron,
         historyPollMs: Number(historyPollMs || "0"),
+        filesBridgeEnabled,
+        filesBridgeBaseUrl,
+        filesBridgeRootPath,
+        filesBridgeToken: filesBridgeTokenClear
+          ? null
+          : filesBridgeTokenDraft
+            ? filesBridgeTokenDraft
+            : undefined,
         authToken: tokenClear ? null : tokenDraft ? tokenDraft : undefined,
         password: passwordClear
           ? null
@@ -326,6 +351,8 @@ function OpenClawSettingsContent() {
       setTokenClear(false);
       setPasswordDraft("");
       setPasswordClear(false);
+      setFilesBridgeTokenDraft("");
+      setFilesBridgeTokenClear(false);
       setSaveOk(true);
       setTimeout(() => setSaveOk(false), 2000);
     } catch (e) {
@@ -641,6 +668,96 @@ function OpenClawSettingsContent() {
             </div>
           </div>
         </div>
+
+        {OPENCLAW_FILES_ENABLED ? (
+          <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+            <h2 className="text-sm font-semibold text-text-primary mb-4">
+              Workspace Files Bridge (Remote)
+            </h2>
+            <div className="space-y-4">
+              <label className="flex items-center gap-2 text-sm text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={filesBridgeEnabled}
+                  onChange={(e) => setFilesBridgeEnabled(e.target.checked)}
+                  className="h-4 w-4 accent-accent-orange"
+                />
+                Enable remote OpenClaw workspace file bridge
+              </label>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Bridge base URL</Label>
+                  <Input
+                    value={filesBridgeBaseUrl}
+                    onChange={(e) => setFilesBridgeBaseUrl(e.target.value)}
+                    placeholder="https://openclaw-files.yourdomain.com"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Workspace root path</Label>
+                  <Input
+                    value={filesBridgeRootPath}
+                    onChange={(e) => setFilesBridgeRootPath(e.target.value)}
+                    placeholder="/srv/openclaw/workspaces/main"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-text-primary font-medium">
+                    Bridge token
+                  </p>
+                  <p className="text-xs text-text-dim">
+                    Status:{" "}
+                    <span
+                      className={
+                        hasFilesBridgeToken
+                          ? "text-status-active"
+                          : "text-text-muted"
+                      }
+                    >
+                      {hasFilesBridgeToken ? "Set" : "Not set"}
+                    </span>
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    setFilesBridgeTokenDraft("");
+                    setFilesBridgeTokenClear(true);
+                  }}
+                  disabled={!hasFilesBridgeToken}
+                >
+                  Clear bridge token
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Replace bridge token</Label>
+                <Input
+                  value={filesBridgeTokenDraft}
+                  onChange={(e) => {
+                    setFilesBridgeTokenDraft(e.target.value);
+                    setFilesBridgeTokenClear(false);
+                  }}
+                  placeholder="Paste bridge bearer token..."
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                />
+                {filesBridgeTokenClear && (
+                  <p className="text-[11px] text-status-blocked">
+                    Bridge token will be cleared on Save.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
@@ -975,6 +1092,13 @@ openclaw devices approve <requestId>`}
               </details>
             </div>
           </div>
+        ) : null}
+
+        {OPENCLAW_FILES_ENABLED ? (
+          <RemoteWorkspaceFiles
+            workspaceId={workspaceId}
+            bridgeEnabled={Boolean(summary?.filesBridgeEnabled)}
+          />
         ) : null}
 
         <LocalOpenClawConfigEditor />

@@ -32,6 +32,15 @@ function validateWsUrl(input: string): string {
   return wsUrl;
 }
 
+function validateHttpUrl(input: string): string {
+  const value = input.trim();
+  if (!value) return "";
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error('filesBridgeBaseUrl must start with "http://" or "https://"');
+  }
+  return value.replace(/\/+$/, "");
+}
+
 export const getConfigSummary = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
@@ -55,6 +64,12 @@ export const getConfigSummary = query({
       subscribeMethod: row.subscribeMethod,
       includeCron: row.includeCron,
       historyPollMs: row.historyPollMs,
+      filesBridgeEnabled: Boolean(row.filesBridgeEnabled),
+      filesBridgeBaseUrl: row.filesBridgeBaseUrl ?? "",
+      filesBridgeRootPath: row.filesBridgeRootPath ?? "",
+      hasFilesBridgeToken: Boolean(
+        row.filesBridgeTokenCiphertextHex && row.filesBridgeTokenIvHex,
+      ),
       hasAuthToken: Boolean(row.authTokenCiphertextHex && row.authTokenIvHex),
       hasPassword: Boolean(row.passwordCiphertextHex && row.passwordIvHex),
       updatedAt: row.updatedAt,
@@ -106,6 +121,9 @@ export const getClientConfig = query({
       subscribeMethod: row.subscribeMethod,
       includeCron: row.includeCron,
       historyPollMs: row.historyPollMs,
+      filesBridgeEnabled: Boolean(row.filesBridgeEnabled),
+      filesBridgeBaseUrl: row.filesBridgeBaseUrl ?? "",
+      filesBridgeRootPath: row.filesBridgeRootPath ?? "",
     };
   },
 });
@@ -124,6 +142,10 @@ export const upsertConfig = mutation({
     subscribeMethod: v.string(),
     includeCron: v.boolean(),
     historyPollMs: v.number(),
+    filesBridgeEnabled: v.optional(v.boolean()),
+    filesBridgeBaseUrl: v.optional(v.string()),
+    filesBridgeRootPath: v.optional(v.string()),
+    filesBridgeToken: v.optional(v.union(v.string(), v.null())),
     authToken: v.optional(v.union(v.string(), v.null())),
     password: v.optional(v.union(v.string(), v.null())),
   },
@@ -132,6 +154,7 @@ export const upsertConfig = mutation({
 
     const now = Date.now();
     const wsUrl = validateWsUrl(args.wsUrl);
+    const filesBridgeBaseUrl = validateHttpUrl(args.filesBridgeBaseUrl ?? "");
     const scopes = normalizeScopes(args.scopes, args.role);
 
     const existing = await ctx.db
@@ -164,6 +187,17 @@ export const upsertConfig = mutation({
       }
     }
 
+    if (args.filesBridgeToken !== undefined) {
+      if (args.filesBridgeToken === null || args.filesBridgeToken.trim() === "") {
+        secretPatch.filesBridgeTokenCiphertextHex = undefined;
+        secretPatch.filesBridgeTokenIvHex = undefined;
+      } else {
+        const enc = await encryptSecretToHex(args.filesBridgeToken);
+        secretPatch.filesBridgeTokenCiphertextHex = enc.ciphertextHex;
+        secretPatch.filesBridgeTokenIvHex = enc.ivHex;
+      }
+    }
+
     const base = {
       workspaceId: args.workspaceId,
       wsUrl,
@@ -177,6 +211,9 @@ export const upsertConfig = mutation({
       subscribeMethod: args.subscribeMethod || "chat.subscribe",
       includeCron: args.includeCron,
       historyPollMs: Math.max(0, Math.floor(args.historyPollMs)),
+      filesBridgeEnabled: Boolean(args.filesBridgeEnabled),
+      filesBridgeBaseUrl,
+      filesBridgeRootPath: (args.filesBridgeRootPath ?? "").trim(),
       updatedAt: now,
       updatedBy: membership.userId,
     };

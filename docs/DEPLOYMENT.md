@@ -142,6 +142,34 @@ If you change the Convex deployment or domain, update the GitHub OAuth App:
 
 ---
 
+## 5. OpenClaw Files Bridge (Docker)
+
+Deploy this when enabling remote OpenClaw workspace file browsing/editing.
+
+### Build and Run
+
+```bash
+cd packages/fs-bridge
+docker build -t sutraha-fs-bridge .
+
+docker run --rm -p 8787:8787 \
+  -e FS_BRIDGE_TOKEN="replace_me" \
+  -e WORKSPACE_ROOT_PATH="/srv/openclaw/workspaces/main" \
+  -e FS_MAX_FILE_BYTES="1048576" \
+  -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config" \
+  -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
+  sutraha-fs-bridge
+```
+
+### Sutraha HQ Setup
+
+1. In `Settings -> OpenClaw`, enable **Workspace Files Bridge**.
+2. Set bridge URL + root path and save.
+3. Set bridge token and save.
+4. Use **Workspace Files (Remote)** panel to test and edit files.
+
+---
+
 ## Quick Reference
 
 ### Full Production Deploy (all components)
@@ -179,4 +207,3 @@ bunx convex dev
 | Convex Site | `descriptive-perch-695.convex.site` | `confident-ram-83.convex.site` |
 | Frontend | `localhost:3001` | `hq.sutraha.in` |
 | SITE_URL | `http://localhost:3001` | `https://hq.sutraha.in` |
-
