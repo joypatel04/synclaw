@@ -21,7 +21,7 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
   return (
     <div
       className={cn(
-        "group rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth",
+        "group min-w-0 overflow-hidden rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth",
         "hover:border-border-hover hover:bg-bg-tertiary",
         agent.status === "active" && "border-l-2 border-l-status-active",
         agent.status === "error" && "border-l-2 border-l-status-blocked",
@@ -39,7 +39,12 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
             <h3 className="truncate text-sm font-semibold text-text-primary">
               {agent.name}
             </h3>
-            <p className="truncate text-xs text-text-muted">{agent.role}</p>
+            <p
+              className="line-clamp-2 break-all text-xs leading-4 text-text-muted"
+              title={agent.role}
+            >
+              {agent.role}
+            </p>
           </div>
         </div>
         <StatusBadge status={agent.status} className="ml-auto shrink-0" />

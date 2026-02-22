@@ -1,12 +1,12 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import { AgentCard } from "./AgentCard";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { Bot } from "lucide-react";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { api } from "@/convex/_generated/api";
+import { AgentCard } from "./AgentCard";
 
 export function AgentPanel() {
   const { workspaceId } = useWorkspace();
@@ -14,7 +14,7 @@ export function AgentPanel() {
   const tasks = useQuery(api.tasks.list, { workspaceId }) ?? [];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           <Bot className="h-4 w-4 text-accent-orange" />
@@ -24,14 +24,26 @@ export function AgentPanel() {
           {agents.filter((a) => a.status === "active").length} active
         </span>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-3 px-3 pb-4">
           {agents.length === 0 ? (
-            <EmptyState icon={Bot} title="No agents configured" description="Add agents in the Agents page" />
+            <EmptyState
+              icon={Bot}
+              title="No agents configured"
+              description="Add agents in the Agents page"
+            />
           ) : (
             agents.map((agent) => {
-              const currentTask = agent.currentTaskId ? tasks.find((t) => t._id === agent.currentTaskId) : null;
-              return <AgentCard key={agent._id} agent={agent} currentTask={currentTask} />;
+              const currentTask = agent.currentTaskId
+                ? tasks.find((t) => t._id === agent.currentTaskId)
+                : null;
+              return (
+                <AgentCard
+                  key={agent._id}
+                  agent={agent}
+                  currentTask={currentTask}
+                />
+              );
             })
           )}
         </div>

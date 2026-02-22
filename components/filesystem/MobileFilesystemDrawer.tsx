@@ -8,22 +8,25 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import type { FilesystemNode } from "./types";
 import { FilesystemTree } from "./FilesystemTree";
 
 export function MobileFilesystemDrawer({
-  items,
-  currentPath,
+  rootPath,
+  treeByPath,
   selectedPath,
-  loading,
-  onOpenDirectory,
+  expandedDirs,
+  loadingDirs,
+  onRefreshRoot,
+  onToggleDirectory,
   onOpenFile,
 }: {
-  items: FilesystemNode[];
-  currentPath: string;
+  rootPath: string;
+  treeByPath: Record<string, import("./types").FilesystemNode[]>;
   selectedPath: string | null;
-  loading?: boolean;
-  onOpenDirectory: (path: string) => void;
+  expandedDirs: Set<string>;
+  loadingDirs: Set<string>;
+  onRefreshRoot: () => void;
+  onToggleDirectory: (path: string) => void;
   onOpenFile: (path: string) => void;
 }) {
   return (
@@ -33,17 +36,24 @@ export function MobileFilesystemDrawer({
           Browse Files
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[320px] p-0 bg-bg-secondary border-border-default">
+      <SheetContent
+        side="left"
+        className="w-[320px] p-0 bg-bg-secondary border-border-default"
+      >
         <SheetHeader className="px-4 py-3 border-b border-border-default">
-          <SheetTitle className="text-sm text-text-primary">Filesystem</SheetTitle>
+          <SheetTitle className="text-sm text-text-primary">
+            Filesystem
+          </SheetTitle>
         </SheetHeader>
         <div className="p-3">
           <FilesystemTree
-            items={items}
-            currentPath={currentPath}
+            rootPath={rootPath}
+            treeByPath={treeByPath}
             selectedPath={selectedPath}
-            loading={loading}
-            onOpenDirectory={onOpenDirectory}
+            expandedDirs={expandedDirs}
+            loadingDirs={loadingDirs}
+            onRefreshRoot={onRefreshRoot}
+            onToggleDirectory={onToggleDirectory}
             onOpenFile={onOpenFile}
           />
         </div>
@@ -51,4 +61,3 @@ export function MobileFilesystemDrawer({
     </Sheet>
   );
 }
-
