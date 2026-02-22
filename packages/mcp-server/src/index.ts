@@ -616,17 +616,22 @@ server.tool(
     status: z
       .enum(["inbox", "assigned", "in_progress", "review", "done", "blocked"])
       .describe("New status"),
+    blockedReason: z
+      .string()
+      .optional()
+      .describe("Optional blocker reason. Used when status is blocked."),
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
     sessionKey: z
       .string()
       .optional()
       .describe("Preferred: agent session key (for attribution)"),
   },
-  async ({ taskId, status, agentId, sessionKey }) => {
+  async ({ taskId, status, blockedReason, agentId, sessionKey }) => {
     const actingAgentId = await resolveAgentId({ agentId, sessionKey });
     await client.mutation(api.tasks.updateStatus, {
       id: taskId,
       status,
+      blockedReason,
       actingAgentId,
     });
     return {

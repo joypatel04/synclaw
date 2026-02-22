@@ -159,6 +159,7 @@ Stay responsive: pulse online, catch up on mentions/activities, pick up assigned
    - Pick the highest-leverage task.
    - If you start a task: \`sutraha_start_task_session(sessionKey="${sessionKey}", taskId="...")\`
    - Update statuses and post updates as you go.
+   - If blocked: call \`sutraha_update_task_status(taskId="...", status="blocked", blockedReason="...")\` with a concrete blocker note.
    - Put long outputs in Documents; keep comments short and link to docs.
 
 5) Acknowledge (idempotency)

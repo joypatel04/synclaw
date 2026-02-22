@@ -32,6 +32,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
+  const [blockedReasonDraft, setBlockedReasonDraft] = useState("");
+  const [savingBlockedReason, setSavingBlockedReason] = useState(false);
 
   useEffect(() => {
     if (!task) return;
@@ -39,13 +41,29 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
       setDescriptionDraft(task.description ?? "");
     }
   }, [task, task?.description, isEditingDescription]);
+  useEffect(() => {
+    if (!task) return;
+    const blockedReason = (task as unknown as { blockedReason?: string }).blockedReason ?? "";
+    setBlockedReasonDraft(blockedReason);
+  }, [task, task?._id, task?.status]);
 
   if (task === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
   if (task === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Task not found</p><Link href="/" className="mt-2 text-sm text-accent-orange hover:underline">Back to dashboard</Link></div>;
 
   const assignees = agents.filter((a) => task.assigneeIds.includes(a._id as Id<"agents">));
 
-  const handleStatusChange = async (status: string) => { await updateStatus({ workspaceId, id: taskId, status: status as any }); };
+  const handleStatusChange = async (status: string) => {
+    const nextStatus = status as "inbox" | "assigned" | "in_progress" | "review" | "done" | "blocked";
+    await updateStatus({
+      workspaceId,
+      id: taskId,
+      status: nextStatus,
+      blockedReason:
+        nextStatus === "blocked" && blockedReasonDraft.trim().length > 0
+          ? blockedReasonDraft.trim()
+          : undefined,
+    });
+  };
   const handlePriorityChange = async (priority: string) => { await updateTask({ workspaceId, id: taskId, priority: priority as any }); };
   const handleDelete = async () => { await deleteTask({ workspaceId, id: taskId }); router.push("/"); };
   const handleSaveDescription = async () => {
@@ -56,6 +74,32 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     } finally {
       setSavingDescription(false);
     }
+  };
+  const handleSaveBlockedReason = async () => {
+    if (task.status !== "blocked") return;
+    setSavingBlockedReason(true);
+    try {
+      await updateStatus({
+        workspaceId,
+        id: taskId,
+        status: "blocked",
+        blockedReason: blockedReasonDraft.trim() || undefined,
+      });
+    } finally {
+      setSavingBlockedReason(false);
+    }
+  };
+  const handleMarkBlocked = async () => {
+    await updateStatus({
+      workspaceId,
+      id: taskId,
+      status: "blocked",
+      blockedReason: blockedReasonDraft.trim() || undefined,
+    });
+  };
+  const handleUnblock = async () => {
+    const fallbackStatus = task.assigneeIds.length > 0 ? "assigned" : "inbox";
+    await updateStatus({ workspaceId, id: taskId, status: fallbackStatus });
   };
 
   const toggleAssignee = (agentId: Id<"agents">) => {
@@ -157,6 +201,65 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
             </div>
             <div><p className="text-xs text-text-muted mb-1.5">Created by</p><p className="text-sm text-text-primary">{task.createdBy}</p></div>
             <div><p className="text-xs text-text-muted mb-1.5">Created</p><Timestamp time={task.createdAt} showFull /></div>
+          </div>
+
+          <div className="mt-6 rounded-xl border border-status-blocked/30 bg-status-blocked/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-status-blocked">
+                Blocker Context
+              </p>
+              {canEdit ? (
+                <div className="flex flex-wrap gap-2">
+                  {task.status !== "blocked" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleMarkBlocked()}
+                      className="h-8 border-status-blocked/30 text-status-blocked hover:bg-status-blocked/10"
+                    >
+                      Mark Blocked with Note
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleUnblock()}
+                      className="h-8 border-border-default text-text-secondary"
+                    >
+                      Unblock
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <p className="mt-2 text-xs text-text-muted">
+              Add context about what is blocked so your agents can unblock faster.
+            </p>
+            <Textarea
+              value={blockedReasonDraft}
+              onChange={(e) => setBlockedReasonDraft(e.target.value)}
+              rows={3}
+              placeholder="Waiting on provider key approval, dependency migration, external review..."
+              className="mt-3 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+              disabled={!canEdit}
+            />
+            {canEdit ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => void handleSaveBlockedReason()}
+                  className="h-8 bg-status-blocked hover:bg-status-blocked/90 text-white"
+                  disabled={task.status !== "blocked" || savingBlockedReason}
+                >
+                  {savingBlockedReason ? "Saving..." : "Save Blocker Note"}
+                </Button>
+                {task.status !== "blocked" ? (
+                  <p className="text-[11px] text-text-dim">
+                    Note will be saved when this task is blocked.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6">

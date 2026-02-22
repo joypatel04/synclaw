@@ -10,12 +10,19 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { CreateTaskModal } from "@/components/task/CreateTaskModal";
 
-type TaskStatus = "inbox" | "assigned" | "in_progress" | "review" | "done";
+type TaskStatus =
+  | "inbox"
+  | "assigned"
+  | "in_progress"
+  | "blocked"
+  | "review"
+  | "done";
 
 const columns: { id: TaskStatus; title: string }[] = [
   { id: "inbox", title: "Inbox" },
   { id: "assigned", title: "Assigned" },
   { id: "in_progress", title: "In Progress" },
+  { id: "blocked", title: "Blocked" },
   { id: "review", title: "Review" },
   { id: "done", title: "Done" },
 ];
@@ -34,16 +41,17 @@ export function KanbanBoard() {
     },
     {} as Record<TaskStatus, typeof tasks>,
   );
-  const blockedTasks = tasks.filter((t) => t.status === "blocked");
 
   const handleDragEnd = (result: DropResult) => {
     if (!canEdit) return;
     const { destination, draggableId } = result;
     if (!destination) return;
+    const destinationStatus = columns.find((col) => col.id === destination.droppableId);
+    if (!destinationStatus) return;
     void updateStatus({
       workspaceId,
       id: draggableId as any,
-      status: destination.droppableId as TaskStatus,
+      status: destinationStatus.id,
     });
   };
 
@@ -70,27 +78,13 @@ export function KanbanBoard() {
               key={col.id}
               id={col.id}
               title={col.title}
+              isBlockedColumn={col.id === "blocked"}
               tasks={tasksByStatus[col.id] ?? []}
               agents={agents}
             />
           ))}
         </div>
       </DragDropContext>
-
-      {blockedTasks.length > 0 && (
-        <div className="mt-4 shrink-0 rounded-xl border border-status-blocked/30 bg-status-blocked/5 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-status-blocked mb-3">
-            Blocked ({blockedTasks.length})
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {blockedTasks.map((task) => (
-              <div key={task._id} className="rounded-lg bg-bg-secondary border border-border-default p-3">
-                <p className="text-sm text-text-primary">{task.title}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <CreateTaskModal open={showCreateModal} onOpenChange={setShowCreateModal} agents={agents} />
     </div>

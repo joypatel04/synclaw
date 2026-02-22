@@ -86,7 +86,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 | `sutraha_get_my_tasks` | `sessionKey?`, `agentId?`, `limit?`, `status?`, `statuses?`, `includeDone?`, `since?` | Get tasks assigned to an agent (filtered) |
 | `sutraha_create_task` | `title`, `description?`, `status?`, `priority?`, `assigneeIds?`, `sessionKey?`, `agentId?` | Create a task (attributed to the caller). If `assigneeIds` is non-empty and `status` is omitted (or `inbox`), status is auto-set to `assigned`. |
 | `sutraha_update_task` | `taskId`, `title?`, `description?`, `priority?`, `assigneeIds?`, `sessionKey?`, `agentId?` | Update task fields (attributed to the caller) |
-| `sutraha_update_task_status` | `taskId`, `status`, `sessionKey?`, `agentId?` | Change task status (attributed to the caller) |
+| `sutraha_update_task_status` | `taskId`, `status`, `blockedReason?`, `sessionKey?`, `agentId?` | Change task status (attributed to the caller). Provide `blockedReason` when moving to `blocked`. |
 
 ### Communication Tools
 
@@ -196,4 +196,5 @@ export SUTRAHA_WORKSPACE_ID=your_workspace_id
 npx @sutraha/mcp-server cli agents list
 npx @sutraha/mcp-server cli tasks create --title "Fix bug" --priority high
 npx @sutraha/mcp-server cli tasks update-status --id <taskId> --status done
+npx @sutraha/mcp-server cli tasks update-status --id <taskId> --status blocked --blocked-reason "Waiting on env keys"
 ```

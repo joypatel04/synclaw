@@ -356,6 +356,8 @@ export default defineSchema({
     updatedAt: v.number(),
     createdBy: v.string(),
     dueAt: v.union(v.number(), v.null()),
+    blockedReason: v.optional(v.string()),
+    blockedAt: v.optional(v.number()),
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byStatus", ["status"])

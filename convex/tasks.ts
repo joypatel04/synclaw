@@ -121,6 +121,7 @@ export const updateStatus = mutation({
     workspaceId: v.id("workspaces"),
     id: v.id("tasks"),
     status: taskStatus,
+    blockedReason: v.optional(v.string()),
     actingAgentId: v.optional(v.id("agents")),
   },
   handler: async (ctx, args) => {
@@ -134,7 +135,24 @@ export const updateStatus = mutation({
     if (!existing || existing.workspaceId !== args.workspaceId)
       throw new Error("Task not found");
 
-    await ctx.db.patch(args.id, { status: args.status, updatedAt: Date.now() });
+    const now = Date.now();
+    const patch: Record<string, unknown> = {
+      status: args.status,
+      updatedAt: now,
+    };
+    const trimmedReason = args.blockedReason?.trim();
+
+    if (args.status === "blocked") {
+      patch.blockedAt = now;
+      if (trimmedReason && trimmedReason.length > 0) {
+        patch.blockedReason = trimmedReason;
+      }
+    } else if (existing.status === "blocked") {
+      patch.blockedAt = undefined;
+      patch.blockedReason = undefined;
+    }
+
+    await ctx.db.patch(args.id, patch);
 
     await ctx.db.insert("activities", {
       workspaceId: args.workspaceId,
@@ -142,8 +160,12 @@ export const updateStatus = mutation({
       agentId,
       taskId: args.id,
       message: `${displayName} moved "${existing.title}" to ${args.status.replace("_", " ")}`,
-      metadata: { from: existing.status, to: args.status },
-      createdAt: Date.now(),
+      metadata: {
+        from: existing.status,
+        to: args.status,
+        blockedReason: args.status === "blocked" ? (trimmedReason ?? null) : null,
+      },
+      createdAt: now,
     });
   },
 });

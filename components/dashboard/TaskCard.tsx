@@ -19,6 +19,10 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
   const assignees = agents.filter((a) =>
     task.assigneeIds.includes(a._id as Id<"agents">),
   );
+  const blockedReason =
+    task.status === "blocked"
+      ? (task as unknown as { blockedReason?: string }).blockedReason
+      : undefined;
 
   return (
     <Link href={`/tasks/${task._id}`}>
@@ -41,6 +45,11 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
             <MarkdownContent content={task.description} />
           </div>
         )}
+        {blockedReason ? (
+          <p className="mt-2 line-clamp-1 rounded-md border border-status-blocked/30 bg-status-blocked/10 px-2 py-1 text-[11px] text-status-blocked">
+            Blocker: {blockedReason}
+          </p>
+        ) : null}
 
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">

@@ -80,7 +80,8 @@ If blocked:
 mcporter call sutraha-hq.sutraha_update_task_status \
   sessionKey="<YOUR_SESSION_KEY>" \
   taskId="<TASK_ID>" \
-  status="blocked"
+  status="blocked" \
+  blockedReason="Short blocker note with owner/dependency and next expected action"
 ```
 
 If complete:
@@ -134,4 +135,3 @@ Return `HEARTBEAT_OK`.
 - Shuri: `agent:shuri:main`
 - Ancient One: `agent:ancient-one:main`
 - Vision: `agent:vision:main`
-

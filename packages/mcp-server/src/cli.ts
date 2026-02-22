@@ -13,7 +13,7 @@ import { api } from "./api.js";
  *   sutraha-cli agents list
  *   sutraha-cli tasks list
  *   sutraha-cli tasks create --title "Fix bug" --priority high
- *   sutraha-cli tasks update-status --id <id> --status done
+ *   sutraha-cli tasks update-status --id <id> --status blocked --blocked-reason "Waiting on API key"
  *   sutraha-cli chat send --session-id chat:key --message "Hello"
  */
 import { createClientFromEnv } from "./convex-client.js";
@@ -29,7 +29,7 @@ Usage: sutraha-cli <resource> <action> [options]
 
 Resources:
   agents     list | get --id <id> | create --name <n> --role <r> [--emoji <e>] [--session-key <sk>] [--external-agent-id <id>] | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
-  tasks      list | get --id <id> | create --title <t> | update-status --id <id> --status <s>
+  tasks      list | get --id <id> | create --title <t> | update-status --id <id> --status <s> [--blocked-reason <text>]
   messages   list --task-id <id> | send --task-id <id> --agent-id <id> --content <msg>
   chat       send --session-id <sid> --message <msg>
   broadcasts list
@@ -143,6 +143,7 @@ async function main() {
             await client.mutation(api.tasks.updateStatus, {
               id: requireArg(rest, "--id", "taskId"),
               status: requireArg(rest, "--status", "status"),
+              blockedReason: getArg(rest, "--blocked-reason"),
             });
             result = { ok: true };
             break;

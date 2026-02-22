@@ -10,6 +10,7 @@ interface KanbanColumnProps {
   title: string;
   tasks: Doc<"tasks">[];
   agents: Doc<"agents">[];
+  isBlockedColumn?: boolean;
 }
 
 export function KanbanColumn({
@@ -17,14 +18,30 @@ export function KanbanColumn({
   title,
   tasks,
   agents,
+  isBlockedColumn = false,
 }: KanbanColumnProps) {
   return (
-    <div className="flex flex-1 min-w-[200px] flex-col rounded-xl bg-bg-primary/50 border border-border-default">
+    <div
+      className={cn(
+        "flex flex-1 min-w-[200px] flex-col rounded-xl bg-bg-primary/50 border border-border-default",
+        isBlockedColumn && "border-status-blocked/30 bg-status-blocked/5",
+      )}
+    >
       <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+        <h3
+          className={cn(
+            "text-[11px] font-semibold uppercase tracking-wider text-text-secondary",
+            isBlockedColumn && "text-status-blocked",
+          )}
+        >
           {title}
         </h3>
-        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-bg-tertiary px-1.5 text-[10px] font-mono font-medium text-text-muted">
+        <span
+          className={cn(
+            "flex h-5 min-w-[20px] items-center justify-center rounded-full bg-bg-tertiary px-1.5 text-[10px] font-mono font-medium text-text-muted",
+            isBlockedColumn && "bg-status-blocked/15 text-status-blocked",
+          )}
+        >
           {tasks.length}
         </span>
       </div>
