@@ -1,6 +1,7 @@
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 const DEFAULT_MAX_FILE_BYTES = 1024 * 1024;
 const ALLOWED_EXTENSIONS = [
@@ -69,7 +70,16 @@ async function fetchBridge(args: {
   }
 }
 
-async function getBridgeConfig(ctx: any, workspaceId: string) {
+type BridgeConfig = {
+  baseUrl: string;
+  rootPath: string;
+  token: string;
+};
+
+async function getBridgeConfig(
+  ctx: any,
+  workspaceId: Id<"workspaces">,
+): Promise<BridgeConfig> {
   const workspace = await ctx.runQuery(api.workspaces.getById, { workspaceId });
   if (!workspace) throw new Error("Workspace not found or access denied");
   const cfg = await ctx.runQuery((internal as any).openclaw_files_internal.getBridgeConfig, {
@@ -80,7 +90,7 @@ async function getBridgeConfig(ctx: any, workspaceId: string) {
   }
   if (!cfg.baseUrl) throw new Error("filesBridgeBaseUrl is not configured");
   if (!cfg.token) throw new Error("files bridge token is not configured");
-  return cfg as { baseUrl: string; rootPath: string; token: string };
+  return cfg as BridgeConfig;
 }
 
 export const testBridge = action({
