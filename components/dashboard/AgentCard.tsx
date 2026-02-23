@@ -67,7 +67,7 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
 
       {showTelemetry && (
         <p className="mt-3 text-[11px] text-text-muted truncate">
-          {model && model !== "unknown" ? model : "unknown model"} • OC{" "}
+          {model && model !== "unknown" ? model : "unknown model"}
           {/* {openclawVersion && openclawVersion !== "unknown"
             ? openclawVersion
             : "unknown"} */}

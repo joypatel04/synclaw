@@ -313,6 +313,26 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           m.role === "assistant" && m.externalRunId === candidate.externalRunId,
       );
       if (byRun !== -1) return byRun;
+
+      // If we just learned runId on completion, merge into a recent streaming
+      // assistant message that does not yet have runId.
+      let byRecentStreaming = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role !== "assistant") continue;
+        if (m.externalRunId) continue;
+        if (m.state !== "streaming") continue;
+        const mt = m.createdAt ?? 0;
+        if (Math.abs(mt - ts) > windowMs) continue;
+
+        const existing = normalizeForDedupe(m.content);
+        if (!existing) continue;
+        if (needle.includes(existing) || existing.includes(needle)) {
+          byRecentStreaming = i;
+          break;
+        }
+      }
+      if (byRecentStreaming !== -1) return byRecentStreaming;
     }
 
     // Scan from the end (most likely duplicates are recent).
@@ -363,6 +383,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         if (byRunId !== -1) idx = byRunId;
       }
       const now = Date.now();
+      const tailCreatedAt = prev.length > 0 ? prev[prev.length - 1].createdAt : 0;
 
       if (idx === undefined) {
         // If the same message arrived with a different id (common with WS vs history),
@@ -402,9 +423,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
 
           const next = prev.slice();
           next[dupIdx] = merged;
-          const collapsed = collapseNearDuplicates(
-            next.slice().sort((a, b) => a.createdAt - b.createdAt),
-          );
+          const collapsed = collapseNearDuplicates(next);
           rebuildIndex(collapsed);
           return collapsed;
         }
@@ -414,15 +433,13 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           fromUser: partial.fromUser,
           role: partial.role,
           content: partial.content ?? "",
-          createdAt: partial.createdAt ?? now,
+          createdAt: Math.max(partial.createdAt ?? now, tailCreatedAt),
           state: partial.state,
           errorMessage: partial.errorMessage,
           externalMessageId: canonicalExternalId ?? partial.externalMessageId,
           externalRunId: partial.externalRunId,
         };
-        const next = collapseNearDuplicates(
-          [...prev, nextMsg].sort((a, b) => a.createdAt - b.createdAt),
-        );
+        const next = collapseNearDuplicates([...prev, nextMsg]);
         rebuildIndex(next);
         return next;
       }
@@ -446,9 +463,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       };
       const next = prev.slice();
       next[idx] = updated;
-      const collapsed = collapseNearDuplicates(
-        next.slice().sort((a, b) => a.createdAt - b.createdAt),
-      );
+      const collapsed = collapseNearDuplicates(next);
       rebuildIndex(collapsed);
       return collapsed;
     });
