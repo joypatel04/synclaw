@@ -34,10 +34,7 @@ import {
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
-import {
-  BILLING_ENABLED,
-  WEBHOOKS_ENABLED,
-} from "@/lib/features";
+import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -167,6 +164,10 @@ function OpenClawSettingsContent() {
     if (typeof window === "undefined") return "";
     return window.location.origin;
   }, []);
+  const isHttpsPage =
+    typeof window !== "undefined" && window.location.protocol === "https:";
+  const isInsecureWsUrl = wsUrl.trim().toLowerCase().startsWith("ws://");
+  const showMixedContentWarning = isHttpsPage && isInsecureWsUrl;
 
   const localAuthState = useMemo(() => {
     if (typeof window === "undefined") {
@@ -455,6 +456,13 @@ function OpenClawSettingsContent() {
                 Make sure this origin is allowed in OpenClaw:
                 <span className="ml-1 font-mono text-text-muted">{origin}</span>
               </p>
+              {showMixedContentWarning ? (
+                <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
+                  This app is running on HTTPS. Browsers often block{" "}
+                  <code className="font-mono">ws://</code> as mixed content.
+                  Prefer <code className="font-mono">wss://</code>. Or setup self-hosted Synclaw.
+                </div>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -970,9 +978,12 @@ openclaw devices approve <requestId>`}
         ) : null}
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">Workspace Files</h2>
+          <h2 className="text-sm font-semibold text-text-primary">
+            Workspace Files
+          </h2>
           <p className="mt-1 text-xs text-text-muted">
-            Bridge setup and remote file editor moved to the dedicated Filesystem page.
+            Bridge setup and remote file editor moved to the dedicated
+            Filesystem page.
           </p>
           <div className="mt-3">
             <Button asChild variant="outline" size="sm" className="h-8">

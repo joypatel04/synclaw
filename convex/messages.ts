@@ -157,6 +157,23 @@ export const create = mutation({
   },
 });
 
+/** Delete a comment (admin+). Does not create activity noise. */
+export const remove = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    id: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.workspaceId, "admin");
+    const message = await ctx.db.get(args.id);
+    if (!message || message.workspaceId !== args.workspaceId) {
+      throw new Error("Message not found");
+    }
+    await ctx.db.delete(args.id);
+    return { ok: true };
+  },
+});
+
 /** List messages for a task (viewer+). */
 export const list = query({
   args: { workspaceId: v.id("workspaces"), taskId: v.id("tasks") },

@@ -325,14 +325,5 @@ export const remove = mutation({
       throw new Error("Task not found");
 
     await ctx.db.delete(args.id);
-    await ctx.db.insert("activities", {
-      workspaceId: args.workspaceId,
-      type: "task_updated",
-      agentId: null,
-      taskId: args.id,
-      message: `Task "${existing.title}" was deleted`,
-      metadata: { action: "deleted" },
-      createdAt: Date.now(),
-    });
   },
 });
