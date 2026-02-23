@@ -70,3 +70,4 @@ OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 - Self-hosted troubleshooting: `docs/product/SELF_HOSTED_TROUBLESHOOTING.md`
 - Pricing model: `docs/product/PRICING.md`
 - FAQ: `docs/product/FAQ.md`
+# Vercel build trigger - Mon Feb 23 05:12:08 PM UTC 2026
