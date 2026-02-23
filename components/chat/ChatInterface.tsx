@@ -63,6 +63,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   );
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
+  const localSeqRef = useRef(1);
+  const pendingAssistantKeyRef = useRef<string | null>(null);
 
   // Direct WS is now mandatory for chat.
   const useDirectWs = true;
@@ -127,6 +129,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       void gatewayRef.current?.disconnect();
       gatewayRef.current = null;
       connectRef.current = null;
+      pendingAssistantKeyRef.current = null;
     },
     [agent.sessionKey],
   );
@@ -136,6 +139,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     void gatewayRef.current?.disconnect();
     gatewayRef.current = null;
     connectRef.current = null;
+    pendingAssistantKeyRef.current = null;
     setGatewayDefaultModel(null);
     setGatewayModelProvider(null);
     setGatewayChannels([]);
@@ -151,6 +155,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
 
   const makeClientMessageId = () =>
     `msg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const makePendingAssistantKey = () =>
+    `assistant_pending_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   type QueueItem = { clientMessageId: string; content: string };
   const sendQueueRef = useRef<QueueItem[]>([]);
@@ -384,20 +390,47 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   };
 
   const upsertLocal = (
-    partial: Omit<UiChatMessage, "id"> & { id?: string },
+    partial: Omit<UiChatMessage, "id"> & { id?: string; append?: boolean },
   ) => {
     setLocalMessages((prev) => {
+      const isAssistant = partial.role === "assistant";
+      const isInFlightAssistant =
+        isAssistant &&
+        !partial.externalRunId &&
+        (partial.state === "streaming" || partial.state === "sending");
+
       // Canonicalize assistant IDs by runId when possible to avoid duplicates coming
       // from different gateway id formats (WS vs history vs ack frames).
-      const canonicalExternalId =
-        partial.role === "assistant" && partial.externalRunId
+      let canonicalExternalId =
+        isAssistant && partial.externalRunId
           ? `${partial.externalRunId}:assistant`
           : partial.externalMessageId;
+
+      // Streaming assistant chunks often arrive before a stable runId/messageId and may
+      // carry event-scoped ids. Force them into one pending slot to prevent duplicate
+      // bubbles while the assistant is typing.
+      if (isInFlightAssistant) {
+        canonicalExternalId =
+          pendingAssistantKeyRef.current ?? makePendingAssistantKey();
+        pendingAssistantKeyRef.current = canonicalExternalId;
+      }
 
       const key = canonicalExternalId ?? partial.id;
       if (!key) return prev;
 
       let idx = localIndexRef.current.get(key);
+      // Final run-id message should adopt the current pending assistant slot.
+      if (
+        idx === undefined &&
+        isAssistant &&
+        partial.externalRunId &&
+        pendingAssistantKeyRef.current
+      ) {
+        const pendingIdx = localIndexRef.current.get(
+          pendingAssistantKeyRef.current,
+        );
+        if (pendingIdx !== undefined) idx = pendingIdx;
+      }
       // Extra safety: if the key doesn't match but the runId does, merge anyway.
       if (
         idx === undefined &&
@@ -411,7 +444,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         if (byRunId !== -1) idx = byRunId;
       }
       const now = Date.now();
-      const tailCreatedAt = prev.length > 0 ? prev[prev.length - 1].createdAt : 0;
+      const tailCreatedAt =
+        prev.length > 0 ? prev[prev.length - 1].createdAt : 0;
 
       if (idx === undefined) {
         // If the same message arrived with a different id (common with WS vs history),
@@ -461,7 +495,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           fromUser: partial.fromUser,
           role: partial.role,
           content: partial.content ?? "",
-          createdAt: Math.max(partial.createdAt ?? now, tailCreatedAt),
+          createdAt: Math.max(partial.createdAt ?? now, tailCreatedAt + 1),
+          localSeq: localSeqRef.current++,
           state: partial.state,
           errorMessage: partial.errorMessage,
           externalMessageId: canonicalExternalId ?? partial.externalMessageId,
@@ -473,8 +508,9 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       }
 
       const existing = prev[idx];
-      const nextContent =
-        partial.state === "streaming" && partial.content && existing.content
+      const nextContent = partial.append
+        ? `${existing.content}${partial.content ?? ""}`
+        : partial.state === "streaming" && partial.content && existing.content
           ? partial.content
           : (partial.content ?? existing.content);
 
@@ -484,6 +520,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         id: existing.id,
         content: preferRicherContent(existing.content, nextContent),
         createdAt: existing.createdAt,
+        localSeq: existing.localSeq,
         externalMessageId:
           canonicalExternalId ??
           partial.externalMessageId ??
@@ -493,6 +530,16 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       next[idx] = updated;
       const collapsed = collapseNearDuplicates(next);
       rebuildIndex(collapsed);
+
+      // Once assistant finalizes (or fails/aborts), close the pending slot.
+      if (
+        isAssistant &&
+        (partial.state === "completed" ||
+          partial.state === "failed" ||
+          partial.state === "aborted")
+      ) {
+        pendingAssistantKeyRef.current = null;
+      }
       return collapsed;
     });
   };
@@ -628,6 +675,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
             fromUser: msg.fromUser,
             role: msg.role,
             content: msg.content ?? "",
+            append: msg.append,
             state: msg.state,
             createdAt: mapped.eventAt ?? Date.now(),
             errorMessage: msg.errorMessage,

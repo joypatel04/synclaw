@@ -15,7 +15,14 @@ export type UiChatMessage = {
   role: "user" | "assistant" | "system" | "tool";
   content: string;
   createdAt: number;
-  state?: "queued" | "sending" | "streaming" | "completed" | "failed" | "aborted";
+  localSeq?: number;
+  state?:
+    | "queued"
+    | "sending"
+    | "streaming"
+    | "completed"
+    | "failed"
+    | "aborted";
   errorMessage?: string;
   externalMessageId?: string;
   externalRunId?: string;
@@ -93,7 +100,9 @@ export function ChatMessage({
     const ok = state !== "failed";
     const toolCallId = message.externalMessageId ?? message.id;
     const outputText =
-      typeof message.errorMessage === "string" ? message.errorMessage : undefined;
+      typeof message.errorMessage === "string"
+        ? message.errorMessage
+        : undefined;
     return (
       <div className={cn("flex gap-3", "flex-row")}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
@@ -148,7 +157,10 @@ export function ChatMessage({
               )}
             </div>
           </ToolOutputSheet>
-          <Timestamp time={message.createdAt} className="mt-1 block text-right" />
+          <Timestamp
+            time={message.createdAt}
+            className="mt-1 block text-right"
+          />
         </div>
       </div>
     );
@@ -158,7 +170,9 @@ export function ChatMessage({
     <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
       {isUser ? (
         <Avatar size="default" className="shrink-0">
-          {userImage ? <AvatarImage src={userImage} alt={userName ?? "You"} /> : null}
+          {userImage ? (
+            <AvatarImage src={userImage} alt={userName ?? "You"} />
+          ) : null}
           <AvatarFallback className="bg-accent-orange/15 text-text-primary border border-accent-orange/25">
             {(userName?.trim()?.[0] ?? "U").toUpperCase()}
           </AvatarFallback>
