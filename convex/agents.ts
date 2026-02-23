@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { maxAgentsForWorkspace } from "./lib/billing";
 import {
   requireMember,
@@ -14,6 +15,26 @@ const defaultTelemetry = {
   lastRunDurationMs: 0,
   lastRunCost: 0,
 };
+
+const MAIN_AGENT_SESSION_KEY = "agent:main:main";
+
+function toWorkspaceSlug(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function deriveDefaultWorkspaceFolderPath(input: {
+  name: string;
+  sessionKey: string;
+}): string {
+  if (input.sessionKey === MAIN_AGENT_SESSION_KEY) return "workspace";
+  const slug = toWorkspaceSlug(input.name) || "agent";
+  return `workspace-${slug}`;
+}
 
 /** List agents in a workspace (viewer+). */
 export const list = query({
@@ -41,6 +62,28 @@ export const getById = query({
     const agent = await ctx.db.get(args.id);
     if (!agent || agent.workspaceId !== args.workspaceId) return null;
     return agent;
+  },
+});
+
+/** Get agent detail, including effective workspace folder mapping (viewer+). */
+export const getAgentDetail = query({
+  args: { workspaceId: v.id("workspaces"), id: v.id("agents") },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const agent = await ctx.db.get(args.id);
+    if (!agent || agent.workspaceId !== args.workspaceId) return null;
+    const defaultWorkspaceFolderPath = deriveDefaultWorkspaceFolderPath({
+      name: agent.name,
+      sessionKey: agent.sessionKey,
+    });
+    const effectiveWorkspaceFolderPath =
+      (agent.workspaceFolderPath ?? "").trim() || defaultWorkspaceFolderPath;
+    return {
+      agent,
+      defaultWorkspaceFolderPath,
+      effectiveWorkspaceFolderPath,
+      renameChoiceNeeded: false,
+    };
   },
 });
 
@@ -384,6 +427,10 @@ export const create = mutation({
       role: args.role,
       emoji: args.emoji,
       sessionKey: args.sessionKey,
+      workspaceFolderPath: deriveDefaultWorkspaceFolderPath({
+        name: args.name,
+        sessionKey: args.sessionKey,
+      }),
       externalAgentId: args.externalAgentId,
       isArchived: false,
       status: "idle",
@@ -502,6 +549,10 @@ export const createManual = mutation({
       role: args.role,
       emoji: args.emoji,
       sessionKey: args.sessionKey,
+      workspaceFolderPath: deriveDefaultWorkspaceFolderPath({
+        name: args.name,
+        sessionKey: args.sessionKey,
+      }),
       externalAgentId: args.externalAgentId,
       isArchived: false,
       status: "idle",
@@ -543,6 +594,9 @@ export const update = mutation({
     emoji: v.optional(v.string()),
     sessionKey: v.optional(v.string()),
     externalAgentId: v.optional(v.string()),
+    workspaceFolderPathChoice: v.optional(
+      v.union(v.literal("keep_existing"), v.literal("use_new_default")),
+    ),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.workspaceId, "owner");
@@ -558,6 +612,35 @@ export const update = mutation({
     if (args.externalAgentId !== undefined)
       updates.externalAgentId = args.externalAgentId;
 
+    const nextName = args.name ?? agent.name;
+    const nextSessionKey = args.sessionKey ?? agent.sessionKey;
+    const previousDefaultPath = deriveDefaultWorkspaceFolderPath({
+      name: agent.name,
+      sessionKey: agent.sessionKey,
+    });
+    const nextDefaultPath = deriveDefaultWorkspaceFolderPath({
+      name: nextName,
+      sessionKey: nextSessionKey,
+    });
+    const currentEffectivePath =
+      (agent.workspaceFolderPath ?? "").trim() || previousDefaultPath;
+    const mappingWouldChange = nextDefaultPath !== previousDefaultPath;
+
+    if (mappingWouldChange && !args.workspaceFolderPathChoice) {
+      const errorPayload = {
+        code: "WORKSPACE_FOLDER_RENAME_CHOICE_REQUIRED",
+        currentWorkspaceFolderPath: currentEffectivePath,
+        newDefaultWorkspaceFolderPath: nextDefaultPath,
+      };
+      throw new Error(JSON.stringify(errorPayload));
+    }
+
+    if (args.workspaceFolderPathChoice === "keep_existing") {
+      updates.workspaceFolderPath = currentEffectivePath;
+    } else if (args.workspaceFolderPathChoice === "use_new_default") {
+      updates.workspaceFolderPath = nextDefaultPath;
+    }
+
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(args.id, updates);
     }
@@ -571,6 +654,31 @@ export const update = mutation({
       metadata: { action: "updated", changes: Object.keys(updates) },
       createdAt: Date.now(),
     });
+  },
+});
+
+/** Set a custom workspace folder path for an agent (owner only). */
+export const setWorkspaceFolderPath = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    id: v.id("agents"),
+    workspaceFolderPath: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.workspaceId, "owner");
+    const agent = await ctx.db.get(args.id);
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      throw new Error("Agent not found");
+    }
+    const normalized = args.workspaceFolderPath.trim().replace(/\\/g, "/");
+    if (
+      !normalized ||
+      normalized.includes("..") ||
+      normalized.startsWith("/")
+    ) {
+      throw new Error("Invalid workspace folder path");
+    }
+    await ctx.db.patch(args.id, { workspaceFolderPath: normalized });
   },
 });
 
@@ -688,6 +796,75 @@ export const getTaskCost = query({
       runCount: runs.length,
       byAgent,
       currency: "USD",
+    };
+  },
+});
+
+/** Get run telemetry summary and recent runs for an agent (viewer+). */
+export const getRunOverviewByAgent = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      throw new Error("Agent not found");
+    }
+
+    const limit = Math.max(1, Math.min(args.limit ?? 20, 100));
+    const runs = await ctx.db
+      .query("agentRuns")
+      .withIndex("byAgent", (q) => q.eq("agentId", args.agentId))
+      .order("desc")
+      .take(limit);
+
+    const now = Date.now();
+    const window24h = now - 24 * 60 * 60 * 1000;
+    const window7d = now - 7 * 24 * 60 * 60 * 1000;
+
+    const runs24h = runs.filter((r) => r.createdAt >= window24h);
+    const runs7d = runs.filter((r) => r.createdAt >= window7d);
+
+    const allTaskIds = [
+      ...new Set(
+        runs
+          .map((r) => r.taskId)
+          .filter((id): id is Id<"tasks"> => id !== null),
+      ),
+    ];
+    const taskTitleById = new Map<string, string>();
+    for (const taskId of allTaskIds) {
+      const task = await ctx.db.get(taskId);
+      if (task && task.workspaceId === args.workspaceId) {
+        taskTitleById.set(task._id, task.title);
+      }
+    }
+
+    const sum = (items: typeof runs) =>
+      items.reduce(
+        (acc, run) => {
+          acc.cost += run.cost;
+          acc.tokensUsed += run.tokensUsed;
+          acc.durationMs += run.durationMs;
+          acc.runCount += 1;
+          return acc;
+        },
+        { cost: 0, tokensUsed: 0, durationMs: 0, runCount: 0 },
+      );
+
+    return {
+      recentRuns: runs.map((run) => ({
+        ...run,
+        taskTitle:
+          run.taskId && taskTitleById.get(String(run.taskId))
+            ? taskTitleById.get(String(run.taskId))
+            : null,
+      })),
+      totals24h: sum(runs24h),
+      totals7d: sum(runs7d),
     };
   },
 });

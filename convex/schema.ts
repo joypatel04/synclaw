@@ -215,6 +215,7 @@ export default defineSchema({
     role: v.string(),
     emoji: v.string(),
     sessionKey: v.string(),
+    workspaceFolderPath: v.optional(v.string()),
     externalAgentId: v.optional(v.string()),
     isArchived: v.optional(v.boolean()),
     status: v.union(

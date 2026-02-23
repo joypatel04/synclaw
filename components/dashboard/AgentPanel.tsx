@@ -42,6 +42,7 @@ export function AgentPanel() {
                   key={agent._id}
                   agent={agent}
                   currentTask={currentTask}
+                  href={`/agents/${agent._id}`}
                 />
               );
             })

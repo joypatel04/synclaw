@@ -333,6 +333,20 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         }
       }
       if (byRecentStreaming !== -1) return byRecentStreaming;
+
+      // Strong fallback for streaming -> final handoff:
+      // if a final assistant message with runId arrives and we don't have a run-id
+      // match yet, bind it to the latest in-flight assistant bubble (no runId).
+      // This prevents "final reply appears as a new bubble" regressions.
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role !== "assistant") continue;
+        if (m.externalRunId) continue;
+        if (m.state !== "streaming" && m.state !== "sending") continue;
+        const mt = m.createdAt ?? 0;
+        if (Math.abs(mt - ts) > windowMs) continue;
+        return i;
+      }
     }
 
     // Scan from the end (most likely duplicates are recent).
@@ -350,6 +364,20 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       if (Math.abs(mt - ts) > windowMs) continue;
       if (normalizeForDedupe(m.content) !== needle) continue;
       return i;
+    }
+
+    // Final safety: when a completed assistant payload arrives without a stable
+    // id match, merge into the latest streaming assistant bubble to avoid duplicate
+    // assistant entries.
+    if (candidate.role === "assistant") {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role !== "assistant") continue;
+        if (m.state !== "streaming" && m.state !== "sending") continue;
+        const mt = m.createdAt ?? 0;
+        if (Math.abs(mt - ts) > windowMs) continue;
+        return i;
+      }
     }
 
     return undefined;

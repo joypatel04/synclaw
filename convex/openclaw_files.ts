@@ -33,6 +33,38 @@ function normalizeRelativePath(input?: string): string {
   return normalized || ".";
 }
 
+function resolveScopedPath(args: { basePath?: string; path?: string }): {
+  scopedBase: string | null;
+  requestedPath: string;
+  bridgePath: string;
+} {
+  const requestedPath = normalizeRelativePath(args.path);
+  const baseRaw = (args.basePath ?? "").trim();
+  if (!baseRaw) {
+    return { scopedBase: null, requestedPath, bridgePath: requestedPath };
+  }
+  const scopedBase = normalizeRelativePath(baseRaw);
+  const bridgePath =
+    requestedPath === "."
+      ? scopedBase
+      : normalizeRelativePath(`${scopedBase}/${requestedPath}`);
+  return { scopedBase, requestedPath, bridgePath };
+}
+
+function toScopedPath(
+  bridgePath: string,
+  scopedBase: string | null,
+  fallbackPath: string,
+): string {
+  const normalized = normalizeRelativePath(bridgePath || fallbackPath);
+  if (!scopedBase) return normalized;
+  if (normalized === scopedBase) return ".";
+  if (normalized.startsWith(`${scopedBase}/`)) {
+    return normalized.slice(scopedBase.length + 1) || ".";
+  }
+  return normalizeRelativePath(fallbackPath);
+}
+
 function assertReadableExtension(path: string) {
   const lower = path.toLowerCase();
   const ok = READABLE_EXTENSIONS.some((ext) => lower.endsWith(ext));
@@ -144,26 +176,38 @@ export const testBridge = action({
 export const listTree = action({
   args: {
     workspaceId: v.id("workspaces"),
+    basePath: v.optional(v.string()),
     path: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
-    const path = normalizeRelativePath(args.path);
+    const { scopedBase, requestedPath, bridgePath } = resolveScopedPath({
+      basePath: args.basePath,
+      path: args.path,
+    });
     const result = await fetchBridge({
-      url: `${cfg.baseUrl}/v1/tree?path=${encodeURIComponent(path)}`,
+      url: `${cfg.baseUrl}/v1/tree?path=${encodeURIComponent(bridgePath)}`,
       token: cfg.token,
     });
     const items = Array.isArray((result as any)?.items)
       ? (result as any).items.map((item: any) => ({
           name: String(item?.name ?? ""),
-          path: String(item?.path ?? ""),
+          path: toScopedPath(
+            String(item?.path ?? ""),
+            scopedBase,
+            String(item?.path ?? ""),
+          ),
           type: item?.type === "directory" ? "directory" : "file",
           size: typeof item?.size === "number" ? item.size : null,
           mtimeMs: typeof item?.mtimeMs === "number" ? item.mtimeMs : null,
         }))
       : [];
     return {
-      path: String((result as any)?.path ?? path),
+      path: toScopedPath(
+        String((result as any)?.path ?? bridgePath),
+        scopedBase,
+        requestedPath,
+      ),
       items,
     };
   },
@@ -172,14 +216,18 @@ export const listTree = action({
 export const readFile = action({
   args: {
     workspaceId: v.id("workspaces"),
+    basePath: v.optional(v.string()),
     path: v.string(),
   },
   handler: async (ctx, args) => {
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
-    const path = normalizeRelativePath(args.path);
-    assertReadableExtension(path);
+    const { scopedBase, requestedPath, bridgePath } = resolveScopedPath({
+      basePath: args.basePath,
+      path: args.path,
+    });
+    assertReadableExtension(requestedPath);
     const result = await fetchBridge({
-      url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(path)}`,
+      url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(bridgePath)}`,
       token: cfg.token,
     });
     const mime =
@@ -195,7 +243,11 @@ export const readFile = action({
         ? String((result as any)?.contentBase64 ?? "")
         : String((result as any)?.content ?? "");
     return {
-      path: String((result as any)?.path ?? path),
+      path: toScopedPath(
+        String((result as any)?.path ?? bridgePath),
+        scopedBase,
+        requestedPath,
+      ),
       content,
       mime,
       encoding,
@@ -216,6 +268,7 @@ export const readFile = action({
 export const writeFile = action({
   args: {
     workspaceId: v.id("workspaces"),
+    basePath: v.optional(v.string()),
     path: v.string(),
     content: v.string(),
     expectedHash: v.optional(v.string()),
@@ -225,8 +278,11 @@ export const writeFile = action({
     if (cfg.role !== "owner" && cfg.role !== "admin") {
       throw new Error("Only owner/admin can edit workspace files");
     }
-    const path = normalizeRelativePath(args.path);
-    assertWritableTextExtension(path);
+    const { scopedBase, requestedPath, bridgePath } = resolveScopedPath({
+      basePath: args.basePath,
+      path: args.path,
+    });
+    assertWritableTextExtension(requestedPath);
     const size = new TextEncoder().encode(args.content).byteLength;
     if (size > DEFAULT_MAX_FILE_BYTES) {
       throw new Error(`File too large. Max ${DEFAULT_MAX_FILE_BYTES} bytes`);
@@ -236,14 +292,18 @@ export const writeFile = action({
       token: cfg.token,
       method: "PUT",
       body: {
-        path,
+        path: bridgePath,
         content: args.content,
         expectedHash: args.expectedHash,
       },
     });
     return {
       ok: true,
-      path: String((result as any)?.path ?? path),
+      path: toScopedPath(
+        String((result as any)?.path ?? bridgePath),
+        scopedBase,
+        requestedPath,
+      ),
       hash:
         typeof (result as any)?.hash === "string"
           ? (result as any).hash
@@ -261,6 +321,7 @@ export const writeFile = action({
 export const deleteFile = action({
   args: {
     workspaceId: v.id("workspaces"),
+    basePath: v.optional(v.string()),
     path: v.string(),
   },
   handler: async (ctx, args) => {
@@ -268,16 +329,23 @@ export const deleteFile = action({
     if (cfg.role !== "owner" && cfg.role !== "admin") {
       throw new Error("Only owner/admin can delete workspace files");
     }
-    const path = normalizeRelativePath(args.path);
-    assertReadableExtension(path);
+    const { scopedBase, requestedPath, bridgePath } = resolveScopedPath({
+      basePath: args.basePath,
+      path: args.path,
+    });
+    assertReadableExtension(requestedPath);
     const result = await fetchBridge({
-      url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(path)}`,
+      url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(bridgePath)}`,
       token: cfg.token,
       method: "DELETE",
     });
     return {
       ok: true,
-      path: String((result as any)?.path ?? path),
+      path: toScopedPath(
+        String((result as any)?.path ?? bridgePath),
+        scopedBase,
+        requestedPath,
+      ),
     };
   },
 });

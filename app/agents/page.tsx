@@ -42,7 +42,10 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { buildGenericAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
-import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import {
+  buildSutrahaProtocolMd,
+  SUTRAHA_PROTOCOL_FILENAME,
+} from "@/lib/sutrahaProtocol";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgentManifestPanel } from "@/components/agents/AgentManifestPanel";
@@ -101,6 +104,10 @@ function AgentsContent() {
   const [copiedHeartbeat, setCopiedHeartbeat] = useState(false);
   const [copiedProtocol, setCopiedProtocol] = useState(false);
   const [heartbeatMinutes, setHeartbeatMinutes] = useState("60");
+  const [renameChoicePrompt, setRenameChoicePrompt] = useState<{
+    currentWorkspaceFolderPath: string;
+    newDefaultWorkspaceFolderPath: string;
+  } | null>(null);
 
   const activeAgents = agents.filter((a) => !a.isArchived);
   const archivedAgents = agents.filter((a) => a.isArchived);
@@ -139,7 +146,14 @@ function AgentsContent() {
       agentRole: form.role.trim() || "Agent",
       recommendedMinutes: minutes,
     });
-  }, [workspace.name, workspaceId, form.name, form.role, effectiveSessionKey, heartbeatMinutes]);
+  }, [
+    workspace.name,
+    workspaceId,
+    form.name,
+    form.role,
+    effectiveSessionKey,
+    heartbeatMinutes,
+  ]);
 
   const protocolMd = useMemo(() => {
     return buildSutrahaProtocolMd({
@@ -180,12 +194,6 @@ function AgentsContent() {
     return `$${cost.toFixed(4)}`;
   };
 
-  const openCreate = () => {
-    setForm(emptyForm);
-    setHeartbeatMinutes("60");
-    setShowCreate(true);
-  };
-
   const openEdit = (agent: (typeof agents)[number]) => {
     setForm({
       name: agent.name,
@@ -219,7 +227,7 @@ function AgentsContent() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId || !form.name.trim()) return;
-    await updateAgent({
+    const updatePayload = {
       workspaceId,
       id: editingId,
       name: form.name.trim(),
@@ -227,9 +235,37 @@ function AgentsContent() {
       emoji: form.emoji,
       sessionKey: form.sessionKey.trim(),
       externalAgentId: form.externalAgentId.trim() || undefined,
-    });
-    setEditingId(null);
-    setForm(emptyForm);
+    } as const;
+    try {
+      await updateAgent(updatePayload);
+      setEditingId(null);
+      setForm(emptyForm);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        const jsonStart = message.indexOf("{");
+        const payload = jsonStart >= 0 ? message.slice(jsonStart) : message;
+        const parsed = JSON.parse(payload) as {
+          code?: string;
+          currentWorkspaceFolderPath?: string;
+          newDefaultWorkspaceFolderPath?: string;
+        };
+        if (
+          parsed.code === "WORKSPACE_FOLDER_RENAME_CHOICE_REQUIRED" &&
+          parsed.currentWorkspaceFolderPath &&
+          parsed.newDefaultWorkspaceFolderPath
+        ) {
+          setRenameChoicePrompt({
+            currentWorkspaceFolderPath: parsed.currentWorkspaceFolderPath,
+            newDefaultWorkspaceFolderPath: parsed.newDefaultWorkspaceFolderPath,
+          });
+          return;
+        }
+      } catch {
+        // fall through to generic alert
+      }
+      window.alert(message);
+    }
   };
 
   const handleArchiveConfirm = async () => {
@@ -242,19 +278,22 @@ function AgentsContent() {
     agent: (typeof agents)[number],
     isArchived: boolean,
   ) => {
-    const agentTasks = tasks.filter((t) =>
-      t.assigneeIds.includes(agent._id),
-    );
+    const agentTasks = tasks.filter((t) => t.assigneeIds.includes(agent._id));
     const effectiveStatus = getEffectiveStatus(agent);
     return (
       <div
         key={agent._id}
         className={cn(
-          "rounded-xl border border-border-default bg-bg-secondary p-5 transition-smooth hover:border-border-hover",
+          "relative rounded-xl border border-border-default bg-bg-secondary p-5 transition-smooth hover:border-border-hover",
           isArchived && "opacity-60",
         )}
       >
-        <div className="flex items-start justify-between">
+        <Link
+          href={`/agents/${agent._id}`}
+          aria-label={`Open ${agent.name} details`}
+          className="absolute inset-0 z-0 rounded-xl"
+        />
+        <div className="relative z-10 pointer-events-none flex items-start justify-between">
           <div className="flex items-center gap-4">
             <AgentAvatar
               emoji={agent.emoji}
@@ -280,15 +319,13 @@ function AgentsContent() {
               {agent.externalAgentId && (
                 <div className="mt-1 flex items-center gap-1 text-xs text-teal">
                   <ExternalLink className="h-3 w-3" />
-                  <span className="font-mono">
-                    {agent.externalAgentId}
-                  </span>
+                  <span className="font-mono">{agent.externalAgentId}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="pointer-events-auto flex items-center gap-2">
             {/* Status dropdown — admin+ can change, but not for archived */}
             {canManage && !isArchived && (
               <Select
@@ -377,33 +414,45 @@ function AgentsContent() {
                 <p className="text-[10px] text-text-dim uppercase tracking-wider">
                   Last Pulse
                 </p>
-                <Timestamp time={agent.lastPulseAt ?? agent.lastHeartbeat} className="mt-1" />
+                <Timestamp
+                  time={agent.lastPulseAt ?? agent.lastHeartbeat}
+                  className="mt-1"
+                />
               </div>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-text-dim">Model</p>
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">
+                  Model
+                </p>
                 <p className="mt-1 text-xs font-medium text-text-primary">
                   {agent.telemetry?.currentModel || "unknown"}
                 </p>
               </div>
               <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-text-dim">OpenClaw</p>
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">
+                  OpenClaw
+                </p>
                 <p className="mt-1 text-xs font-medium text-text-primary">
                   {agent.telemetry?.openclawVersion || "unknown"}
                 </p>
               </div>
               <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-text-dim">Total Tokens</p>
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">
+                  Total Tokens
+                </p>
                 <p className="mt-1 text-xs font-medium text-text-primary">
                   {formatTokens(agent.telemetry?.totalTokensUsed)}
                 </p>
               </div>
               <div className="rounded-lg border border-border-default bg-bg-primary/40 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-text-dim">Last Run</p>
+                <p className="text-[10px] uppercase tracking-wider text-text-dim">
+                  Last Run
+                </p>
                 <p className="mt-1 text-xs font-medium text-text-primary">
-                  {formatDuration(agent.telemetry?.lastRunDurationMs)} • {formatCost(agent.telemetry?.lastRunCost)}
+                  {formatDuration(agent.telemetry?.lastRunDurationMs)} •{" "}
+                  {formatCost(agent.telemetry?.lastRunCost)}
                 </p>
               </div>
             </div>
@@ -422,8 +471,12 @@ function AgentsContent() {
             <Bot className="h-4 w-4 text-teal" />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-text-primary">Agents</h1>
-            <p className="text-xs text-text-muted hidden sm:block">Manage your AI agents</p>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">
+              Agents
+            </h1>
+            <p className="text-xs text-text-muted hidden sm:block">
+              Manage your AI agents
+            </p>
           </div>
         </div>
         {canAdmin && (
@@ -448,7 +501,11 @@ function AgentsContent() {
                 Health
               </Link>
             </Button>
-            <Button asChild size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto">
+            <Button
+              asChild
+              size="sm"
+              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+            >
               <Link href="/agents/new">Create agent</Link>
             </Button>
           </div>
@@ -488,9 +545,7 @@ function AgentsContent() {
           >
             <Archive className="h-4 w-4" />
             Archived ({archivedAgents.length})
-            <span className="text-xs">
-              {showArchived ? "▾" : "▸"}
-            </span>
+            <span className="text-xs">{showArchived ? "▾" : "▸"}</span>
           </button>
           {showArchived && (
             <div className="space-y-3">
@@ -542,9 +597,7 @@ function AgentsContent() {
                   <Label className="text-text-secondary">Name</Label>
                   <Input
                     value={form.name}
-                    onChange={(e) =>
-                      setForm({ ...form, name: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="e.g., Jarvis"
                     className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim h-12"
                     required
@@ -556,9 +609,7 @@ function AgentsContent() {
                 <Label className="text-text-secondary">Role</Label>
                 <Input
                   value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
                   placeholder="e.g., Squad Lead"
                   className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
                 />
@@ -642,8 +693,8 @@ function AgentsContent() {
                 </div>
                 <p className="text-[11px] text-text-dim">
                   Create a small <span className="font-mono">HEARTBEAT.md</span>{" "}
-                  in this agent&apos;s OpenClaw workspace and schedule a cron run
-                  using the prompt below.
+                  in this agent&apos;s OpenClaw workspace and schedule a cron
+                  run using the prompt below.
                 </p>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -812,7 +863,8 @@ function AgentsContent() {
                     className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
                   />
                   <p className="text-[11px] text-text-dim">
-                    Put the same protocol file in each agent&apos;s OpenClaw workspace to keep prompts short.
+                    Put the same protocol file in each agent&apos;s OpenClaw
+                    workspace to keep prompts short.
                   </p>
                 </div>
               </div>
@@ -897,6 +949,90 @@ function AgentsContent() {
               }
             >
               {archivingAgent?.isArchived ? "Unarchive" : "Archive"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={renameChoicePrompt !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameChoicePrompt(null);
+        }}
+      >
+        <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="text-text-primary">
+              Choose Workspace Folder Mapping
+            </DialogTitle>
+            <DialogDescription className="text-text-muted">
+              Agent name/session key change affects the default workspace
+              folder. Choose which path to keep.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-xs">
+            <p className="text-text-muted">
+              Current:{" "}
+              <span className="font-mono text-text-primary">
+                {renameChoicePrompt?.currentWorkspaceFolderPath}
+              </span>
+            </p>
+            <p className="text-text-muted">
+              New default:{" "}
+              <span className="font-mono text-text-primary">
+                {renameChoicePrompt?.newDefaultWorkspaceFolderPath}
+              </span>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="border-border-default text-text-secondary"
+              onClick={() => setRenameChoicePrompt(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!editingId || !form.name.trim()) return;
+                await updateAgent({
+                  workspaceId,
+                  id: editingId,
+                  name: form.name.trim(),
+                  role: form.role.trim(),
+                  emoji: form.emoji,
+                  sessionKey: form.sessionKey.trim(),
+                  externalAgentId: form.externalAgentId.trim() || undefined,
+                  workspaceFolderPathChoice: "keep_existing",
+                });
+                setRenameChoicePrompt(null);
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
+            >
+              Keep Existing Folder
+            </Button>
+            <Button
+              className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              onClick={async () => {
+                if (!editingId || !form.name.trim()) return;
+                await updateAgent({
+                  workspaceId,
+                  id: editingId,
+                  name: form.name.trim(),
+                  role: form.role.trim(),
+                  emoji: form.emoji,
+                  sessionKey: form.sessionKey.trim(),
+                  externalAgentId: form.externalAgentId.trim() || undefined,
+                  workspaceFolderPathChoice: "use_new_default",
+                });
+                setRenameChoicePrompt(null);
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
+            >
+              Use New Default
             </Button>
           </DialogFooter>
         </DialogContent>
