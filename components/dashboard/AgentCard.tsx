@@ -4,13 +4,15 @@ import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface AgentCardProps {
   agent: Doc<"agents">;
   currentTask?: Doc<"tasks"> | null;
+  href?: string;
 }
 
-export function AgentCard({ agent, currentTask }: AgentCardProps) {
+export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
   const model = agent.telemetry?.currentModel;
   const openclawVersion = agent.telemetry?.openclawVersion;
   const showTelemetry =
@@ -18,13 +20,14 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
     (openclawVersion && openclawVersion !== "unknown");
   const isActive = agent.status === "active";
 
-  return (
+  const content = (
     <div
       className={cn(
         "group min-w-0 overflow-hidden rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth",
         "hover:border-border-hover hover:bg-bg-tertiary",
         agent.status === "active" && "border-l-2 border-l-status-active",
         agent.status === "error" && "border-l-2 border-l-status-blocked",
+        href && "cursor-pointer",
       )}
     >
       <div className="flex flex-wrap items-start gap-2">
@@ -79,5 +82,13 @@ export function AgentCard({ agent, currentTask }: AgentCardProps) {
         <Timestamp time={agent.lastHeartbeat} />
       </div>
     </div>
+  );
+
+  if (!href) return content;
+
+  return (
+    <Link href={href} className="block">
+      {content}
+    </Link>
   );
 }
