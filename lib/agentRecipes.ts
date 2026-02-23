@@ -107,7 +107,7 @@ function plural(n: number, word: string) {
 
 export function buildCronPrompt(args: { sessionKey: string }) {
   // Keep this very short; OpenClaw cron prompts should be token-cheap.
-  return `Read HEARTBEAT.md. Use sessionKey "${args.sessionKey}" for Sutraha HQ tool calls. Follow it strictly.`;
+  return `Read HEARTBEAT.md. Use sessionKey "${args.sessionKey}" for Synclaw tool calls. Follow it strictly.`;
 }
 
 export function buildHeartbeatMd(args: {
@@ -132,8 +132,8 @@ This file is meant to be read by this agent during scheduled runs (cron/heartbea
 ## Identity
 - Agent: ${agentName}
 - Role: ${role}
-- Session key (Sutraha HQ identity): \`${sessionKey}\`
-- Sutraha HQ workspace: ${wsName}
+- Session key (Synclaw identity): \`${sessionKey}\`
+- Synclaw workspace: ${wsName}
 - workspaceId: \`${wsId}\`
 - OpenClaw workspace path: <fill>
 
@@ -171,7 +171,7 @@ Stay responsive: pulse online, catch up on mentions/activities, pick up assigned
    - Call: \`sutraha_end_task_session(sessionKey="${sessionKey}", status="idle", runSummary="...")\`
 
 ## Notes
-- If you're running under an ephemeral cron session key, still use \`${sessionKey}\` for Sutraha HQ calls (pass it explicitly).`;
+- If you're running under an ephemeral cron session key, still use \`${sessionKey}\` for Synclaw calls (pass it explicitly).`;
 }
 
 export function buildAgentRecipePrompt(args: {
@@ -198,7 +198,7 @@ export function buildAgentRecipePrompt(args: {
       ? `\nRECIPE RULES\n- ${args.recipe.rules.join("\n- ")}\n`
       : "";
 
-  return `You are ${agentName}, a specialist agent for Sutraha HQ.
+  return `You are ${agentName}, a specialist agent for Synclaw.
 
 WORKSPACE
 - name: ${wsName}
@@ -206,7 +206,7 @@ WORKSPACE
 
 IDENTITY (IMPORTANT)
 - sessionKey: "${sessionKey}"
-- Always pass sessionKey to Sutraha HQ MCP tools (not agentId).
+- Always pass sessionKey to Synclaw MCP tools (not agentId).
 - You work under the Main Orchestrator sessionKey "agent:main:main".
 - You are a distinct autonomous agent. Never impersonate other agents or reuse their sessionKey.
 

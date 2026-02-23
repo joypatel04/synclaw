@@ -10,12 +10,12 @@ export default function HostingSelfHostedFilesBridgePage() {
   return (
     <PublicDocsShell
       title="Self-hosted: OpenClaw Files Bridge"
-      description="Run a Dockerized bridge so Sutraha HQ can browse and edit remote OpenClaw workspace files."
+      description="Run a Dockerized bridge so Synclaw can browse and edit remote OpenClaw workspace files."
       icon={FolderTree}
     >
       <PublicDocsCard title="What this unlocks">
         <ul className="list-disc space-y-2 pl-5">
-          <li>Browse remote workspace directory tree from Sutraha HQ.</li>
+          <li>Browse remote workspace directory tree from Synclaw.</li>
           <li>Edit and save text files (`.md`, `.txt`, `.json`, `.yaml`, `.yml`, `.toml`, `.config`).</li>
           <li>Edit `openclaw.config` directly in <code className="rounded bg-bg-primary px-1 py-0.5">/filesystem</code>.</li>
           <li>Keep bridge token server-side (never exposed to browser).</li>
@@ -50,7 +50,7 @@ docker push ghcr.io/sutraha/sutraha-fs-bridge:0.1.0`}
         />
       </PublicDocsCard>
 
-      <PublicDocsCard title="3) Configure Sutraha HQ">
+      <PublicDocsCard title="3) Configure Synclaw">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Enable feature flag: <code className="rounded bg-bg-primary px-1 py-0.5">NEXT_PUBLIC_OPENCLAW_FILES_ENABLED=true</code>.</li>
           <li>Open <code className="rounded bg-bg-primary px-1 py-0.5">/filesystem</code>.</li>

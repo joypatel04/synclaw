@@ -1,6 +1,6 @@
 # sutraha-fs-bridge
 
-Remote filesystem bridge for Sutraha HQ OpenClaw workspaces.
+Remote filesystem bridge for Synclaw OpenClaw workspaces.
 
 ## Endpoints
 

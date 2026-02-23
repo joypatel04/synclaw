@@ -923,7 +923,7 @@ openclaw devices approve <requestId>`}
                   MCPorter config
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  BYO mode: Sutraha HQ does not store model provider keys.
+                  BYO mode: Synclaw does not store model provider keys.
                 </p>
                 <div className="mt-2 flex justify-end">
                   <Button

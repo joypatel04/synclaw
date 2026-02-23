@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Sutraha HQ MCP Server
+ * Synclaw MCP Server
  *
- * Connects AI agents (OpenClaw, etc.) to the Sutraha HQ orchestration dashboard
+ * Connects AI agents (OpenClaw, etc.) to the Synclaw orchestration dashboard
  * via the Model Context Protocol (MCP).
  *
  * Usage:
@@ -36,7 +36,7 @@ async function resolveAgentId(input: {
     });
     if (!agent?._id) {
       throw new Error(
-        `Agent not found for sessionKey=${sessionKey}. Register the agent in Sutraha HQ first.`,
+        `Agent not found for sessionKey=${sessionKey}. Register the agent in Synclaw first.`,
       );
     }
     return agent._id as string;
@@ -780,7 +780,7 @@ server.tool(
 
 server.tool(
   "sutraha_send_chat",
-  "DEPRECATED: Sutraha HQ chat is now OpenClaw WS-only. Use OpenClaw chat APIs instead.",
+  "DEPRECATED: Synclaw chat is now OpenClaw WS-only. Use OpenClaw chat APIs instead.",
   {
     sessionId: z.string().describe("Unused. Kept for compatibility."),
     content: z.string().describe("Unused. Kept for compatibility."),
@@ -1199,7 +1199,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Sutraha HQ MCP server running (stdio)");
+  console.error("Synclaw MCP server running (stdio)");
 }
 
 main().catch((err) => {

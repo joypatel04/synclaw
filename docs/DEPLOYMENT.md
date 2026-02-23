@@ -22,7 +22,7 @@
 ```
 NEXT_PUBLIC_CONVEX_URL=https://confident-ram-83.convex.cloud
 NEXT_PUBLIC_CONVEX_SITE_URL=https://confident-ram-83.convex.site
-NEXT_PUBLIC_APP_NAME=Sutraha HQ
+NEXT_PUBLIC_APP_NAME=Synclaw
 NEXT_PUBLIC_APP_URL=https://hq.sutraha.in
 ```
 
@@ -161,7 +161,7 @@ docker run --rm -p 8787:8787 \
   sutraha-fs-bridge
 ```
 
-### Sutraha HQ Setup
+### Synclaw Setup
 
 1. In `/filesystem`, enable **Workspace Files Bridge**.
 2. Set bridge URL + root path and save.

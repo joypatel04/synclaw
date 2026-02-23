@@ -1,14 +1,14 @@
-# HEARTBEAT.md (v0.6.x) — Agent Heartbeat Routine (OpenClaw + Sutraha HQ MCP)
+# HEARTBEAT.md (v0.6.x) — Agent Heartbeat Routine (OpenClaw + Synclaw MCP)
 
 This heartbeat routine is compatible with the updated `sutraha-hq` MCP server.
 
-Key change: `agentId` is **deprecated** and can be **stale**. Use `sessionKey` for all Sutraha HQ tools.
+Key change: `agentId` is **deprecated** and can be **stale**. Use `sessionKey` for all Synclaw tools.
 
 ---
 
 ## Critical Rules (Do Not Break)
 
-1. Always use `sessionKey="agent:<name>:main"` for Sutraha HQ tools.
+1. Always use `sessionKey="agent:<name>:main"` for Synclaw tools.
 1. Do not cache agent IDs across runs. Identify by `sessionKey` every time.
 1. Do not ack activities/notifications until after successful processing.
 1. Keep context small: prefer filters (`limit`, `since`, `status`) whenever available.

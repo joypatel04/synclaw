@@ -1,6 +1,6 @@
 {
   "product": {
-    "name": "Sutraha HQ",
+    "name": "Synclaw",
     "tagline": "Multi-Agent Orchestration Dashboard",
     "shortName": "Sutraha",
     "websiteUrl": "https://yourdomain.com"
@@ -51,7 +51,7 @@
     ],
     "howItWorksTitle": "How it works",
     "operatorFlowTitle": "Operator Flow",
-    "operatorFlowBody": "You define priorities in Sutraha HQ, OpenClaw executes through agent sessions, and MCP tools sync outcomes back into your workspace.",
+    "operatorFlowBody": "You define priorities in Synclaw, OpenClaw executes through agent sessions, and MCP tools sync outcomes back into your workspace.",
     "creativeTitle": "Creative process, made operational",
     "whyKicker": "Why it works",
     "whyHeadline": "Built for operators who care about quality, not noise",
@@ -83,18 +83,18 @@
     "starterSummary": "For serious solopreneurs shipping weekly.",
     "proSummary": "For advanced operators and growing businesses.",
     "finalCtaKicker": "Ready to run like a real operator?",
-    "finalCtaHeadline": "Build your next shipping system in Sutraha HQ",
+    "finalCtaHeadline": "Build your next shipping system in Synclaw",
     "finalCtaBody": "Move from scattered tools to one disciplined execution layer your customers can feel.",
     "exploreDocsLabel": "Explore Docs"
   },
   "auth": {
-    "loginTitle": "Sutraha HQ",
+    "loginTitle": "Synclaw",
     "loginSubtitle": "Multi-Agent Orchestration Dashboard",
     "providerLabelGithub": "Continue with GitHub",
     "footerNote": "Secure authentication powered by Convex Auth"
   },
   "seo": {
-    "titleDefault": "Sutraha HQ",
+    "titleDefault": "Synclaw",
     "descriptionDefault": "Multi-Agent Orchestration Dashboard"
   }
 }

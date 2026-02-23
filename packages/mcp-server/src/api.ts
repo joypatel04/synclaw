@@ -1,5 +1,5 @@
 /**
- * Convex API function references for the Sutraha HQ backend.
+ * Convex API function references for the Synclaw backend.
  *
  * These are lightweight references that the ConvexHttpClient uses to call
  * server functions. They match the function paths in the Convex project.

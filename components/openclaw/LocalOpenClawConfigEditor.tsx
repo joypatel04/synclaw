@@ -133,7 +133,7 @@ export function LocalOpenClawConfigEditor() {
           </div>
           <p className="mt-1 text-xs text-text-muted">
             View and edit the actual OpenClaw config file in your repo on this
-            machine. Nothing is uploaded to Sutraha HQ.
+            machine. Nothing is uploaded to Synclaw.
           </p>
         </div>
         <Button

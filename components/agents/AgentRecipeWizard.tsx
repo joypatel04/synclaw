@@ -346,7 +346,7 @@ export function AgentRecipeWizard() {
                 title={
                   collision
                     ? "Session key must be unique"
-                    : "Create agent in Sutraha HQ"
+                    : "Create agent in Synclaw"
                 }
               >
                 {creating ? "Creating..." : "Create and continue setup in chat"}

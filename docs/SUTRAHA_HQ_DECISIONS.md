@@ -1,4 +1,4 @@
-# Sutraha HQ - Final Decisions
+# Synclaw - Final Decisions
 
 **Date:** 2026-02-08
 **Status:** Ready to Build
@@ -20,7 +20,7 @@
 | **Document Types** | Current 4 types fine (deliverable/research/protocol/note) |
 | **Deployment** | Separate Vercel deployment |
 | **Access** | Only Joy initially |
-| **Built-in Chat** | Add chat interface to talk to agents from Sutraha HQ |
+| **Built-in Chat** | Add chat interface to talk to agents from Synclaw |
 
 ---
 
@@ -38,7 +38,7 @@ Each agent's cron job will read `HEARTBEAT_INTERVAL`:
 npx convex run cron:add \
   --name "jarvis-heartbeat" \
   --schedule '{"kind": "every", "everyMs": 1200000}' \  # 20 min
-  --message "Check Sutraha HQ for work"
+  --message "Check Synclaw for work"
 ```
 
 Env var can be set per agent:
@@ -88,7 +88,7 @@ New page: `/chat`
 
 ```
 ┌─────────────────────────────────────────┐
-│         Sutraha HQ Chat UI          │
+│         Synclaw Chat UI          │
 ├─────────────────────────────────────────┤
 │                                         │
 │  Agent Selector:  [▼ Jarvis ▼]          │
@@ -140,7 +140,7 @@ OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 HEARTBEAT_INTERVAL=20  # Default 20 minutes
 
 # App Configuration
-NEXT_PUBLIC_APP_NAME="Sutraha HQ"
+NEXT_PUBLIC_APP_NAME="Synclaw"
 NEXT_PUBLIC_APP_URL=https://mission-control.yourdomain.com
 ```
 
@@ -165,10 +165,10 @@ npx convex deploy
 ```
 
 ### 3. OpenClaw Integration
-- Configure OpenClaw Gateway settings per workspace in Sutraha HQ:
+- Configure OpenClaw Gateway settings per workspace in Synclaw:
   - Settings -> OpenClaw (`/settings/openclaw`)
   - Stored in Convex table: `openclawGatewayConfigs`
-- Ensure the Sutraha HQ origin is allowed by OpenClaw (`gateway.controlUi.allowedOrigins`)
+- Ensure the Synclaw origin is allowed by OpenClaw (`gateway.controlUi.allowedOrigins`)
 
 ---
 

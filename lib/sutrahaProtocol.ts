@@ -10,9 +10,9 @@ export function buildSutrahaProtocolMd(args: {
   const wsName = args.workspaceName || "this workspace";
   const wsId = args.workspaceId || "<workspaceId>";
 
-  return `# ${SUTRAHA_PROTOCOL_FILENAME} — Sutraha HQ MCP Operating Rules (v${SUTRAHA_PROTOCOL_VERSION})
+  return `# ${SUTRAHA_PROTOCOL_FILENAME} — Synclaw MCP Operating Rules (v${SUTRAHA_PROTOCOL_VERSION})
 
-This file is the single source of truth for how this agent interacts with Sutraha HQ using MCP tools.
+This file is the single source of truth for how this agent interacts with Synclaw using MCP tools.
 Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
 
 ## Workspace

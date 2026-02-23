@@ -2,7 +2,7 @@
   "name": "@sutraha/fs-bridge",
   "version": "0.1.0",
   "private": true,
-  "description": "Remote filesystem bridge for Sutraha HQ OpenClaw workspaces",
+  "description": "Remote filesystem bridge for Synclaw OpenClaw workspaces",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",

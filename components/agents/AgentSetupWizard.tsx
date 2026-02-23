@@ -528,7 +528,7 @@ export function AgentSetupWizard() {
             3) Write files into the agent&apos;s OpenClaw workspace (optional)
           </p>
           <p className="text-xs text-text-muted">
-            This writes local files on this machine only. Nothing is uploaded to Sutraha HQ.
+            This writes local files on this machine only. Nothing is uploaded to Synclaw.
           </p>
 
           <div className="mt-4 space-y-3">
