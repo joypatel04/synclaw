@@ -33,6 +33,8 @@ type TreeResponse = {
 type ReadFileResponse = {
   path: string;
   content: string;
+  mime?: string;
+  encoding?: "utf8" | "base64" | string;
   hash?: string;
   size?: number;
   mtimeMs?: number;
@@ -83,6 +85,10 @@ function FilesystemContent() {
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [content, setContent] = useState("");
+  const [selectedMime, setSelectedMime] = useState<string | null>(null);
+  const [selectedEncoding, setSelectedEncoding] = useState<
+    "utf8" | "base64" | string
+  >("utf8");
   const [expectedHash, setExpectedHash] = useState<string | undefined>();
   const [selectedSize, setSelectedSize] = useState<number | undefined>();
   const [selectedMtimeMs, setSelectedMtimeMs] = useState<number | undefined>();
@@ -165,6 +171,12 @@ function FilesystemContent() {
       const typed = result as ReadFileResponse;
       setSelectedPath(path);
       setContent(typed.content ?? "");
+      setSelectedMime(
+        typeof typed.mime === "string" && typed.mime.length > 0
+          ? typed.mime
+          : "text/plain",
+      );
+      setSelectedEncoding(typed.encoding ?? "utf8");
       setExpectedHash(typed.hash);
       setSelectedSize(typed.size);
       setSelectedMtimeMs(typed.mtimeMs);
@@ -179,6 +191,10 @@ function FilesystemContent() {
 
   const saveFile = async () => {
     if (!selectedPath) return;
+    if (selectedMime === "application/pdf" || selectedEncoding === "base64") {
+      setError("PDF files are read-only in this editor.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -239,6 +255,8 @@ function FilesystemContent() {
       if (selectedPath === deletedPath) {
         setSelectedPath(null);
         setContent("");
+        setSelectedMime(null);
+        setSelectedEncoding("utf8");
         setExpectedHash(undefined);
         setSelectedSize(undefined);
         setSelectedMtimeMs(undefined);
@@ -490,6 +508,8 @@ function FilesystemContent() {
                 <FilesystemEditor
                   selectedPath={selectedPath}
                   content={content}
+                  selectedMime={selectedMime}
+                  selectedEncoding={selectedEncoding}
                   dirty={dirty}
                   busy={busy}
                   canEdit={canEditFiles}

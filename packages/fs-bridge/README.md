@@ -15,7 +15,8 @@ Remote filesystem bridge for Sutraha HQ OpenClaw workspaces.
 
 - Bearer auth required (`FS_BRIDGE_TOKEN`)
 - Root jail required (`WORKSPACE_ROOT_PATH`)
-- Text file extension allowlist (`FS_ALLOWED_EXTENSIONS`)
+- Text file extension allowlist for write (`FS_ALLOWED_EXTENSIONS`)
+- Binary read extension allowlist (`FS_ALLOWED_BINARY_READ_EXTENSIONS`, default `.pdf`)
 - Max file size (`FS_MAX_FILE_BYTES`, default 1 MB)
 - Basic in-memory rate limit
 
@@ -29,6 +30,7 @@ docker run --rm -p 8787:8787 \
   -e WORKSPACE_ROOT_PATH="/srv/openclaw/workspaces/main" \
   -e FS_MAX_FILE_BYTES="1048576" \
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
+  -e FS_ALLOWED_BINARY_READ_EXTENSIONS=".pdf" \
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
   sutraha-fs-bridge
 ```

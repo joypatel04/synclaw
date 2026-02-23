@@ -25,7 +25,7 @@ docker run --rm -p 8787:8787 \
   -e FS_BRIDGE_TOKEN="replace_me" \
   -e WORKSPACE_ROOT_PATH="/srv/openclaw/workspaces/main" \
   -e FS_MAX_FILE_BYTES="1048576" \
-  -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config" \
+  -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
   sutraha-fs-bridge
 ```

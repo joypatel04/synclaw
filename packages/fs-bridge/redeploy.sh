@@ -26,5 +26,6 @@ docker run --rm -p 8787:8787 \
   -e WORKSPACE_ROOT_PATH="$HOME/.openclaw" \
   -e FS_MAX_FILE_BYTES="1048576" \
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
+  -e FS_ALLOWED_BINARY_READ_EXTENSIONS=".pdf" \
   -v "$HOME/.openclaw:$HOME/.openclaw" \
   sutraha-fs-bridge

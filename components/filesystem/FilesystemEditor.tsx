@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 export function FilesystemEditor({
   selectedPath,
   content,
+  selectedMime,
+  selectedEncoding,
   dirty,
   busy,
   canEdit,
@@ -22,6 +24,8 @@ export function FilesystemEditor({
 }: {
   selectedPath: string | null;
   content: string;
+  selectedMime?: string | null;
+  selectedEncoding?: "utf8" | "base64" | string;
   dirty: boolean;
   busy: boolean;
   canEdit: boolean;
@@ -45,6 +49,14 @@ export function FilesystemEditor({
     return i >= 0 ? selectedPath.slice(i).toLowerCase() : "";
   }, [selectedPath]);
   const canPreviewMarkdown = ext === ".md" || ext === ".markdown";
+  const isPdf =
+    selectedMime === "application/pdf" ||
+    ext === ".pdf" ||
+    selectedEncoding === "base64";
+  const pdfDataUrl = useMemo(() => {
+    if (!isPdf || !content) return null;
+    return `data:application/pdf;base64,${content}`;
+  }, [isPdf, content]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border-default bg-bg-secondary">
@@ -69,7 +81,7 @@ export function FilesystemEditor({
             size="sm"
             className="h-8 gap-1.5 bg-accent-orange hover:bg-accent-orange/90 text-white"
             onClick={onSave}
-            disabled={!selectedPath || !dirty || busy || !canEdit}
+            disabled={!selectedPath || !dirty || busy || !canEdit || isPdf}
           >
             <Save className="h-3.5 w-3.5" />
             Save
@@ -91,7 +103,26 @@ export function FilesystemEditor({
             </button>
           </div>
         </div>
-        {tab === "edit" ? (
+        {isPdf ? (
+          <div className="space-y-2">
+            <div className="rounded-md border border-border-default bg-bg-primary p-2">
+              <p className="text-xs text-text-muted">
+                PDF preview is read-only.
+              </p>
+            </div>
+            {pdfDataUrl ? (
+              <iframe
+                src={pdfDataUrl}
+                title={selectedPath ?? "PDF preview"}
+                className="h-[70vh] w-full rounded-md border border-border-default bg-bg-primary"
+              />
+            ) : (
+              <div className="min-h-[240px] rounded-md border border-border-default bg-bg-primary p-4 text-sm text-text-dim">
+                Open a PDF file to preview.
+              </div>
+            )}
+          </div>
+        ) : tab === "edit" ? (
           <Textarea
             value={content}
             onChange={(e) => onChange(e.target.value)}

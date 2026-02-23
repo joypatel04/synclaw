@@ -14,13 +14,22 @@ const ROOT_PATH = (process.env.WORKSPACE_ROOT_PATH ?? "").trim();
 const MAX_FILE_BYTES = Number(
   process.env.FS_MAX_FILE_BYTES ?? `${1024 * 1024}`,
 );
-const ALLOWED_EXTENSIONS = (
+const ALLOWED_TEXT_EXTENSIONS = (
   process.env.FS_ALLOWED_EXTENSIONS ??
   ".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx"
 )
   .split(",")
   .map((ext) => ext.trim().toLowerCase())
   .filter(Boolean);
+const ALLOWED_BINARY_READ_EXTENSIONS = (
+  process.env.FS_ALLOWED_BINARY_READ_EXTENSIONS ?? ".pdf"
+)
+  .split(",")
+  .map((ext) => ext.trim().toLowerCase())
+  .filter(Boolean);
+const ALLOWED_READ_EXTENSIONS = Array.from(
+  new Set([...ALLOWED_TEXT_EXTENSIONS, ...ALLOWED_BINARY_READ_EXTENSIONS]),
+);
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 240;
 
@@ -75,9 +84,18 @@ async function resolveSafePath(relativePath: string) {
   return { rootReal, candidate, candidateReal };
 }
 
-function isAllowedExtension(filePath: string) {
+function isAllowedReadExtension(filePath: string) {
   const lower = filePath.toLowerCase();
-  return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  return ALLOWED_READ_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function isAllowedTextExtension(filePath: string) {
+  const lower = filePath.toLowerCase();
+  return ALLOWED_TEXT_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function isPdf(filePath: string) {
+  return filePath.toLowerCase().endsWith(".pdf");
 }
 
 async function sha256(content: string) {
@@ -134,9 +152,9 @@ async function handleReadFile(
 ) {
   const queryPath = url.searchParams.get("path");
   if (!queryPath) return json(res, 400, { error: "Missing path query param" });
-  if (!isAllowedExtension(queryPath)) {
+  if (!isAllowedReadExtension(queryPath)) {
     return json(res, 422, {
-      error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      error: `Unsupported file type. Allowed: ${ALLOWED_READ_EXTENSIONS.join(", ")}`,
     });
   }
 
@@ -149,10 +167,25 @@ async function handleReadFile(
     });
   }
 
+  if (isPdf(queryPath)) {
+    const content = await fs.readFile(candidate);
+    return json(res, 200, {
+      path: toRelative(rootReal, candidate),
+      contentBase64: content.toString("base64"),
+      encoding: "base64",
+      mime: "application/pdf",
+      hash: await sha256(content.toString("base64")),
+      size: stat.size,
+      mtimeMs: stat.mtimeMs,
+    });
+  }
+
   const content = await fs.readFile(candidate, "utf8");
   return json(res, 200, {
     path: toRelative(rootReal, candidate),
     content,
+    encoding: "utf8",
+    mime: "text/plain",
     hash: await sha256(content),
     size: Buffer.byteLength(content, "utf8"),
     mtimeMs: stat.mtimeMs,
@@ -187,9 +220,9 @@ async function handleWriteFile(req: IncomingMessage, res: ServerResponse) {
     typeof body.expectedHash === "string" ? body.expectedHash : undefined;
 
   if (!relativePath) return json(res, 400, { error: "Missing path in body" });
-  if (!isAllowedExtension(relativePath)) {
+  if (!isAllowedTextExtension(relativePath)) {
     return json(res, 422, {
-      error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      error: `Unsupported file type for write. Allowed: ${ALLOWED_TEXT_EXTENSIONS.join(", ")}`,
     });
   }
   if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) {
@@ -235,9 +268,9 @@ async function handleDeleteFile(
 ) {
   const queryPath = url.searchParams.get("path");
   if (!queryPath) return json(res, 400, { error: "Missing path query param" });
-  if (!isAllowedExtension(queryPath)) {
+  if (!isAllowedReadExtension(queryPath)) {
     return json(res, 422, {
-      error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      error: `Unsupported file type for delete. Allowed: ${ALLOWED_READ_EXTENSIONS.join(", ")}`,
     });
   }
 
@@ -273,7 +306,9 @@ async function main() {
         return json(res, 200, {
           ok: true,
           rootPath: ROOT_PATH,
-          allowedExtensions: ALLOWED_EXTENSIONS,
+          allowedExtensions: ALLOWED_READ_EXTENSIONS,
+          writableExtensions: ALLOWED_TEXT_EXTENSIONS,
+          binaryReadExtensions: ALLOWED_BINARY_READ_EXTENSIONS,
           maxFileBytes: MAX_FILE_BYTES,
         });
       }

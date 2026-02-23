@@ -4,7 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 
 const DEFAULT_MAX_FILE_BYTES = 1024 * 1024;
-const ALLOWED_EXTENSIONS = [
+const WRITABLE_TEXT_EXTENSIONS = [
   ".md",
   ".txt",
   ".json",
@@ -18,6 +18,11 @@ const ALLOWED_EXTENSIONS = [
   ".ts",
   ".tsx",
 ];
+const READABLE_BINARY_EXTENSIONS = [".pdf"];
+const READABLE_EXTENSIONS = [
+  ...WRITABLE_TEXT_EXTENSIONS,
+  ...READABLE_BINARY_EXTENSIONS,
+];
 
 function normalizeRelativePath(input?: string): string {
   const raw = (input ?? ".").trim();
@@ -28,12 +33,22 @@ function normalizeRelativePath(input?: string): string {
   return normalized || ".";
 }
 
-function assertTextExtension(path: string) {
+function assertReadableExtension(path: string) {
   const lower = path.toLowerCase();
-  const ok = ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  const ok = READABLE_EXTENSIONS.some((ext) => lower.endsWith(ext));
   if (!ok) {
     throw new Error(
-      `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      `Unsupported file type. Allowed: ${READABLE_EXTENSIONS.join(", ")}`,
+    );
+  }
+}
+
+function assertWritableTextExtension(path: string) {
+  const lower = path.toLowerCase();
+  const ok = WRITABLE_TEXT_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  if (!ok) {
+    throw new Error(
+      `Unsupported writable file type. Allowed: ${WRITABLE_TEXT_EXTENSIONS.join(", ")}`,
     );
   }
 }
@@ -162,14 +177,28 @@ export const readFile = action({
   handler: async (ctx, args) => {
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
     const path = normalizeRelativePath(args.path);
-    assertTextExtension(path);
+    assertReadableExtension(path);
     const result = await fetchBridge({
       url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(path)}`,
       token: cfg.token,
     });
+    const mime =
+      typeof (result as any)?.mime === "string"
+        ? (result as any).mime
+        : "text/plain";
+    const encoding =
+      typeof (result as any)?.encoding === "string"
+        ? (result as any).encoding
+        : "utf8";
+    const content =
+      encoding === "base64"
+        ? String((result as any)?.contentBase64 ?? "")
+        : String((result as any)?.content ?? "");
     return {
       path: String((result as any)?.path ?? path),
-      content: String((result as any)?.content ?? ""),
+      content,
+      mime,
+      encoding,
       hash:
         typeof (result as any)?.hash === "string"
           ? (result as any).hash
@@ -197,7 +226,7 @@ export const writeFile = action({
       throw new Error("Only owner/admin can edit workspace files");
     }
     const path = normalizeRelativePath(args.path);
-    assertTextExtension(path);
+    assertWritableTextExtension(path);
     const size = new TextEncoder().encode(args.content).byteLength;
     if (size > DEFAULT_MAX_FILE_BYTES) {
       throw new Error(`File too large. Max ${DEFAULT_MAX_FILE_BYTES} bytes`);
@@ -240,7 +269,7 @@ export const deleteFile = action({
       throw new Error("Only owner/admin can delete workspace files");
     }
     const path = normalizeRelativePath(args.path);
-    assertTextExtension(path);
+    assertReadableExtension(path);
     const result = await fetchBridge({
       url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(path)}`,
       token: cfg.token,
