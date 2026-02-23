@@ -195,54 +195,58 @@ function LandingPage() {
 
   const workflowSteps = [
     {
-      title: "Capture",
-      text: "Collect ideas, tasks, and notes in one workspace without context loss.",
+      title: "Managed Infrastructure",
+      text: "We handle the servers, security, and uptime. Your OpenClaw dashboard stays online, monitored, and updated—so you don't have to.",
     },
     {
-      title: "Delegate",
-      text: "Assign execution to specialized agents with clear ownership and deadlines.",
+      title: "Ready-to-Use Templates",
+      text: "Jumpstart your workflows with pre-built agent templates. Configure once, deploy in seconds. No YAML wrestling required.",
     },
     {
-      title: "Review",
-      text: "Track activity in real time and approve work with confidence.",
+      title: "One-Click fs-bridge Setup",
+      text: "Connect your agents to your files and systems without manual configuration. fs-bridge sets up securely, automatically.",
     },
     {
-      title: "Ship",
-      text: "Turn finished work into published output faster, with less coordination overhead.",
+      title: "Real-Time Cost Monitoring",
+      text: "See exactly what you're spending on OpenClaw at a glance. Alerts keep you informed before costs surprise you.",
+    },
+    {
+      title: "Secure by Default",
+      text: "Enterprise-grade security, encrypted connections, and managed SSL. Your agents and data stay protected, always.",
+    },
+    {
+      title: "Activity Dashboards",
+      text: "Monitor agent activity, task progress, and system health from one clean interface. Know what's happening, when it happens.",
     },
   ];
 
   const capabilities = [
     {
-      title: "Mission Control Board",
-      text: "Plan priorities, rebalance workload, and prevent drift before it compounds.",
+      title: "No DevOps Required",
+      text: "Self-hosting means dealing with servers, SSL certificates, monitoring, updates, and unexpected outages. Synclaw removes that friction.",
     },
     {
-      title: "Agent Operations",
-      text: "Keep autonomous workers aligned with your standards and operating rhythm.",
+      title: "Full Agent Control",
+      text: "You keep full control of your OpenClaw agents—we give you a clean, reliable way to run, monitor, and manage them from anywhere.",
     },
     {
-      title: "Live Audit Trail",
-      text: "Know what changed, who changed it, and why it matters.",
-    },
-    {
-      title: "Workspace Governance",
-      text: "Role-based controls designed for solo operators now and teams later.",
+      title: "Managed Cloud Dashboard",
+      text: "Think of us as your managed cloud dashboard. We handle the infrastructure so you can focus on building with your agents.",
     },
   ];
 
   const faqs = [
     {
-      q: "Is this only for technical teams?",
-      a: "No. It is built for operators, creators, and solopreneurs who want disciplined execution, even without a large team.",
+      q: "Is this only for technical users?",
+      a: "No. While we offer a free self-host option for technical users who want full control, Synclaw Cloud is designed for operators, creators, and solopreneurs who want to run OpenClaw without managing servers.",
     },
     {
-      q: "Can I start solo and add team members later?",
-      a: "Yes. The workspace model is designed to scale from one person to a structured team with role controls.",
+      q: "Do I keep control of my agents?",
+      a: "Absolutely. Synclaw provides the infrastructure and dashboard—you keep full control of your OpenClaw agents, their configurations, and their behavior.",
     },
     {
-      q: "What happens while billing is not live?",
-      a: "You can explore the product flow and core experience. Billing and checkout are being finalized separately.",
+      q: "Can I switch between self-hosted and cloud?",
+      a: "Yes. You can start with our free self-host option and upgrade to managed cloud infrastructure whenever you're ready.",
     },
   ];
 
@@ -730,19 +734,25 @@ function LandingPage() {
               <p className="text-sm font-semibold">
                 {brand.marketing.trialTitle}
               </p>
-              <p className="mt-2 text-sm text-text-muted">
+              <p className="mt-1 text-2xl font-bold text-text-primary">$0 forever</p>
+              <p className="mt-2 text-xs uppercase tracking-wider text-text-dim">Best for</p>
+              <p className="mt-1 text-sm text-text-muted">
                 {brand.marketing.trialSummary}
               </p>
             </div>
             <div className="rounded-xl border border-border-default bg-bg-primary p-4">
-              <p className="text-sm font-semibold">Starter</p>
-              <p className="mt-2 text-sm text-text-muted">
+              <p className="text-sm font-semibold">Starter Cloud</p>
+              <p className="mt-1 text-2xl font-bold text-text-primary">$9.99/mo</p>
+              <p className="mt-2 text-xs uppercase tracking-wider text-text-dim">Best for</p>
+              <p className="mt-1 text-sm text-text-muted">
                 {brand.marketing.starterSummary}
               </p>
             </div>
             <div className="rounded-xl border border-accent-orange/40 bg-bg-primary p-4">
-              <p className="text-sm font-semibold">Pro</p>
-              <p className="mt-2 text-sm text-text-muted">
+              <p className="text-sm font-semibold">Pro Cloud</p>
+              <p className="mt-1 text-2xl font-bold text-text-primary">$24.99/mo</p>
+              <p className="mt-2 text-xs uppercase tracking-wider text-text-dim">Best for</p>
+              <p className="mt-1 text-sm text-text-muted">
                 {brand.marketing.proSummary}
               </p>
             </div>
