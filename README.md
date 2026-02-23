@@ -1,6 +1,6 @@
-# Sutraha HQ
+# Synclaw
 
-Sutraha HQ is a Next.js + Convex dashboard for managing an OpenClaw-powered agent workspace:
+Synclaw is a Next.js + Convex dashboard for managing an OpenClaw-powered agent workspace:
 
 - Tasks, documents, broadcasts, and activity feed (Convex)
 - Chat UI streaming directly from OpenClaw Gateway over WebSocket (no Convex chat persistence)

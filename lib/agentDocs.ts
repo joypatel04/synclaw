@@ -17,12 +17,12 @@ export function buildAgentsMd(args: {
     .slice()
     .sort((a, b) => a.sessionKey.localeCompare(b.sessionKey))
     .map((a) => {
-      const agentId = a.agentId ? `\`${a.agentId}\`` : "(create in Sutraha HQ)";
+      const agentId = a.agentId ? `\`${a.agentId}\`` : "(create in Synclaw)";
       return `| ${a.emoji || "🤖"} ${a.name} | \`${a.sessionKey}\` | ${a.role || ""} | ${agentId} | <fill> |`;
     })
     .join("\n");
 
-  return `# AGENTS.md — Sutraha HQ Agent Orchestration
+  return `# AGENTS.md — Synclaw Agent Orchestration
 
 **Workspace:** ${wsName}  
 **workspaceId:** \`${wsId}\`  
@@ -30,14 +30,14 @@ export function buildAgentsMd(args: {
 
 ## Agent Identity
 
-| Agent | Session Key | Role | Agent ID (Sutraha HQ) | OpenClaw Workspace Path |
+| Agent | Session Key | Role | Agent ID (Synclaw) | OpenClaw Workspace Path |
 |-------|-------------|------|------------------------|--------------------------|
 ${rows || "| (none) |  |  |  |  |"}
 
 ## Notes
 - Each agent is a real agent with its own identity (sessionKey). Never reuse another agent's sessionKey.
 - Recommended: each agent has its own OpenClaw workspace directory (separate working directory + memory).
-- Keep prompts short: put shared Sutraha HQ operating rules in \`SUTRAHA_PROTOCOL.md\` inside each agent workspace.
-- Recommended: one Sutraha HQ workspace contains multiple agents (main + specialists). Create a new workspace only for isolation (different OpenClaw deployment or members).
+- Keep prompts short: put shared Synclaw operating rules in \`SUTRAHA_PROTOCOL.md\` inside each agent workspace.
+- Recommended: one Synclaw workspace contains multiple agents (main + specialists). Create a new workspace only for isolation (different OpenClaw deployment or members).
 - For reliability: put a small \`HEARTBEAT.md\` in each agent's OpenClaw workspace and schedule a cron run (15-60 minutes typical depending on role).`;
 }

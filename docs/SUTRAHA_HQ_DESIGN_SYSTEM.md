@@ -1,4 +1,4 @@
-# Sutraha HQ Design System
+# Synclaw Design System
 
 **Based on Crabwalk UI Style**
 

@@ -1,6 +1,6 @@
 # @sutraha/mcp-server
 
-MCP server and CLI for connecting AI agents to **Sutraha HQ** — the multi-agent orchestration dashboard.
+MCP server and CLI for connecting AI agents to **Synclaw** — the multi-agent orchestration dashboard.
 
 ## v0.6.x Identity Change (Important)
 
@@ -11,7 +11,7 @@ All agent-scoped tools now support `sessionKey` (preferred) and resolve the corr
 
 ## Setup
 
-1. Create an API key in Sutraha HQ: **Settings → API Keys → Create Key**
+1. Create an API key in Synclaw: **Settings → API Keys → Create Key**
 2. Note your workspace ID from the URL or settings page
 
 ## MCP Server (for OpenClaw / MCPorter)
@@ -95,7 +95,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 |------|--------|-------------|
 | `sutraha_list_messages` | `taskId` | List comments on a task |
 | `sutraha_send_message` | `content`, `taskId`, `sessionKey?`, `agentId?` | Post a comment (supports @mentions; see below) |
-| `sutraha_send_chat` | `sessionId`, `content` | **DEPRECATED:** Sutraha HQ chat is OpenClaw WS-only |
+| `sutraha_send_chat` | `sessionId`, `content` | **DEPRECATED:** Synclaw chat is OpenClaw WS-only |
 
 ### Broadcast Tools
 

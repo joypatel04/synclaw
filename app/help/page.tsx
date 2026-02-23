@@ -62,16 +62,16 @@ function HelpContent() {
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-text-primary">Resources</h1>
           <p className="mt-1 text-xs text-text-muted">
-            Documentation-first overview: what Sutraha HQ is, what to build, and where to start.
+            Documentation-first overview: what Synclaw is, what to build, and where to start.
           </p>
         </div>
       </div>
 
       <div className="space-y-6">
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">What is Sutraha HQ?</h2>
+          <h2 className="text-sm font-semibold text-text-primary">What is Synclaw?</h2>
           <p className="mt-2 text-sm text-text-secondary">
-            Sutraha HQ is an operations dashboard for OpenClaw-powered agent systems. It connects your agents,
+            Synclaw is an operations dashboard for OpenClaw-powered agent systems. It connects your agents,
             tracks execution through tasks/documents/activities, and gives visibility into heartbeat and health.
           </p>
 

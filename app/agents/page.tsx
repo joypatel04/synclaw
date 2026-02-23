@@ -630,7 +630,7 @@ function AgentsContent() {
                   className="bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
                 />
                 <p className="text-[11px] text-text-dim">
-                  This is a suggested system prompt/instructions for the agent you are creating. Sutraha HQ does not store it; paste it into OpenClaw.
+                  This is a suggested system prompt/instructions for the agent you are creating. Synclaw does not store it; paste it into OpenClaw.
                 </p>
               </div>
 

@@ -24,7 +24,7 @@ export const CANONICAL_AGENT_TEMPLATES: CanonicalAgentTemplate[] = [
     name: "Jarvis",
     emoji: "🦊",
     role: "Squad Lead",
-    focus: "Orchestrator (plans, delegates, keeps Sutraha HQ updated)",
+    focus: "Orchestrator (plans, delegates, keeps Synclaw updated)",
   },
   {
     id: "shuri",
@@ -59,7 +59,7 @@ export function buildMainAgentBootstrapMessage(args: {
   const wsName = args.workspaceName || "this workspace";
   const wsId = args.workspaceId || "<workspaceId>";
 
-  return `You are the Main Orchestrator agent for Sutraha HQ.
+  return `You are the Main Orchestrator agent for Synclaw.
 
 WORKSPACE
 - name: ${wsName}
@@ -67,10 +67,10 @@ WORKSPACE
 
 IDENTITY (IMPORTANT)
 - sessionKey: "${CANONICAL_SESSION_KEYS.main}"
-- Always pass sessionKey to Sutraha HQ MCP tools.
+- Always pass sessionKey to Synclaw MCP tools.
 
 LOCAL FILES (IN YOUR OPENCLAW WORKSPACE)
-- ${SUTRAHA_PROTOCOL_FILENAME} (shared Sutraha HQ operating rules)
+- ${SUTRAHA_PROTOCOL_FILENAME} (shared Synclaw operating rules)
 - HEARTBEAT.md (your runbook)
 
 RULES
@@ -99,7 +99,7 @@ export function buildSpecialistAgentBootstrapMessage(args: {
   const wsName = args.workspaceName || "this workspace";
   const wsId = args.workspaceId || "<workspaceId>";
 
-  return `You are ${args.agent.name}, a specialist agent for Sutraha HQ.
+  return `You are ${args.agent.name}, a specialist agent for Synclaw.
 
 WORKSPACE
 - name: ${wsName}
@@ -107,7 +107,7 @@ WORKSPACE
 
 IDENTITY (IMPORTANT)
 - sessionKey: "${args.agent.sessionKey}"
-- Always pass sessionKey to Sutraha HQ MCP tools.
+- Always pass sessionKey to Synclaw MCP tools.
 - You work under the Main Orchestrator (${CANONICAL_SESSION_KEYS.main}).
 - You are a distinct autonomous agent. Never impersonate other agents or reuse their sessionKey.
 
@@ -137,7 +137,7 @@ export function buildGenericAgentBootstrapMessage(args: {
   const wsName = args.workspaceName || "this workspace";
   const wsId = args.workspaceId || "<workspaceId>";
 
-  return `You are ${args.agentName}, an agent for Sutraha HQ.
+  return `You are ${args.agentName}, an agent for Synclaw.
 
 WORKSPACE
 - name: ${wsName}
@@ -145,7 +145,7 @@ WORKSPACE
 
 IDENTITY (IMPORTANT)
 - sessionKey: "${args.sessionKey}"
-- Always pass sessionKey to Sutraha HQ MCP tools.
+- Always pass sessionKey to Synclaw MCP tools.
 - You are a distinct autonomous agent. Never impersonate other agents or reuse their sessionKey.
 
 ROLE
@@ -202,7 +202,7 @@ export const MODEL_STRATEGY_PRESETS: ModelStrategyPreset[] = [
 - Tool/extraction steps: small fast model, temperature 0, strict output formats.
 
 Notes:
-- Prefer writing long context to Sutraha HQ Documents instead of keeping it in chat history.
+- Prefer writing long context to Synclaw Documents instead of keeping it in chat history.
 - Keep tool calls deterministic and retry-safe.`,
   },
   {

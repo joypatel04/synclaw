@@ -1,13 +1,13 @@
 # OpenClaw Chat (WS-Only, Per-Workspace Config)
 
-Sutraha HQ connects **directly from the browser** to your OpenClaw Gateway over WebSocket.
+Synclaw connects **directly from the browser** to your OpenClaw Gateway over WebSocket.
 
 - No Fly bridge worker
 - No Convex chat transcript persistence (OpenClaw is the source of truth)
 
 ## Configure OpenClaw (UI)
 
-Open **Settings -> OpenClaw** (`/settings/openclaw`) in Sutraha HQ and set:
+Open **Settings -> OpenClaw** (`/settings/openclaw`) in Synclaw and set:
 
 - WebSocket URL (example: `wss://claw.sahayoga.in`)
 - Auth token (and optional password)

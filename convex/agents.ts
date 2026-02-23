@@ -417,11 +417,11 @@ export const create = mutation({
 
     const title = `Setup agent: ${args.name} (${args.sessionKey})`;
     const description = `Checklist:
-- [ ] Configure Sutraha HQ MCP server (MCPorter config)
+- [ ] Configure Synclaw MCP server (MCPorter config)
 - [ ] Set the agent's bootstrap prompt in OpenClaw
 - [ ] Add SUTRAHA_PROTOCOL.md + HEARTBEAT.md to the agent's OpenClaw workspace
-- [ ] Schedule a cron run (use the cron prompt from Sutraha HQ)
-- [ ] Confirm first pulse is received in Sutraha HQ (agent shows Connected)
+- [ ] Schedule a cron run (use the cron prompt from Synclaw)
+- [ ] Confirm first pulse is received in Synclaw (agent shows Connected)
 
 Links:
 - Agent setup: [open](/agents/${id}/setup)
@@ -429,7 +429,7 @@ Links:
 - Agent health: [open](/agents/health)
 
 Notes:
-- Prefer short, stable local files. Keep long context in Sutraha HQ Documents.
+- Prefer short, stable local files. Keep long context in Synclaw Documents.
 - Never reuse another agent's sessionKey.`;
 
     const taskId = await ctx.db.insert("tasks", {
