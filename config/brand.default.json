@@ -12,7 +12,7 @@
     "secondaryCtaLabel": "See Pricing",
     "signInLabel": "Sign in",
     "trustBadge": "Launch pricing locked in for early users",
-    "heroAccent": "",
+    "heroAccent": "from-indigo-500 to-purple-500",
     "benefitBullets": [
       "Managed infrastructure, 99.9% uptime",
       "One-click fs-bridge setup",
