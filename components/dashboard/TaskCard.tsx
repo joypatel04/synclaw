@@ -1,7 +1,6 @@
 "use client";
 
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
-import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { TaskCostBadge } from "@/components/task/TaskCostBadge";
@@ -15,6 +14,24 @@ interface TaskCardProps {
   isDragging?: boolean;
 }
 
+function toCardPreview(content: string): string {
+  return content
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+    .replace(/\[[^\]]+\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
   const assignees = agents.filter((a) =>
     task.assigneeIds.includes(a._id as Id<"agents">),
@@ -23,6 +40,7 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
     task.status === "blocked"
       ? (task as unknown as { blockedReason?: string }).blockedReason
       : undefined;
+  const preview = task.description ? toCardPreview(task.description) : "";
 
   return (
     <Link href={`/tasks/${task._id}`}>
@@ -40,11 +58,11 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
           <PriorityBadge priority={task.priority} />
         </div>
 
-        {task.description && (
-          <div className="mt-1.5 text-xs text-text-muted line-clamp-2">
-            <MarkdownContent content={task.description} />
-          </div>
-        )}
+        {preview ? (
+          <p className="mt-1.5 line-clamp-4 text-xs leading-relaxed text-text-muted">
+            {preview}
+          </p>
+        ) : null}
         {blockedReason ? (
           <p className="mt-2 line-clamp-1 rounded-md border border-status-blocked/30 bg-status-blocked/10 px-2 py-1 text-[11px] text-status-blocked">
             Blocker: {blockedReason}
