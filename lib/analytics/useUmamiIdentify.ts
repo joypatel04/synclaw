@@ -18,7 +18,16 @@ import { identifyUser, clearUserIdentity } from './track';
  * Only fires once per user change (deduped via ref).
  */
 export function useUmamiIdentify(): void {
-  const { isAuthenticated, isLoading } = useConvexAuth();
+  // Try to get auth state, return early if Convex provider is not available
+  let authState;
+  try {
+    authState = useConvexAuth();
+  } catch (error) {
+    // Convex provider not available (e.g., during static page generation)
+    return;
+  }
+
+  const { isAuthenticated, isLoading } = authState;
 
   // Use a ref to track the last identified state to prevent duplicate calls
   const lastIdentifiedRef = useRef<boolean | null>(null);
