@@ -65,7 +65,7 @@ function AgentSetupCookbookContent() {
           <Link href="/agents">Open agents</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/chat?setup=1">Open chat setup</Link>
+          <Link href="/chat">Open chat</Link>
         </Button>
       </div>
     </div>

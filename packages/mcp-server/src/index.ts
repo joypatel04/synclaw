@@ -6,7 +6,7 @@
  * via the Model Context Protocol (MCP).
  *
  * Usage:
- *   CONVEX_URL=... CONVEX_SITE_URL=... SUTRAHA_API_KEY=... SUTRAHA_WORKSPACE_ID=... npx @sutraha/mcp-server
+ *   CONVEX_URL=... CONVEX_SITE_URL=... SYNCLAW_API_KEY=... SYNCLAW_WORKSPACE_ID=... npx @synclaw/mcp-server
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -56,7 +56,7 @@ async function resolveAgentId(input: {
 }
 
 const server = new McpServer({
-  name: "sutraha-hq",
+  name: "synclaw-hq",
   version: MCP_SERVER_VERSION,
 });
 
@@ -65,12 +65,12 @@ const server = new McpServer({
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_get_server_info",
-  "Get Sutraha MCP server compatibility info (version, protocol, and feature flags). Call this once at startup to detect mismatches.",
+  "synclaw_get_server_info",
+  "Get Synclaw MCP server compatibility info (version, protocol, and feature flags). Call this once at startup to detect mismatches.",
   {},
   async () => {
     const info = {
-      serverName: "sutraha-hq",
+      serverName: "synclaw-hq",
       mcpServerVersion: MCP_SERVER_VERSION,
       protocolVersion: MCP_PROTOCOL_VERSION,
       identityMode: MCP_SESSION_KEY_MODE,
@@ -94,7 +94,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_list_agents",
+  "synclaw_list_agents",
   "List all active agents in the workspace",
   {},
   async () => {
@@ -106,7 +106,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_agent",
+  "synclaw_get_agent",
   "Get an agent by ID",
   { agentId: z.string().describe("Agent ID") },
   async ({ agentId }) => {
@@ -118,7 +118,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_agent_by_session_key",
+  "synclaw_get_agent_by_session_key",
   "Find an agent by its session key",
   { sessionKey: z.string().describe("Agent session key") },
   async ({ sessionKey }) => {
@@ -132,14 +132,14 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_create_agent",
+  "synclaw_create_agent",
   "Create/register a new agent. By default this is registration-only (no setup task). Set createSetupTask=true to also generate the setup checklist task. Requires workspace admin or owner.",
   {
     workspaceId: z
       .string()
       .optional()
       .describe(
-        "Target workspace ID. Defaults to SUTRAHA_WORKSPACE_ID from MCP server env.",
+        "Target workspace ID. Defaults to SYNCLAW_WORKSPACE_ID from MCP server env.",
       ),
     name: z.string().describe("Display name for the agent"),
     role: z
@@ -162,7 +162,7 @@ server.tool(
       .boolean()
       .optional()
       .describe(
-        "When true, creates the setup checklist task in Sutraha. Defaults to false.",
+        "When true, creates the setup checklist task in Synclaw. Defaults to false.",
       ),
   },
   async ({
@@ -186,7 +186,7 @@ server.tool(
     const trimmedWorkspaceId = workspaceId?.trim();
     if (workspaceId !== undefined && !trimmedWorkspaceId) {
       throw new Error(
-        "Invalid input: workspaceId was provided but empty. Omit it to use SUTRAHA_WORKSPACE_ID.",
+        "Invalid input: workspaceId was provided but empty. Omit it to use SYNCLAW_WORKSPACE_ID.",
       );
     }
 
@@ -210,7 +210,7 @@ server.tool(
         : await client.mutation(api.agents.createManual, createArgs);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`sutraha_create_agent failed: ${message}`);
+      throw new Error(`synclaw_create_agent failed: ${message}`);
     }
     return {
       content: [
@@ -224,7 +224,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_update_agent_status",
+  "synclaw_update_agent_status",
   "Update an agent's status",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -246,7 +246,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_agent_heartbeat",
+  "synclaw_agent_heartbeat",
   "Send a heartbeat for an agent to indicate it's alive",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -263,7 +263,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_agent_pulse",
+  "synclaw_agent_pulse",
   "Send a pulse with status and optional telemetry. Use this at startup or during work to indicate you're alive and update your status. This is the 'dead man's switch' — if you don't pulse for 15 minutes, you'll appear offline.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -362,7 +362,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_start_task_session",
+  "synclaw_start_task_session",
   "Mark that you've started actively working on a task. This links you to the task and logs an activity. Call this when you pick up a task.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -390,7 +390,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_end_task_session",
+  "synclaw_end_task_session",
   "Mark that you've finished your current task session. Clears your currentTaskId and updates status. Call this at the end of every run (success or error).",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -446,7 +446,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_list_members",
+  "synclaw_list_members",
   "List workspace members (human users). Use this to find the owner and others you can @mention when you need human intervention. Use atMention in message content, e.g. include '@Joy' to tag that member.",
   {},
   async () => {
@@ -470,7 +470,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_list_tasks",
+  "synclaw_list_tasks",
   "List tasks in the workspace (use filters to keep context small).",
   {
     limit: z
@@ -540,7 +540,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_task",
+  "synclaw_get_task",
   "Get a task by ID with full details",
   { taskId: z.string().describe("Task ID") },
   async ({ taskId }) => {
@@ -550,7 +550,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_my_tasks",
+  "synclaw_get_my_tasks",
   "Get tasks assigned to a specific agent. By default, this returns only tasks updated since you last checked and then marks returned tasks as seen.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -626,7 +626,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_create_task",
+  "synclaw_create_task",
   "Create a new task in the workspace. Pass your agentId so the activity is attributed to you.",
   {
     title: z.string().describe("Task title"),
@@ -677,7 +677,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_update_task",
+  "synclaw_update_task",
   "Update a task's fields. Pass your agentId so the activity is attributed to you.",
   {
     taskId: z.string().describe("Task ID"),
@@ -706,7 +706,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_update_task_status",
+  "synclaw_update_task_status",
   "Change a task's status. Pass your agentId so the activity is attributed to you.",
   {
     taskId: z.string().describe("Task ID"),
@@ -742,7 +742,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_list_messages",
+  "synclaw_list_messages",
   "List comments/messages on a task",
   { taskId: z.string().describe("Task ID") },
   async ({ taskId }) => {
@@ -754,7 +754,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_send_message",
+  "synclaw_send_message",
   "Post a comment on a task (supports @mentions like @Joy or @Jarvis).",
   {
     content: z
@@ -779,7 +779,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_send_chat",
+  "synclaw_send_chat",
   "DEPRECATED: Synclaw chat is now OpenClaw WS-only. Use OpenClaw chat APIs instead.",
   {
     sessionId: z.string().describe("Unused. Kept for compatibility."),
@@ -790,7 +790,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: "sutraha_send_chat is deprecated (chat is OpenClaw WS-only).",
+          text: "synclaw_send_chat is deprecated (chat is OpenClaw WS-only).",
         },
       ],
     };
@@ -802,7 +802,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_list_broadcasts",
+  "synclaw_list_broadcasts",
   "List workspace broadcasts",
   {},
   async () => {
@@ -814,7 +814,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_respond_to_broadcast",
+  "synclaw_respond_to_broadcast",
   "Respond to a workspace broadcast. Creates a message and links it as a broadcast response.",
   {
     broadcastId: z.string().describe("Broadcast ID"),
@@ -847,7 +847,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_list_documents",
+  "synclaw_list_documents",
   "List documents in the workspace",
   {
     taskId: z.string().optional().describe("Filter by task ID"),
@@ -872,7 +872,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_upsert_document",
+  "synclaw_upsert_document",
   "Create or update a document in the workspace",
   {
     documentId: z
@@ -941,7 +941,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_get_activities",
+  "synclaw_get_activities",
   "Get recent activity feed for the workspace",
   {},
   async () => {
@@ -953,7 +953,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_activities_by_agent",
+  "synclaw_get_activities_by_agent",
   "Get activities with optional filters (agent, type, task, since timestamp)",
   {
     agentId: z
@@ -995,7 +995,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_activities_with_mention",
+  "synclaw_get_activities_with_mention",
   "Get activities where the provided agent was @mentioned in message activity metadata",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -1023,7 +1023,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_get_unseen_activities",
+  "synclaw_get_unseen_activities",
   "Get activities that happened since this agent last acknowledged. Use at startup to catch up on what happened while offline.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -1052,7 +1052,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_ack_activities",
+  "synclaw_ack_activities",
   "Acknowledge activities as seen. Call this after processing unseen activities so you don't see them again next time.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -1075,7 +1075,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_ack_specific_activity",
+  "synclaw_ack_specific_activity",
   "Acknowledge only specific activity IDs as seen. Use this when you handled some items but intentionally want to keep others unseen.",
   {
     activityIds: z
@@ -1110,7 +1110,7 @@ server.tool(
 // ═══════════════════════════════════════════════════════════
 
 server.tool(
-  "sutraha_get_notifications",
+  "synclaw_get_notifications",
   "Get undelivered @mention notifications for this agent.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -1139,7 +1139,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_ack_notifications",
+  "synclaw_ack_notifications",
   "Mark all @mention notifications as delivered for this agent.",
   {
     agentId: z.string().optional().describe("Deprecated: prefer sessionKey"),
@@ -1162,7 +1162,7 @@ server.tool(
 );
 
 server.tool(
-  "sutraha_ack_specific_notification",
+  "synclaw_ack_specific_notification",
   "Mark only specific notification IDs as delivered. Use this when you handled some mentions but want to keep others pending.",
   {
     notificationIds: z

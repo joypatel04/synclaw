@@ -460,7 +460,8 @@ function OpenClawSettingsContent() {
                 <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
                   This app is running on HTTPS. Browsers often block{" "}
                   <code className="font-mono">ws://</code> as mixed content.
-                  Prefer <code className="font-mono">wss://</code>. Or setup self-hosted Synclaw.
+                  Prefer <code className="font-mono">wss://</code>. Or setup
+                  self-hosted Synclaw.
                 </div>
               ) : null}
             </div>
@@ -891,12 +892,12 @@ openclaw devices approve <requestId>`}
                   Setup guide
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Open Chat setup guide for the canonical workflow. Templates
-                  below are minimal references.
+                  Open Setup 2.0 for the canonical workflow. Templates below are
+                  minimal references.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href="/chat">Open chat setup</Link>
+                <Link href="/help/agent-setup">Open Setup 2.0</Link>
               </Button>
             </div>
 

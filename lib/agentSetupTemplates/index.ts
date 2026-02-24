@@ -2,7 +2,6 @@ import { buildSynclawProtocolMd } from "../synclawProtocol";
 import {
   buildAgentsMd,
   buildIdentityMd,
-  buildSutrahaHqProtocolMd,
   buildToolsMd,
   buildUserMd,
   deriveRoleModule,

@@ -1,4 +1,4 @@
-# Sutraha HQ Centralized Protocol v1.2.0 (STRICT)
+# Synclaw Centralized Protocol v1.2.0 (STRICT)
 
 This is the master heartbeat instruction set for all agents. Failure to follow this sequence leads to state desync and task loss.
 
@@ -9,35 +9,35 @@ This is the master heartbeat instruction set for all agents. Failure to follow t
 Every 30-45 minutes, follow this sequence exactly:
 
 ### Step 1: Presence
-*   Follow **Stage 1** of `SUTRAHA_HQ_PROTOCOL.md`.
+*   Follow **Stage 1** of `SYNCLAW_HQ_PROTOCOL.md`.
 
 ### Step 2: Inbox Check (FETCH ONLY)
-*   Fetch `sutraha_get_unseen_activities` and `sutraha_get_notifications`.
-*   **NEW:** Fetch `sutraha_get_my_tasks(includeDone=false, limit=10)`.
+*   Fetch `synclaw_get_unseen_activities` and `synclaw_get_notifications`.
+*   **NEW:** Fetch `synclaw_get_my_tasks(includeDone=false, limit=10)`.
 *   **DO NOT** acknowledge yet.
 
 ### Step 3: Task Pickup (CRITICAL)
 *   For **EACH** task in `assigned` status: spawn a worker via `sessions_spawn`.
 *   **NEVER** handle multiple tasks in the parent session.
-*   **FORBIDDEN:** Never use `sutraha_ack_activities` or `sutraha_ack_notifications` (Bulk Ack).
+*   **FORBIDDEN:** Never use `synclaw_ack_activities` or `synclaw_ack_notifications` (Bulk Ack).
 *   For **EACH** unique `taskId` found in the activities:
-    1.  Fetch full context: `sutraha_get_task(taskId)` and `sutraha_list_messages(taskId)`.
+    1.  Fetch full context: `synclaw_get_task(taskId)` and `synclaw_list_messages(taskId)`.
     2.  Spawn a worker: `sessions_spawn`.
     3.  **Worker Prompt Template:**
         ```text
-        [FOLLOW SUTRAHA_HQ_PROTOCOL.md Stage 3-5]
+        [FOLLOW SYNCLAW_HQ_PROTOCOL.md Stage 3-5]
         TASK_ID: [taskId]
         CONTEXT: [Insert Context Package]
         MISSION: [Specific action needed]
         ```
-    4.  Once spawned successfully, call `sutraha_ack_specific_activity` or `sutraha_ack_specific_notification` for the IDs related to that task.
+    4.  Once spawned successfully, call `synclaw_ack_specific_activity` or `synclaw_ack_specific_notification` for the IDs related to that task.
 
 ---
 
 ## 2. Worker Mission Protocol (Sub-Agent Session)
 
-1.  **Compliance:** Follow Stages 3-5 of `SUTRAHA_HQ_PROTOCOL.md`.
-2.  **Telemetry:** Provide accurate `totalTokensUsed` and `lastRunCost` in `sutraha_end_task_session`.
+1.  **Compliance:** Follow Stages 3-5 of `SYNCLAW_HQ_PROTOCOL.md`.
+2.  **Telemetry:** Provide accurate `totalTokensUsed` and `lastRunCost` in `synclaw_end_task_session`.
 3.  **Specific Output:** Every run MUST end with a comment to the task so the status is recorded.
 
 ---

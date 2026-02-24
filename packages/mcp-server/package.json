@@ -1,11 +1,14 @@
 {
-  "name": "@sutraha/mcp-server",
-  "version": "0.6.5",
+  "name": "@synclaw/mcp-server",
+  "version": "0.1.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "MCP server for Synclaw — connects AI agents to the orchestration dashboard",
   "type": "module",
   "bin": {
-    "sutraha-mcp": "dist/index.js",
-    "sutraha-cli": "dist/cli.js"
+    "synclaw-mcp": "dist/index.js",
+    "synclaw-cli": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "scripts": {

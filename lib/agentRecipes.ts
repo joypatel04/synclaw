@@ -146,29 +146,29 @@ Stay responsive: pulse online, catch up on mentions/activities, pick up assigned
 
 ## Runbook (every run)
 1) Pulse active (dead man's switch)
-   - Call: \`sutraha_agent_pulse(sessionKey="${sessionKey}", status="active")\`
+   - Call: \`synclaw_agent_pulse(sessionKey="${sessionKey}", status="active")\`
 
 2) Catch up
-   - Call: \`sutraha_get_unseen_activities(sessionKey="${sessionKey}")\`
-   - Call: \`sutraha_get_notifications(sessionKey="${sessionKey}")\`
+   - Call: \`synclaw_get_unseen_activities(sessionKey="${sessionKey}")\`
+   - Call: \`synclaw_get_notifications(sessionKey="${sessionKey}")\`
 
 3) Load assigned work (keep it small)
-   - Call: \`sutraha_get_my_tasks(sessionKey="${sessionKey}", includeDone=false, limit=10)\`
+   - Call: \`synclaw_get_my_tasks(sessionKey="${sessionKey}", includeDone=false, limit=10)\`
 
 4) Execute
    - Pick the highest-leverage task.
-   - If you start a task: \`sutraha_start_task_session(sessionKey="${sessionKey}", taskId="...")\`
+   - If you start a task: \`synclaw_start_task_session(sessionKey="${sessionKey}", taskId="...")\`
    - Update statuses and post updates as you go.
-   - If blocked: call \`sutraha_update_task_status(taskId="...", status="blocked", blockedReason="...")\` with a concrete blocker note.
+   - If blocked: call \`synclaw_update_task_status(taskId="...", status="blocked", blockedReason="...")\` with a concrete blocker note.
    - Put long outputs in Documents; keep comments short and link to docs.
 
 5) Acknowledge (idempotency)
    - After you fully process unseen items:
-     - \`sutraha_ack_activities(sessionKey="${sessionKey}")\`
-     - \`sutraha_ack_notifications(sessionKey="${sessionKey}")\`
+     - \`synclaw_ack_activities(sessionKey="${sessionKey}")\`
+     - \`synclaw_ack_notifications(sessionKey="${sessionKey}")\`
 
 6) End cleanly
-   - Call: \`sutraha_end_task_session(sessionKey="${sessionKey}", status="idle", runSummary="...")\`
+   - Call: \`synclaw_end_task_session(sessionKey="${sessionKey}", status="idle", runSummary="...")\`
 
 ## Notes
 - If you're running under an ephemeral cron session key, still use \`${sessionKey}\` for Synclaw calls (pass it explicitly).`;

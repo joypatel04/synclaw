@@ -145,17 +145,15 @@ function HelpContent() {
               Complete prerequisites in{" "}
               <span className="font-mono text-xs">/onboarding</span>.
             </li>
-            <li>Open Chat and follow the left setup checklist rail.</li>
-            <li>
-              Create new agents from recipe flow and continue setup in chat.
-            </li>
+            <li>Create new agents from recipe flow.</li>
+            <li>Open Agent Setup 2.0 and complete strict validation.</li>
           </ol>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Button
               asChild
               className="bg-accent-orange hover:bg-accent-orange/90 text-white"
             >
-              <Link href="/chat?setup=1">Do setup in Chat</Link>
+              <Link href="/help/agent-setup">Open Setup 2.0</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/agents/new">Create agent (recipe)</Link>

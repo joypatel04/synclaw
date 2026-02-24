@@ -142,7 +142,7 @@ export function AgentRecipeWizard() {
         sessionKey: nextSessionKey,
         content: prompt,
       });
-      router.push(`/chat/${id}?setup=1`);
+      router.push(`/agents/${id}/setup`);
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -349,7 +349,7 @@ export function AgentRecipeWizard() {
                     : "Create agent in Synclaw"
                 }
               >
-                {creating ? "Creating..." : "Create and continue setup in chat"}
+                {creating ? "Creating..." : "Create and open Setup 2.0"}
               </Button>
               <Button
                 variant="outline"

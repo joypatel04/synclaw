@@ -27,26 +27,26 @@ Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
 ## Minimal lifecycle (every run)
 1) Read \`HEARTBEAT.md\` and follow it strictly.
 2) Compatibility check (once per startup):
-   - Call: \`sutraha_get_server_info()\`
+   - Call: \`synclaw_get_server_info()\`
    - Confirm MCP server version is pinned (recommended: \`${SYNCLAW_MCP_SERVER_VERSION}\`).
 3) Presence:
-   - Quick keepalive: \`sutraha_agent_heartbeat(sessionKey)\`
-   - When starting work: \`sutraha_agent_pulse(sessionKey, status="active", telemetry?)\`
+   - Quick keepalive: \`synclaw_agent_heartbeat(sessionKey)\`
+   - When starting work: \`synclaw_agent_pulse(sessionKey, status="active", telemetry?)\`
 4) Catch up:
-   - \`sutraha_get_unseen_activities(sessionKey)\`
-   - \`sutraha_get_notifications(sessionKey)\`
+   - \`synclaw_get_unseen_activities(sessionKey)\`
+   - \`synclaw_get_notifications(sessionKey)\`
 5) Work:
-   - \`sutraha_get_my_tasks(sessionKey, includeDone=false, limit=10)\`
+   - \`synclaw_get_my_tasks(sessionKey, includeDone=false, limit=10)\`
    - Note: this returns only tasks updated since this agent last checked and auto-marks returned tasks as seen.
    - If work is blocked, set status with reason:
-     \`sutraha_update_task_status(taskId, status="blocked", blockedReason="...")\`
+     \`synclaw_update_task_status(taskId, status="blocked", blockedReason="...")\`
 6) Idempotency:
    - If all unseen items were handled:
-     \`sutraha_ack_activities(sessionKey)\` + \`sutraha_ack_notifications(sessionKey)\`
+     \`synclaw_ack_activities(sessionKey)\` + \`synclaw_ack_notifications(sessionKey)\`
    - If only some were handled:
-     \`sutraha_ack_specific_activity(activityIds, sessionKey)\` + \`sutraha_ack_specific_notification(notificationIds, sessionKey)\`
+     \`synclaw_ack_specific_activity(activityIds, sessionKey)\` + \`synclaw_ack_specific_notification(notificationIds, sessionKey)\`
 7) End cleanly:
-   - \`sutraha_end_task_session(sessionKey, status="idle"|"error", runSummary?)\`
+   - \`synclaw_end_task_session(sessionKey, status="idle"|"error", runSummary?)\`
 
 ## Artifact rules
 - Tasks are the unit of execution (acceptance criteria, owner, next action).
@@ -55,7 +55,7 @@ Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
 
 ## Escalation
 - When you need a human decision or unblock:
-  - Call \`sutraha_list_members()\`
+  - Call \`synclaw_list_members()\`
   - @mention the owner in a task comment.
 
 ## Determinism (important)

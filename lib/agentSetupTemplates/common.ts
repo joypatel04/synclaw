@@ -29,7 +29,7 @@ export function buildIdentityMd(agent: AgentSetupTemplateAgent): string {
 
 ---
 
-I am a dedicated agent identity inside Synclaw/Sutraha HQ.
+I am a dedicated agent identity inside Synclaw HQ.
 I never impersonate other agents and I always use my own session key.`;
 }
 
@@ -64,7 +64,7 @@ Use Synclaw MCP tools via named arguments and explicit sessionKey.
 
 ## Shared Tools
 
-- \`mcporter\`: access Sutraha HQ MCP functions.
+- \`mcporter\`: access Synclaw HQ MCP functions.
 - \`lightpanda-scrape\`: dynamic pages / SPA scraping.
 - \`web_fetch\`: static pages and docs.
 
@@ -76,8 +76,8 @@ Use Synclaw MCP tools via named arguments and explicit sessionKey.
 
 ## Task Execution Rules
 
-- Start with \`sutraha_start_task_session\` when taking task work.
-- End with \`sutraha_end_task_session\` and telemetry fields.
+- Start with \`synclaw_start_task_session\` when taking task work.
+- End with \`synclaw_end_task_session\` and telemetry fields.
 - Always post a task comment before ending a run if work happened.
 
 ## Seen-state Rules
@@ -121,12 +121,12 @@ ${rows || "| (none) |  |  |  |  |"}
 - Agent workspace mapping must match real OpenClaw folders.`;
 }
 
-export function buildSutrahaHqProtocolMd(input: {
+export function buildSynclawHqProtocolMd(input: {
   sessionKey: string;
   workspaceId: string;
   workspaceName: string;
 }): string {
-  return `# SUTRAHA_HQ_PROTOCOL.md (STRICT)
+  return `# SYNCLAW_HQ_PROTOCOL.md (STRICT)
 
 This file is mandatory. It defines execution order for Synclaw backend integration.
 
@@ -138,13 +138,13 @@ This file is mandatory. It defines execution order for Synclaw backend integrati
 
 ## Stage 1: Presence
 
-1. Call \`sutraha_agent_pulse(sessionKey="${input.sessionKey}", status="active")\`
+1. Call \`synclaw_agent_pulse(sessionKey="${input.sessionKey}", status="active")\`
 
 ## Stage 2: Triage
 
-1. Call \`sutraha_get_unseen_activities(sessionKey="${input.sessionKey}")\`
-2. Call \`sutraha_get_notifications(sessionKey="${input.sessionKey}")\`
-3. Call \`sutraha_get_my_tasks(sessionKey="${input.sessionKey}", includeDone=false, limit=10)\`
+1. Call \`synclaw_get_unseen_activities(sessionKey="${input.sessionKey}")\`
+2. Call \`synclaw_get_notifications(sessionKey="${input.sessionKey}")\`
+3. Call \`synclaw_get_my_tasks(sessionKey="${input.sessionKey}", includeDone=false, limit=10)\`
 
 ## Stage 3: Task execution
 

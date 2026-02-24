@@ -8,7 +8,6 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { clearChatDraft, consumeChatDraft } from "@/lib/chatDraft";
+import { consumeChatDraft } from "@/lib/chatDraft";
 import {
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -47,7 +46,6 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   const { workspaceId, canEdit, membershipId } = useWorkspace();
-  const searchParams = useSearchParams();
   const members = useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
   const me = useMemo(
     () => members.find((m) => m._id === membershipId),
@@ -189,21 +187,16 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     () => `${String(workspaceId)}:${agent.sessionKey}`,
     [workspaceId, agent.sessionKey],
   );
-  const setupIntent = searchParams.get("setup") === "1";
   const [draft, setDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    const key = {
-      workspaceId: String(workspaceId),
-      sessionKey: agent.sessionKey,
-    };
-    if (!setupIntent) {
-      clearChatDraft(key);
-      setDraft(null);
-      return;
-    }
-    setDraft(consumeChatDraft(key));
-  }, [draftKey, workspaceId, agent.sessionKey, setupIntent]);
+    setDraft(
+      consumeChatDraft({
+        workspaceId: String(workspaceId),
+        sessionKey: agent.sessionKey,
+      }),
+    );
+  }, [draftKey, workspaceId, agent.sessionKey]);
 
   const rebuildIndex = (next: UiChatMessage[]) => {
     const map = new Map<string, number>();
@@ -1044,10 +1037,6 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
 
   const handleSend = async (content: string) => {
     await enqueueOrSend(content);
-    clearChatDraft({
-      workspaceId: String(workspaceId),
-      sessionKey: agent.sessionKey,
-    });
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {

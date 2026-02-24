@@ -199,7 +199,7 @@ function AgentHealthInner() {
                     <div className="flex flex-col gap-2 sm:items-end">
                       <p className="text-[11px] text-text-dim">
                         Tip: If this says "Never connected", the agent hasn't sent its first{" "}
-                        <span className="font-mono">sutraha_agent_pulse</span> yet.
+                        <span className="font-mono">synclaw_agent_pulse</span> yet.
                       </p>
                     </div>
                   </div>

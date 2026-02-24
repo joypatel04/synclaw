@@ -89,7 +89,7 @@ Deploy after changing any file in:
 
 ---
 
-## 3. MCP Server (@sutraha/mcp-server)
+## 3. MCP Server (@synclaw/mcp-server)
 
 **Must be published manually** after changes to `packages/mcp-server/`.
 
@@ -124,7 +124,7 @@ Publish after changing any file in:
 On the OpenClaw server, the new version is picked up automatically if using `npx` (it fetches latest). If installed globally:
 
 ```bash
-npm update -g @sutraha/mcp-server
+npm update -g @synclaw/mcp-server
 ```
 
 ---

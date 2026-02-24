@@ -156,7 +156,7 @@ function contentErrorsForFile(args: {
         !args.content.includes(args.sessionKey)
           ? "Missing session key in heartbeat"
           : "",
-        !lower.includes("sutraha_agent_pulse") ? "Missing pulse call" : "",
+        !lower.includes("synclaw_agent_pulse") ? "Missing pulse call" : "",
       ].filter(Boolean);
     case "AGENTS.md":
       return [
@@ -169,14 +169,14 @@ function contentErrorsForFile(args: {
       ].filter(Boolean);
     case "SYNCLAW_PROTOCOL.md":
       return [
-        !lower.includes("sutraha") && !lower.includes("synclaw")
-          ? "Missing Synclaw/Sutraha backend context"
+        !lower.includes("synclaw")
+          ? "Missing Synclaw backend context"
           : "",
         !args.content.includes(args.workspaceId)
           ? "Missing workspaceId reference"
           : "",
         !lower.includes("stage 1") ? "Missing staged workflow" : "",
-        !lower.includes("sutraha_agent_pulse") ? "Missing pulse stage" : "",
+        !lower.includes("synclaw_agent_pulse") ? "Missing pulse stage" : "",
       ].filter(Boolean);
     default:
       return [];

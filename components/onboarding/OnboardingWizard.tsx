@@ -133,7 +133,8 @@ export function OnboardingWizard() {
   const step1Done = Boolean(status?.openclawConfigured);
   const step2Done = Boolean(status?.mainAgentId);
   const pairingHintVisible =
-    testResult.status === "error" && isPairingRequiredMessage(testResult.message);
+    testResult.status === "error" &&
+    isPairingRequiredMessage(testResult.message);
 
   const onTestAndSave = async () => {
     setTesting(true);
@@ -224,7 +225,7 @@ export function OnboardingWizard() {
       sessionKey: "agent:main:main",
       content: mainBootstrap,
     });
-    router.replace(`/chat/${mainAgentId}?setup=1`);
+    router.replace(`/agents/${mainAgentId}/setup`);
   };
 
   useEffect(() => {
@@ -321,12 +322,30 @@ export function OnboardingWizard() {
 
             <div className="hidden">
               <Input value="req" readOnly />
-              <Input value={clientId} onChange={(e) => setClientId(e.target.value)} />
-              <Input value={clientMode} onChange={(e) => setClientMode(e.target.value)} />
-              <Input value={clientPlatform} onChange={(e) => setClientPlatform(e.target.value)} />
-              <Input value={subscribeMethod} onChange={(e) => setSubscribeMethod(e.target.value)} />
-              <Input value={historyPollMs} onChange={(e) => setHistoryPollMs(e.target.value)} />
-              <Input value={passwordDraft} onChange={(e) => setPasswordDraft(e.target.value)} />
+              <Input
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+              />
+              <Input
+                value={clientMode}
+                onChange={(e) => setClientMode(e.target.value)}
+              />
+              <Input
+                value={clientPlatform}
+                onChange={(e) => setClientPlatform(e.target.value)}
+              />
+              <Input
+                value={subscribeMethod}
+                onChange={(e) => setSubscribeMethod(e.target.value)}
+              />
+              <Input
+                value={historyPollMs}
+                onChange={(e) => setHistoryPollMs(e.target.value)}
+              />
+              <Input
+                value={passwordDraft}
+                onChange={(e) => setPasswordDraft(e.target.value)}
+              />
               <input
                 type="checkbox"
                 checked={subscribeOnConnect}
@@ -366,17 +385,20 @@ export function OnboardingWizard() {
                   Pairing approval needed
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
-                  This browser device is not paired yet. Approve it in OpenClaw, then rotate scopes.
+                  This browser device is not paired yet. Approve it in OpenClaw,
+                  then rotate scopes.
                 </p>
                 <div className="mt-2 space-y-1.5 font-mono text-[11px] text-text-secondary">
                   <p>openclaw devices list</p>
                   <p>openclaw devices approve &lt;requestId&gt;</p>
                   <p>
-                    openclaw devices rotate --device &lt;deviceId&gt; --scope operator.read --scope operator.write --scope operator.admin
+                    openclaw devices rotate --device &lt;deviceId&gt; --scope
+                    operator.read --scope operator.write --scope operator.admin
                   </p>
                 </div>
                 <p className="mt-2 text-[11px] text-text-dim">
-                  After approval and scope rotation, click <span className="font-semibold">Test &amp; Save</span> again.
+                  After approval and scope rotation, click{" "}
+                  <span className="font-semibold">Test &amp; Save</span> again.
                 </p>
               </div>
             ) : null}
@@ -400,7 +422,9 @@ export function OnboardingWizard() {
               <p className="text-xs text-text-muted">Complete Step 1 first.</p>
             ) : status?.mainAgentId ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-text-muted">Main agent exists. Continue setup in Chat.</p>
+                <p className="text-xs text-text-muted">
+                  Main agent exists. Continue setup in Chat.
+                </p>
                 <Button
                   className="bg-teal hover:bg-teal/90 text-white"
                   onClick={() => goChatSetup(String(status.mainAgentId))}
@@ -450,7 +474,9 @@ export function OnboardingWizard() {
                   />
                 </div>
 
-                {createError ? <p className="text-xs text-status-blocked">{createError}</p> : null}
+                {createError ? (
+                  <p className="text-xs text-status-blocked">{createError}</p>
+                ) : null}
 
                 <Button
                   disabled={creatingAgent || !mainName.trim()}
@@ -471,7 +497,9 @@ export function OnboardingWizard() {
                         });
                         goChatSetup(String(id));
                       } catch (e) {
-                        setCreateError(e instanceof Error ? e.message : String(e));
+                        setCreateError(
+                          e instanceof Error ? e.message : String(e),
+                        );
                       } finally {
                         setCreatingAgent(false);
                       }
@@ -487,11 +515,20 @@ export function OnboardingWizard() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <p className="text-xs text-text-muted">
-            After prerequisites, setup continues in Chat with the left checklist rail.
+            After prerequisites, continue with Setup 2.0 for strict file-pack
+            validation and runtime checks.
           </p>
           <div className="mt-3">
             <Button asChild variant="outline" size="sm" className="h-8">
-              <Link href="/chat?setup=1">Open chat setup</Link>
+              <Link
+                href={
+                  status?.mainAgentId
+                    ? `/agents/${status.mainAgentId}/setup`
+                    : "/agents"
+                }
+              >
+                Open Setup 2.0
+              </Link>
             </Button>
           </div>
         </div>

@@ -374,7 +374,7 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
                     sessionKey: detail.agent.sessionKey,
                     content: bootstrap,
                   });
-                  router.push(`/chat/${detail.agent._id}?setup=1`);
+                  router.push(`/chat/${detail.agent._id}`);
                 }}
               >
                 Open chat with bootstrap

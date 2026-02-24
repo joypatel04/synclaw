@@ -1,5 +1,5 @@
 {
-  "name": "@sutraha/fs-bridge",
+  "name": "@synclaw/fs-bridge",
   "version": "0.1.0",
   "private": true,
   "description": "Remote filesystem bridge for Synclaw OpenClaw workspaces",

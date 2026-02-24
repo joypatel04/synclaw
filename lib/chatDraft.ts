@@ -1,4 +1,4 @@
-const DRAFT_PREFIX = "sutraha-hq:chat-draft";
+const DRAFT_PREFIX = "synclaw-hq:chat-draft";
 
 function draftKey(args: { workspaceId: string; sessionKey: string }) {
   return `${DRAFT_PREFIX}:${args.workspaceId}:${args.sessionKey}`;
@@ -43,14 +43,5 @@ export function consumeChatDraft(args: {
     return value;
   } catch {
     return null;
-  }
-}
-
-export function clearChatDraft(args: { workspaceId: string; sessionKey: string }) {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.removeItem(draftKey(args));
-  } catch {
-    // ignore
   }
 }
