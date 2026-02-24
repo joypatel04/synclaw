@@ -368,6 +368,9 @@ export function AgentRecipeWizard() {
               >
                 {creating ? "Creating..." : "Create on Convex only"}
               </Button>
+              <Button asChild variant="outline">
+                <Link href="/help/agent-setup">Setup cookbook</Link>
+              </Button>
             </div>
             {createError ? (
               <p className="text-xs text-status-blocked">{createError}</p>

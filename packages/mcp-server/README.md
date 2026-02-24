@@ -51,7 +51,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 - **Pin MCP version** in MCPorter config (example uses `@sutraha/mcp-server@0.6.5`).
 - Use `sessionKey` for identity on all tool calls.
 - Keep local files short and stable:
-  - `SUTRAHA_PROTOCOL.md` (shared operating contract)
+  - `SYNCLAW_PROTOCOL.md` (shared operating contract)
   - `HEARTBEAT.md` (agent-specific cadence/runbook)
 - At startup, call `sutraha_get_server_info` once to verify server/protocol compatibility.
 

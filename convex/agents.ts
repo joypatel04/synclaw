@@ -466,7 +466,7 @@ export const create = mutation({
     const description = `Checklist:
 - [ ] Configure Synclaw MCP server (MCPorter config)
 - [ ] Set the agent's bootstrap prompt in OpenClaw
-- [ ] Add SUTRAHA_PROTOCOL.md + HEARTBEAT.md to the agent's OpenClaw workspace
+- [ ] Add SYNCLAW_PROTOCOL.md + HEARTBEAT.md to the agent's OpenClaw workspace
 - [ ] Schedule a cron run (use the cron prompt from Synclaw)
 - [ ] Confirm first pulse is received in Synclaw (agent shows Connected)
 

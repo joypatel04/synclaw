@@ -14,7 +14,10 @@ import {
   buildGenericAgentBootstrapMessage,
 } from "@/lib/onboardingTemplates";
 import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
-import { buildSutrahaProtocolMd, SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import {
+  buildSynclawProtocolMd,
+  SYNCLAW_PROTOCOL_FILENAME,
+} from "@/lib/synclawProtocol";
 import { setChatDraft } from "@/lib/chatDraft";
 import { Check, Copy } from "lucide-react";
 
@@ -52,8 +55,12 @@ function CopyBlock({
     <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">{title}</p>
-          <p className="mt-1 text-[11px] text-text-muted">Where to paste: {where}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+            {title}
+          </p>
+          <p className="mt-1 text-[11px] text-text-muted">
+            Where to paste: {where}
+          </p>
         </div>
         <Button
           variant="ghost"
@@ -62,7 +69,11 @@ function CopyBlock({
           className="h-8 w-8 p-0"
           title={copied ? "Copied" : "Copy"}
         >
-          {copied ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
+          {copied ? (
+            <Check className="h-4 w-4 text-status-active" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
         </Button>
       </div>
       <Textarea
@@ -90,7 +101,10 @@ function CopyBlock({
   );
 }
 
-export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRailProps) {
+export function ChatSetupRail({
+  selectedAgentId = null,
+  className,
+}: ChatSetupRailProps) {
   const { workspaceId, workspace, canAdmin } = useWorkspace();
 
   const onboarding = useQuery(
@@ -104,7 +118,9 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
 
   const selectedAgent = useMemo(() => {
     if (!selectedAgentId || !agents) return null;
-    return agents.find((a) => String(a._id) === String(selectedAgentId)) ?? null;
+    return (
+      agents.find((a) => String(a._id) === String(selectedAgentId)) ?? null
+    );
   }, [agents, selectedAgentId]);
 
   const mainAgent = useMemo(() => {
@@ -153,13 +169,14 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
       agentName: "Agent",
       sessionKey: activeAgent.sessionKey,
       agentRole: activeAgent.role,
-      recommendedMinutes: activeAgent.sessionKey === "agent:main:main" ? 720 : 60,
+      recommendedMinutes:
+        activeAgent.sessionKey === "agent:main:main" ? 720 : 60,
     });
   }, [activeAgent, workspace.name, workspaceId]);
 
   const protocolMd = useMemo(
     () =>
-      buildSutrahaProtocolMd({
+      buildSynclawProtocolMd({
         workspaceName: workspace.name,
         workspaceId: String(workspaceId),
       }),
@@ -193,7 +210,9 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
 
   if (onboarding === undefined || agents === undefined) {
     return (
-      <div className={`rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
+      <div
+        className={`rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}
+      >
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
       </div>
     );
@@ -203,8 +222,12 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
 
   if (!isOnboardingComplete) {
     return (
-      <div className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
-        <h2 className="text-sm font-semibold text-text-primary">Workspace setup</h2>
+      <div
+        className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}
+      >
+        <h2 className="text-sm font-semibold text-text-primary">
+          Workspace setup
+        </h2>
         <SetupStepCard
           title="A) OpenClaw connected"
           description="Save and verify gateway config first."
@@ -229,10 +252,18 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
 
   if (!activeAgent) {
     return (
-      <div className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
+      <div
+        className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}
+      >
         <h2 className="text-sm font-semibold text-text-primary">Agent setup</h2>
-        <p className="text-xs text-text-muted">Create/select an agent to continue required setup.</p>
-        <Button asChild size="sm" className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+        <p className="text-xs text-text-muted">
+          Create/select an agent to continue required setup.
+        </p>
+        <Button
+          asChild
+          size="sm"
+          className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+        >
           <Link href="/agents/new">Create agent (recipe)</Link>
         </Button>
       </div>
@@ -240,11 +271,18 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
   }
 
   return (
-    <div className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}>
+    <div
+      className={`space-y-3 rounded-xl border border-border-default bg-bg-secondary p-4 ${className ?? ""}`}
+    >
       <div>
-        <h2 className="text-sm font-semibold text-text-primary">Setup checklist</h2>
+        <h2 className="text-sm font-semibold text-text-primary">
+          Setup checklist
+        </h2>
         <p className="mt-1 text-xs text-text-muted">
-          Agent: <span className="font-mono text-text-secondary">{activeAgent.sessionKey}</span>
+          Agent:{" "}
+          <span className="font-mono text-text-secondary">
+            {activeAgent.sessionKey}
+          </span>
         </p>
       </div>
 
@@ -293,17 +331,25 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
       />
 
       <SetupStepCard
-        title="F) First pulse detected"
+        title="F) Required file pack"
+        description="Validate all 8 required setup files in agent workspace."
+        done={Boolean((setupStatus as any)?.requiredFilesConfirmed)}
+      />
+
+      <SetupStepCard
+        title="G) First pulse detected"
         description="This step is automatic after the first runtime pulse."
         done={Boolean(setupStatus?.pulseDetected)}
       />
 
       <div className="rounded-xl border border-border-default bg-bg-tertiary p-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">Status</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+          Status
+        </p>
         <p className="mt-1 text-xs text-text-muted">
           {setupStatus?.isComplete
             ? "Setup complete."
-            : "Setup incomplete. Required: bootstrap + heartbeat + cron + pulse."}
+            : "Setup incomplete. Required: bootstrap + cron + required files + pulse."}
         </p>
       </div>
 
@@ -357,7 +403,7 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
 
       <details className="rounded-xl border border-border-default bg-bg-tertiary p-3">
         <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-text-dim">
-          {SUTRAHA_PROTOCOL_FILENAME}
+          {SYNCLAW_PROTOCOL_FILENAME}
         </summary>
         <p className="mt-2 text-[11px] text-text-muted">
           Where to paste: copy into each OpenClaw workspace root.
@@ -412,6 +458,11 @@ export function ChatSetupRail({ selectedAgentId = null, className }: ChatSetupRa
         <Button asChild size="sm" variant="outline" className="h-8">
           <Link href="/agents/health">Open health</Link>
         </Button>
+        {activeAgent ? (
+          <Button asChild size="sm" variant="outline" className="h-8">
+            <Link href={`/agents/${activeAgent._id}/setup`}>Setup 2.0</Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );

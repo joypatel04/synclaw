@@ -248,11 +248,30 @@ export default defineSchema({
   agentSetupProgress: defineTable({
     workspaceId: v.id("workspaces"),
     agentId: v.id("agents"),
+    setupVersion: v.optional(v.number()),
     bootstrapPrimedAt: v.optional(v.number()),
     heartbeatConfirmedAt: v.optional(v.number()),
     cronConfirmedAt: v.optional(v.number()),
     protocolConfirmedAt: v.optional(v.number()),
     localFilesWrittenAt: v.optional(v.number()),
+    requiredFilesConfirmedAt: v.optional(v.number()),
+    fileChecks: v.optional(
+      v.record(
+        v.string(),
+        v.object({
+          exists: v.boolean(),
+          hash: v.optional(v.string()),
+          confirmedAt: v.optional(v.number()),
+          source: v.union(
+            v.literal("template"),
+            v.literal("manual"),
+            v.literal("chat"),
+          ),
+        }),
+      ),
+    ),
+    lastValidationAt: v.optional(v.number()),
+    lastValidationErrors: v.optional(v.array(v.string())),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   })
