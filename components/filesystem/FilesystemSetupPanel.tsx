@@ -102,7 +102,7 @@ export function FilesystemSetupPanel({
             <Input
               value={filesBridgeRootPath}
               onChange={(e) => setFilesBridgeRootPath(e.target.value)}
-              placeholder="/root/.openclaw/workspace"
+              placeholder="/root/.openclaw"
               className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
               disabled={!canAdmin}
             />
