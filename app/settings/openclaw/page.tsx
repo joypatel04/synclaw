@@ -28,9 +28,9 @@ import {
   MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
 import {
-  buildSutrahaProtocolMd,
-  SUTRAHA_PROTOCOL_FILENAME,
-} from "@/lib/sutrahaProtocol";
+  buildSynclawProtocolMd,
+  SYNCLAW_PROTOCOL_FILENAME,
+} from "@/lib/synclawProtocol";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
@@ -206,7 +206,7 @@ function OpenClawSettingsContent() {
   }, [workspace.name, workspaceId]);
 
   const protocolMd = useMemo(() => {
-    return buildSutrahaProtocolMd({
+    return buildSynclawProtocolMd({
       workspaceName: workspace.name,
       workspaceId: String(workspaceId),
     });
@@ -952,7 +952,7 @@ openclaw devices approve <requestId>`}
 
               <details className="rounded-xl border border-border-default bg-bg-tertiary p-3">
                 <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-text-dim">
-                  {SUTRAHA_PROTOCOL_FILENAME}
+                  {SYNCLAW_PROTOCOL_FILENAME}
                 </summary>
                 <p className="mt-2 text-[11px] text-text-muted">
                   Where to paste: each OpenClaw workspace root.

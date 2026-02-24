@@ -84,7 +84,7 @@ server.tool(
       recommendations: {
         pinNpxVersion: true,
         preferSessionKey: true,
-        keepLocalFiles: ["SUTRAHA_PROTOCOL.md", "HEARTBEAT.md"],
+        keepLocalFiles: ["SYNCLAW_PROTOCOL.md", "HEARTBEAT.md"],
       },
     };
     return {

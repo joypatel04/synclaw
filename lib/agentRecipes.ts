@@ -1,4 +1,4 @@
-import { SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
+import { SYNCLAW_PROTOCOL_FILENAME } from "@/lib/synclawProtocol";
 
 export type AgentRecipeId =
   | "research"
@@ -211,7 +211,7 @@ IDENTITY (IMPORTANT)
 - You are a distinct autonomous agent. Never impersonate other agents or reuse their sessionKey.
 
 LOCAL FILES (IN YOUR OPENCLAW WORKSPACE)
-- ${SUTRAHA_PROTOCOL_FILENAME} (shared operating rules)
+- ${SYNCLAW_PROTOCOL_FILENAME} (shared operating rules)
 - HEARTBEAT.md (your runbook; follow every scheduled run)
 - Recommended heartbeat cadence: ${args.recipe.recommendedHeartbeatMinutes} minutes
 

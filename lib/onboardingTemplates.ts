@@ -1,5 +1,5 @@
-import { SUTRAHA_PROTOCOL_FILENAME } from "@/lib/sutrahaProtocol";
-import { SUTRAHA_MCP_SERVER_NPX_SPEC } from "@/lib/mcpServerSpec";
+import { SYNCLAW_PROTOCOL_FILENAME } from "@/lib/synclawProtocol";
+import { SYNCLAW_MCP_SERVER_NPX_SPEC } from "@/lib/mcpServerSpec";
 
 export const CANONICAL_SESSION_KEYS = {
   main: "agent:main:main",
@@ -70,7 +70,7 @@ IDENTITY (IMPORTANT)
 - Always pass sessionKey to Synclaw MCP tools.
 
 LOCAL FILES (IN YOUR OPENCLAW WORKSPACE)
-- ${SUTRAHA_PROTOCOL_FILENAME} (shared Synclaw operating rules)
+- ${SYNCLAW_PROTOCOL_FILENAME} (shared Synclaw operating rules)
 - HEARTBEAT.md (your runbook)
 
 RULES
@@ -116,7 +116,7 @@ ROLE
 - Focus: ${args.agent.focus}
 
 LOCAL FILES (IN YOUR OPENCLAW WORKSPACE)
-- ${SUTRAHA_PROTOCOL_FILENAME}
+- ${SYNCLAW_PROTOCOL_FILENAME}
 - HEARTBEAT.md
 
 FIRST MESSAGE
@@ -152,7 +152,7 @@ ROLE
 - ${args.agentRole}
 
 LOCAL FILES (IN YOUR OPENCLAW WORKSPACE)
-- ${SUTRAHA_PROTOCOL_FILENAME}
+- ${SYNCLAW_PROTOCOL_FILENAME}
 - HEARTBEAT.md
 
 FIRST MESSAGE
@@ -171,7 +171,7 @@ export function buildMcpServerConfigTemplate(args: {
     servers: {
       "sutraha-hq": {
         command: "npx",
-        args: [SUTRAHA_MCP_SERVER_NPX_SPEC],
+        args: [SYNCLAW_MCP_SERVER_NPX_SPEC],
         env: {
           CONVEX_URL: convexUrl,
           CONVEX_SITE_URL: convexSiteUrl,

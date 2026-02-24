@@ -1,16 +1,16 @@
-import { SUTRAHA_MCP_SERVER_VERSION } from "@/lib/mcpServerSpec";
+import { SYNCLAW_MCP_SERVER_VERSION } from "@/lib/mcpServerSpec";
 
-export const SUTRAHA_PROTOCOL_FILENAME = "SUTRAHA_PROTOCOL.md";
-export const SUTRAHA_PROTOCOL_VERSION = "0.1.2";
+export const SYNCLAW_PROTOCOL_FILENAME = "SYNCLAW_PROTOCOL.md";
+export const SYNCLAW_PROTOCOL_VERSION = "0.1.2";
 
-export function buildSutrahaProtocolMd(args: {
+export function buildSynclawProtocolMd(args: {
   workspaceName: string;
   workspaceId: string;
 }) {
   const wsName = args.workspaceName || "this workspace";
   const wsId = args.workspaceId || "<workspaceId>";
 
-  return `# ${SUTRAHA_PROTOCOL_FILENAME} — Synclaw MCP Operating Rules (v${SUTRAHA_PROTOCOL_VERSION})
+  return `# ${SYNCLAW_PROTOCOL_FILENAME} — Synclaw MCP Operating Rules (v${SYNCLAW_PROTOCOL_VERSION})
 
 This file is the single source of truth for how this agent interacts with Synclaw using MCP tools.
 Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
@@ -28,7 +28,7 @@ Keep it short and stable. Put per-agent cadence/run logic in HEARTBEAT.md.
 1) Read \`HEARTBEAT.md\` and follow it strictly.
 2) Compatibility check (once per startup):
    - Call: \`sutraha_get_server_info()\`
-   - Confirm MCP server version is pinned (recommended: \`${SUTRAHA_MCP_SERVER_VERSION}\`).
+   - Confirm MCP server version is pinned (recommended: \`${SYNCLAW_MCP_SERVER_VERSION}\`).
 3) Presence:
    - Quick keepalive: \`sutraha_agent_heartbeat(sessionKey)\`
    - When starting work: \`sutraha_agent_pulse(sessionKey, status="active", telemetry?)\`

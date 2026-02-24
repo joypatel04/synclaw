@@ -37,7 +37,7 @@ ${rows || "| (none) |  |  |  |  |"}
 ## Notes
 - Each agent is a real agent with its own identity (sessionKey). Never reuse another agent's sessionKey.
 - Recommended: each agent has its own OpenClaw workspace directory (separate working directory + memory).
-- Keep prompts short: put shared Synclaw operating rules in \`SUTRAHA_PROTOCOL.md\` inside each agent workspace.
+- Keep prompts short: put shared Synclaw operating rules in \`SYNCLAW_PROTOCOL.md\` inside each agent workspace.
 - Recommended: one Synclaw workspace contains multiple agents (main + specialists). Create a new workspace only for isolation (different OpenClaw deployment or members).
 - For reliability: put a small \`HEARTBEAT.md\` in each agent's OpenClaw workspace and schedule a cron run (15-60 minutes typical depending on role).`;
 }
