@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { UmamiAnalytics } from "@/components/analytics/UmamiAnalytics";
 import { brand } from "@/lib/brand";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
         <ThemeProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </ThemeProvider>
+        <UmamiAnalytics />
       </body>
     </html>
   );
