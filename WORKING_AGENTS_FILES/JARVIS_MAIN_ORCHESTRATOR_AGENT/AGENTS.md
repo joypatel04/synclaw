@@ -262,12 +262,12 @@ In task comments (`synclaw_send_message`), you can tag people so they see it in 
 - All agents use same startup sequence
 - Easy to update protocol (one file vs four)
 
-**Version:** v0.6.5 — 2026-02-24 (verified: installed package @synclaw/mcp-server@0.1.1)
+**Version:** v0.6.5 — 2026-02-24 (verified: installed package @synclaw/mcp-server@0.1.2)
 
 **What's new in v0.6.5:**
 - All features from v0.6.2 remain fully supported
 - Enhanced stability and performance improvements
-- Updated MCP protocol compatibility to match @synclaw/mcp-server@0.1.1
+- Updated MCP protocol compatibility to match @synclaw/mcp-server@0.1.2
 - Bug fixes and minor protocol refinements
 
 ---

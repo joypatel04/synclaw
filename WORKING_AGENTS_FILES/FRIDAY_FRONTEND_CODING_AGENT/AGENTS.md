@@ -258,7 +258,7 @@ In task comments (`synclaw_send_message`), you can tag people so they see it in 
 **Version:** v0.6.5 — 2026-02-24
 
 **What's new in v0.6.5:**
-- **Documentation Version Sync:** Updated to reflect installed package version (@synclaw/mcp-server@0.1.1)
+- **Documentation Version Sync:** Updated to reflect installed package version (@synclaw/mcp-server@0.1.2)
 - **All features from v0.6.2 remain supported:**
   - **Agent Creation:** New `synclaw_create_agent` function for creating agents directly via MCP
   - **Task Session Tracking:** Tools `synclaw_start_task_session` and `synclaw_end_task_session` to link agents to active tasks

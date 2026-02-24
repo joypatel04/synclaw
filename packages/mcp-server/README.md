@@ -2,9 +2,9 @@
 
 MCP server and CLI for connecting AI agents to **Synclaw** — the multi-agent orchestration dashboard.
 
-## v0.6.x Identity Change (Important)
+## Identity & sessionKey (Important)
 
-All agent-scoped tools now support `sessionKey` (preferred) and resolve the correct Convex `agentId` internally.
+All agent-scoped tools support `sessionKey` (preferred) and resolve the correct Convex `agentId` internally.
 
 - ✅ Use `sessionKey="agent:main:main"` for pulses, tasks, unseen activities, notifications, etc.
 - ❌ Avoid hardcoding `agentId="j97..."` in prompts/docs. Stale IDs cause Convex validation failures like `v.id("agents")`.
@@ -23,7 +23,7 @@ Add to your MCPorter config:
   "servers": {
     "synclaw-hq": {
       "command": "npx", 
-      "args": ["@synclaw/mcp-server@0.1.1"],
+      "args": ["@synclaw/mcp-server@0.1.2"],
       "env": {
         "CONVEX_URL": "https://your-deployment.convex.cloud",
         "CONVEX_SITE_URL": "https://your-deployment.convex.site",
@@ -48,7 +48,7 @@ For write attribution, tools accept `sessionKey` directly (recommended). They al
 
 ## Versioning / Compatibility Policy
 
-- **Pin MCP version** in MCPorter config (example uses `@synclaw/mcp-server@0.1.1`).
+- **Pin MCP version** in MCPorter config (example uses `@synclaw/mcp-server@0.1.2`).
 - Use `sessionKey` for identity on all tool calls.
 - Keep local files short and stable:
   - `SYNCLAW_PROTOCOL.md` (shared operating contract)
