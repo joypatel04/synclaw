@@ -19,9 +19,9 @@ import { buildAgentManifest } from "@/lib/agentManifest";
 import { buildAgentsMd } from "@/lib/agentDocs";
 import { buildCronPrompt, buildHeartbeatMd } from "@/lib/agentRecipes";
 import {
-  buildSutrahaProtocolMd,
-  SUTRAHA_PROTOCOL_FILENAME,
-} from "@/lib/sutrahaProtocol";
+  buildSynclawProtocolMd,
+  SYNCLAW_PROTOCOL_FILENAME,
+} from "@/lib/synclawProtocol";
 import { getChatDraft, setChatDraft } from "@/lib/chatDraft";
 import {
   Check,
@@ -184,7 +184,7 @@ export function AgentSetupWizard() {
   }, [agent, workspace.name, workspaceId, heartbeatMinutes]);
 
   const protocolMd = useMemo(() => {
-    return buildSutrahaProtocolMd({
+    return buildSynclawProtocolMd({
       workspaceName: workspace.name,
       workspaceId: String(workspaceId),
     });
@@ -262,7 +262,7 @@ export function AgentSetupWizard() {
     try {
       const candidates: Array<{ filename: string; content: string; mime?: string }> = [
         { filename: "HEARTBEAT.md", content: heartbeatMd, mime: "text/markdown;charset=utf-8" },
-        { filename: SUTRAHA_PROTOCOL_FILENAME, content: protocolMd, mime: "text/markdown;charset=utf-8" },
+        { filename: SYNCLAW_PROTOCOL_FILENAME, content: protocolMd, mime: "text/markdown;charset=utf-8" },
         { filename: "AGENTS.md", content: agentsMd, mime: "text/markdown;charset=utf-8" },
         { filename: "sutraha.agents.json", content: manifestJson, mime: "application/json;charset=utf-8" },
       ];
@@ -497,7 +497,7 @@ export function AgentSetupWizard() {
 
             <CopyBlock
               id="protocol"
-              title={SUTRAHA_PROTOCOL_FILENAME}
+              title={SYNCLAW_PROTOCOL_FILENAME}
               value={protocolMd}
               copiedId={copiedId}
               onCopy={copy}
@@ -508,7 +508,7 @@ export function AgentSetupWizard() {
                   className="h-8 gap-2"
                   onClick={() =>
                     downloadText(
-                      `SUTRAHA_PROTOCOL.${String(workspaceId).slice(0, 6)}.md`,
+                      `SYNCLAW_PROTOCOL.${String(workspaceId).slice(0, 6)}.md`,
                       protocolMd,
                       "text/markdown;charset=utf-8",
                     )
@@ -528,7 +528,7 @@ export function AgentSetupWizard() {
             3) Write files into the agent&apos;s OpenClaw workspace (optional)
           </p>
           <p className="text-xs text-text-muted">
-            This writes local files on this machine only. Nothing is uploaded to Sutraha HQ.
+            This writes local files on this machine only. Nothing is uploaded to Synclaw.
           </p>
 
           <div className="mt-4 space-y-3">
@@ -567,7 +567,7 @@ export function AgentSetupWizard() {
                 onChange={(e) => setOverwrite(e.target.checked)}
                 className="h-4 w-4 accent-accent-orange"
               />
-              Overwrite existing files (AGENTS.md, HEARTBEAT.md, {SUTRAHA_PROTOCOL_FILENAME}, sutraha.agents.json)
+              Overwrite existing files (AGENTS.md, HEARTBEAT.md, {SYNCLAW_PROTOCOL_FILENAME}, synclaw.agents.json)
             </label>
 
             {writeOk ? (
@@ -590,9 +590,9 @@ export function AgentSetupWizard() {
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2 text-[11px] text-text-dim">
               This will write:
               <span className="ml-1 font-mono text-text-muted">HEARTBEAT.md</span>,{" "}
-              <span className="font-mono text-text-muted">{SUTRAHA_PROTOCOL_FILENAME}</span>,{" "}
+              <span className="font-mono text-text-muted">{SYNCLAW_PROTOCOL_FILENAME}</span>,{" "}
               <span className="font-mono text-text-muted">AGENTS.md</span>,{" "}
-              <span className="font-mono text-text-muted">sutraha.agents.json</span>
+              <span className="font-mono text-text-muted">synclaw.agents.json</span>
             </div>
           </div>
         </div>
@@ -639,7 +639,7 @@ export function AgentSetupWizard() {
               Once your agent is configured with MCP tools and runs (manual or cron), it should send a pulse. If it never connects:
             </p>
             <ul className="mt-2 list-disc pl-5 space-y-1 text-xs text-text-secondary">
-              <li>Check MCP server env vars (CONVEX_URL, SUTRAHA_API_KEY, SUTRAHA_WORKSPACE_ID).</li>
+              <li>Check MCP server env vars (CONVEX_URL, SYNCLAW_API_KEY, SYNCLAW_WORKSPACE_ID).</li>
               <li>Confirm OpenClaw is using the same sessionKey shown above.</li>
               <li>Open Settings → OpenClaw and verify gateway URL/token.</li>
             </ul>
@@ -689,7 +689,7 @@ export function AgentSetupWizard() {
             <div className="rounded-xl border border-border-default bg-bg-tertiary p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-text-primary">
-                  sutraha.agents.json
+                  synclaw.agents.json
                 </p>
                 <Button
                   variant="outline"
@@ -697,7 +697,7 @@ export function AgentSetupWizard() {
                   className="h-8 gap-2"
                   onClick={() =>
                     downloadText(
-                      `sutraha.agents.${String(workspaceId).slice(0, 6)}.json`,
+                      `synclaw.agents.${String(workspaceId).slice(0, 6)}.json`,
                       manifestJson,
                       "application/json;charset=utf-8",
                     )

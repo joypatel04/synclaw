@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { api } from "./api.js";
 /**
- * Sutraha HQ CLI
+ * Synclaw CLI
  *
- * Command-line interface for interacting with the Sutraha HQ backend.
+ * Command-line interface for interacting with the Synclaw backend.
  * Useful for debugging and manual operations.
  *
  * Usage:
@@ -23,7 +23,7 @@ const client = createClientFromEnv();
 function usage() {
   console.log(
     `
-Sutraha HQ CLI
+Synclaw CLI
 
 Usage: sutraha-cli <resource> <action> [options]
 

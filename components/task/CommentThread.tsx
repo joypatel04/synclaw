@@ -6,7 +6,7 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Timestamp } from "@/components/shared/Timestamp";
 import { CommentForm } from "./CommentForm";
-import { FileText, MessageSquare } from "lucide-react";
+import { FileText, MessageSquare, Trash2 } from "lucide-react";
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,10 +36,11 @@ interface CommentThreadProps {
 type DocType = "deliverable" | "research" | "protocol" | "note";
 
 export function CommentThread({ taskId }: CommentThreadProps) {
-  const { workspaceId, canEdit } = useWorkspace();
+  const { workspaceId, canEdit, canManage } = useWorkspace();
   const messages = useQuery(api.messages.list, { workspaceId, taskId }) ?? [];
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
   const createDocument = useMutation(api.documents.create);
+  const deleteMessage = useMutation(api.messages.remove);
 
   const [sourceMessage, setSourceMessage] = useState<Doc<"messages"> | null>(
     null,
@@ -49,6 +50,9 @@ export function CommentThread({ taskId }: CommentThreadProps) {
   const [docAgentId, setDocAgentId] = useState<string>("");
   const [docContent, setDocContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(
+    null,
+  );
 
   const getAgentEmoji = (agentId: string | null) => {
     if (!agentId) return null;
@@ -105,6 +109,20 @@ export function CommentThread({ taskId }: CommentThreadProps) {
     }
   };
 
+  const handleDeleteComment = async (messageId: Id<"messages">) => {
+    if (!canManage || deletingMessageId) return;
+    const confirmed = window.confirm(
+      "Delete this comment?\n\nThis action cannot be undone.",
+    );
+    if (!confirmed) return;
+    setDeletingMessageId(messageId);
+    try {
+      await deleteMessage({ workspaceId, id: messageId });
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border-default">
@@ -123,32 +141,53 @@ export function CommentThread({ taskId }: CommentThreadProps) {
         ) : (
           <div className="space-y-4">
             {messages.map((msg) => (
-              <div key={msg._id} className="flex gap-3">
+              <div key={msg._id} className="flex gap-2.5 sm:gap-3">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">
                   {getAgentEmoji(msg.agentId) ?? "👤"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">
                         {getAuthorLabel(msg as Doc<"messages">)}
                       </span>
                       <Timestamp time={msg.createdAt} />
                     </div>
-                    {canEdit && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="ghost"
-                        className="h-6 px-2 text-[10px] text-text-muted hover:text-accent-orange gap-1"
-                        onClick={() => openDocModalFor(msg as Doc<"messages">)}
-                      >
-                        <FileText className="h-3 w-3" />
-                        Save as doc
-                      </Button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {canEdit && (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px] text-text-muted hover:text-accent-orange gap-1"
+                          onClick={() =>
+                            openDocModalFor(msg as Doc<"messages">)
+                          }
+                        >
+                          <FileText className="h-3 w-3" />
+                          Save as doc
+                        </Button>
+                      )}
+                      {canManage ? (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px] text-text-muted hover:text-status-blocked gap-1"
+                          disabled={Boolean(deletingMessageId)}
+                          onClick={() =>
+                            void handleDeleteComment(msg._id as Id<"messages">)
+                          }
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          {deletingMessageId === msg._id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm text-text-secondary leading-relaxed">
+                  <div className="mt-1 min-w-0 max-w-full overflow-x-hidden text-sm text-text-secondary leading-relaxed">
                     <MarkdownContent content={msg.content} />
                   </div>
                 </div>
@@ -162,7 +201,10 @@ export function CommentThread({ taskId }: CommentThreadProps) {
       </div>
 
       {canEdit && sourceMessage && (
-        <Dialog open={!!sourceMessage} onOpenChange={(open) => !open && closeDocModal()}>
+        <Dialog
+          open={!!sourceMessage}
+          onOpenChange={(open) => !open && closeDocModal()}
+        >
           <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
             <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
               <DialogTitle className="text-text-primary flex items-center gap-2">

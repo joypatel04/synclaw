@@ -25,6 +25,7 @@ export function FilesystemSetupPanel({
   onClearToken,
   onSave,
   onTest,
+  showPreConnectionHelp,
 }: {
   canAdmin: boolean;
   filesBridgeEnabled: boolean;
@@ -45,12 +46,34 @@ export function FilesystemSetupPanel({
   onClearToken: () => void;
   onSave: () => void;
   onTest: () => void;
+  showPreConnectionHelp: boolean;
 }) {
   return (
     <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
       <h2 className="text-sm font-semibold text-text-primary mb-4">
         Workspace Files Bridge Setup
       </h2>
+      {showPreConnectionHelp ? (
+        <div className="mb-4 rounded-lg border border-status-review/40 bg-status-review/10 px-3 py-3 text-xs text-status-review">
+          <p className="font-medium text-status-review">
+            To use Filesystem, deploy fs-bridge on your server first.
+          </p>
+          <p className="mt-1">
+            Then configure Base URL, Root Path, Token, Save, and click Test
+            bridge.
+          </p>
+          <p className="mt-1">
+            Need help running fs-bridge? Contact{" "}
+            <a
+              href="mailto:joypatel041994@gmail.com"
+              className="underline underline-offset-2"
+            >
+              joypatel041994@gmail.com
+            </a>
+            .
+          </p>
+        </div>
+      ) : null}
       <div className="space-y-4">
         <label className="flex items-center gap-2 text-sm text-text-secondary">
           <input

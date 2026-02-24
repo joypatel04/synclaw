@@ -40,8 +40,8 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
     );
 
   return (
-    <div className="mx-auto max-w-7xl p-3 sm:p-6">
-      <div className="min-w-0">
+    <div className="mx-auto flex h-full min-h-0 max-w-7xl flex-col p-3 sm:p-6">
+      <div className="min-w-0 flex-1 min-h-0 flex flex-col">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           {canAdmin ? (
             <Button
@@ -55,10 +55,7 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
             </Button>
           ) : null}
         </div>
-        <ChatInterface
-          agent={agent}
-          className="h-[calc(100dvh-10rem)] sm:h-[calc(100dvh-6rem)]"
-        />
+        <ChatInterface agent={agent} className="flex-1 min-h-0" />
       </div>
 
       {canAdmin ? (
@@ -101,7 +98,9 @@ export default function ChatDetailPage() {
 
   return (
     <AppLayout>
-      <ChatDetailContent agentId={id as Id<"agents">} />
+      <div className="h-full min-h-0">
+        <ChatDetailContent agentId={id as Id<"agents">} />
+      </div>
     </AppLayout>
   );
 }

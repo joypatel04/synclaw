@@ -2,7 +2,7 @@
 
 ## What this product is
 
-Sutraha HQ is an operator control plane for AI-assisted execution.  
+Synclaw is an operator control plane for AI-assisted execution.  
 It combines:
 
 - mission/task planning

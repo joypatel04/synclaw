@@ -1,100 +1,103 @@
 {
   "product": {
-    "name": "Sutraha HQ",
-    "tagline": "Multi-Agent Orchestration Dashboard",
-    "shortName": "Sutraha",
-    "websiteUrl": "https://yourdomain.com"
+    "name": "Synclaw",
+    "tagline": "AI Agent Mission Control",
+    "shortName": "Synclaw",
+    "websiteUrl": "https://synclaw.io"
   },
   "marketing": {
-    "heroHeadline": "Run your AI operations from one control center",
-    "heroSubheadline": "Tasks, agents, and execution visibility for solo builders and teams.",
-    "primaryCtaLabel": "Start Free Trial",
+    "heroHeadline": "Your Mission Control for",
+    "heroSubheadline": "Run OpenClaw remotely without the DevOps headache. Focus on your agents—we'll handle the infrastructure.",
+    "primaryCtaLabel": "Start Your Free Trial",
     "secondaryCtaLabel": "See Pricing",
     "signInLabel": "Sign in",
-    "trustBadge": "Trusted workspace model for solo operators and teams",
-    "heroAccent": "premium product team",
+    "trustBadge": "Launch pricing locked in for early users",
+    "heroAccent": "OpenClaw",
     "benefitBullets": [
-      "14-day trial experience",
-      "Role-based workspace controls",
-      "Live execution visibility",
-      "API-ready for automation"
+      "Managed infrastructure, 99.9% uptime",
+      "One-click fs-bridge setup",
+      "Real-time cost monitoring",
+      "Secure by default with managed SSL"
     ],
-    "snapshotTitle": "Operations Snapshot",
-    "snapshotLiveLabel": "Live",
+    "snapshotTitle": "System Status",
+    "snapshotLiveLabel": "Online",
     "snapshotRows": [
       { "label": "Active agents", "value": "12" },
-      { "label": "Tasks shipped this week", "value": "48" },
-      { "label": "Execution events", "value": "1,284" }
+      { "label": "Runtime uptime", "value": "99.9%" },
+      { "label": "Cost this month", "value": "$24.99" }
     ],
-    "snapshotNoteTitle": "System note",
-    "snapshotNoteBody": "This feels like a serious control plane, not another lightweight task tool.",
+    "snapshotNoteTitle": "Infrastructure note",
+    "snapshotNoteBody": "Synclaw keeps your OpenClaw dashboard online, monitored, and updated—so you don't have to.",
     "proofStrip": [
-      { "label": "Workspace-scoped role controls", "value": "Built in" },
-      { "label": "Task board + agent panel + live feed", "value": "Core workflow" },
-      { "label": "OpenClaw + MCP + Convex architecture", "value": "Integrated" }
+      { "label": "Managed infrastructure", "value": "Included" },
+      { "label": "Ready-to-use templates", "value": "Deploy in seconds" },
+      { "label": "Real-time cost monitoring", "value": "Built in" }
     ],
-    "productInActionTitle": "Product in action",
-    "productInActionSubtitle": "Built from real feature surfaces in this app",
+    "productInActionTitle": "Synclaw in action",
+    "productInActionSubtitle": "Monitor and control your OpenClaw agents from anywhere",
     "visualCards": [
       {
-        "title": "Task Board Lanes",
-        "caption": "Mirrors your real task workflow: Inbox to Review to Done."
+        "title": "Activity Dashboard",
+        "caption": "Monitor agent activity, task progress, and system health from one clean interface."
       },
       {
-        "title": "Agents Panel",
-        "caption": "Shows active/idle state exactly like your workspace agent operations."
+        "title": "Cost Monitoring",
+        "caption": "See exactly what you're spending on OpenClaw at a glance. Alerts keep you informed."
       },
       {
-        "title": "Live Feed",
-        "caption": "Category filters and event stream map to your existing activity feed."
+        "title": "Template Library",
+        "caption": "Jumpstart your workflows with pre-built agent templates. Configure once, deploy in seconds."
       }
     ],
-    "howItWorksTitle": "How it works",
-    "operatorFlowTitle": "Operator Flow",
-    "operatorFlowBody": "You define priorities in Sutraha HQ, OpenClaw executes through agent sessions, and MCP tools sync outcomes back into your workspace.",
-    "creativeTitle": "Creative process, made operational",
-    "whyKicker": "Why it works",
-    "whyHeadline": "Built for operators who care about quality, not noise",
-    "whyBody": "Most tools optimize for activity. This one optimizes for shipped outcomes.",
+    "howItWorksTitle": "How Synclaw works",
+    "operatorFlowTitle": "Simple setup",
+    "operatorFlowBody": "Connect your OpenClaw instance to Synclaw with one click. We handle the servers, SSL, monitoring, and updates—giving you a reliable dashboard for remote control.",
+    "creativeTitle": "Features",
+    "whyKicker": "Why Synclaw?",
+    "whyHeadline": "Managed cloud dashboard for OpenClaw",
+    "whyBody": "OpenClaw is powerful, but running it on a remote server shouldn't feel like rocket science. Think of us as your managed cloud dashboard. You keep full control of your OpenClaw agents—we give you a clean, reliable way to run, monitor, and manage them from anywhere.",
     "whyBullets": [
-      "Single source of execution truth",
-      "Clear accountability across humans and agents",
-      "Fast review loops without status meetings"
+      "Managed infrastructure with enterprise-grade security",
+      "Ready-to-use templates—no YAML wrestling required",
+      "One-click fs-bridge setup with automatic configuration",
+      "Real-time cost monitoring with smart alerts",
+      "Secure by default: encrypted connections, managed SSL",
+      "Activity dashboards for complete visibility"
     ],
     "segmentCards": [
       {
-        "title": "Creator OS",
-        "text": "Plan content, route tasks to agents, and track delivery without chaos."
+        "title": "Solo Operators",
+        "text": "Launch your first agents without managing servers. Focus on building—Synclaw handles the infrastructure."
       },
       {
-        "title": "Solo Founder Ops",
-        "text": "Keep product, growth, support, and docs moving from one trusted workspace."
+        "title": "Small Teams",
+        "text": "Scale production workloads with analytics dashboards, priority support, and advanced cost monitoring."
       },
       {
-        "title": "Business-Ready",
-        "text": "Role controls and workspace separation designed for team expansion later."
+        "title": "Technical Users",
+        "text": "Keep full control of your codebase with the free self-host option, or upgrade for managed infrastructure."
       }
     ],
-    "pricingKicker": "Pricing Preview",
-    "pricingHeadline": "Simple plans, premium outcomes",
-    "pricingCtaLabel": "Try it now",
-    "trialTitle": "Free Trial",
-    "trialSummary": "Explore the workflow before enabling billing.",
-    "starterSummary": "For serious solopreneurs shipping weekly.",
-    "proSummary": "For advanced operators and growing businesses.",
-    "finalCtaKicker": "Ready to run like a real operator?",
-    "finalCtaHeadline": "Build your next shipping system in Sutraha HQ",
-    "finalCtaBody": "Move from scattered tools to one disciplined execution layer your customers can feel.",
-    "exploreDocsLabel": "Explore Docs"
+    "pricingKicker": "Pricing",
+    "pricingHeadline": "Launch prices locked in for early users",
+    "pricingCtaLabel": "Start Free Trial",
+    "trialTitle": "Free Self-Host",
+    "trialSummary": "Technical users who want full control. Full codebase, community support, self-managed infrastructure.",
+    "starterSummary": "Solo operators launching their first agents. Managed infra, templates, up to 3 agents, email support.",
+    "proSummary": "Small teams scaling production workloads. Everything in Starter + up to 10 agents, analytics dashboards, priority support, advanced cost monitoring.",
+    "finalCtaKicker": "Ready to simplify OpenClaw?",
+    "finalCtaHeadline": "Join the beta and get early access to Synclaw",
+    "finalCtaBody": "Launch pricing locked in for your first 12 months. Start your free trial today.",
+    "exploreDocsLabel": "Read the Docs"
   },
   "auth": {
-    "loginTitle": "Sutraha HQ",
-    "loginSubtitle": "Multi-Agent Orchestration Dashboard",
+    "loginTitle": "Synclaw",
+    "loginSubtitle": "AI Agent Mission Control",
     "providerLabelGithub": "Continue with GitHub",
     "footerNote": "Secure authentication powered by Convex Auth"
   },
   "seo": {
-    "titleDefault": "Sutraha HQ",
-    "descriptionDefault": "Multi-Agent Orchestration Dashboard"
+    "titleDefault": "Synclaw: AI Agent Mission Control for Everyone",
+    "descriptionDefault": "Manage AI agents from anywhere with Synclaw. The simple cloud dashboard for remote monitoring and control—no coding required. Plans from $9.99/mo."
   }
 }

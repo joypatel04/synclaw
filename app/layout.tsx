@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
+import { PwaRegistrar } from "@/components/pwa/PwaRegistrar";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { UmamiAnalytics } from "@/components/analytics/UmamiAnalytics";
 import { brand } from "@/lib/brand";
@@ -20,6 +21,25 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: brand.seo.titleDefault,
   description: brand.seo.descriptionDefault,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: brand.product.name,
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -39,6 +59,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
+        <PwaRegistrar />
         <Script
           defer
           src="https://sutraha-umami.zeabur.app/script.js"

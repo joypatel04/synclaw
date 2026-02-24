@@ -102,6 +102,7 @@ export function ScopedFilesystemPanel({
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [bridgeTestSucceeded, setBridgeTestSucceeded] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
@@ -245,6 +246,7 @@ export function ScopedFilesystemPanel({
       const typed = result as TestBridgeResponse;
       if (typed.ok) {
         setStatusText("Bridge connected");
+        setBridgeTestSucceeded(true);
         await openDirectory(".", true);
       } else {
         setStatusText("Bridge test failed");
@@ -437,6 +439,7 @@ export function ScopedFilesystemPanel({
           }}
           onSave={() => void onSaveSetup()}
           onTest={() => void runTest()}
+          showPreConnectionHelp={!bridgeTestSucceeded}
         />
       ) : null}
 

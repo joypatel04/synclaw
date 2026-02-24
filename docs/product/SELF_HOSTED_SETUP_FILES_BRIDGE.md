@@ -1,6 +1,6 @@
 # Self-hosted Setup: OpenClaw Files Bridge
 
-Use this when you want Sutraha HQ to browse and edit files in a remote OpenClaw workspace directory.
+Use this when you want Synclaw to browse and edit files in a remote OpenClaw workspace directory.
 
 ## Why this exists
 
@@ -30,7 +30,7 @@ docker run --rm -p 8787:8787 \
   sutraha-fs-bridge
 ```
 
-## Configure Sutraha HQ
+## Configure Synclaw
 
 1. Set `NEXT_PUBLIC_OPENCLAW_FILES_ENABLED=true`.
 2. Open `/filesystem`.
@@ -42,4 +42,4 @@ docker run --rm -p 8787:8787 \
 ## Multi-user note
 
 Each self-hosted customer can set their own `WORKSPACE_ROOT_PATH` based on their server layout.  
-Sutraha HQ uses per-workspace bridge config, so this works across different customer environments.
+Synclaw uses per-workspace bridge config, so this works across different customer environments.

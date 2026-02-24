@@ -14,10 +14,18 @@ const activityType = v.union(
   v.literal("webhook_event"),
 );
 
-function isRelevantActivity(activity: { type: string }) {
+function isRelevantActivity(activity: { type: string; metadata?: any }) {
   // Status transitions are high-volume noise for both UI feeds and agent wake cycles.
   // Keep task/doc/comment/broadcast/mention activity as the primary signal.
-  return activity.type !== "agent_status";
+  if (activity.type === "agent_status") return false;
+  if (activity.type === "webhook_event") return false;
+  if (
+    activity.type === "task_created" &&
+    activity.metadata?.action === "workspace_created"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /** Log an activity (internal use, no direct auth check). */

@@ -12,6 +12,7 @@ interface ChatInputProps {
   statusText?: string;
   initialValue?: string;
   initialValueKey?: string;
+  compact?: boolean;
 }
 
 export function ChatInput({
@@ -21,13 +22,14 @@ export function ChatInput({
   statusText,
   initialValue,
   initialValueKey,
+  compact = false,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const sendingRef = useRef(false);
   const appliedInitialRef = useRef<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!initialValue || !initialValue.trim()) return;
@@ -50,11 +52,19 @@ export function ChatInput({
     }
   }, [content]);
 
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const maxHeight = isExpanded ? 320 : compact ? 152 : 180;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  }, [content, compact, isExpanded]);
+
   const showExpandToggle =
     isExpanded || content.length > 140 || content.includes("\n");
 
   const doSend = async () => {
-    if (!content.trim() || isSending) return;
+    if (!content.trim() || disabled) return;
     if (sendingRef.current) return;
     sendingRef.current = true;
 
@@ -64,17 +74,26 @@ export function ChatInput({
     setContent("");
     setIsExpanded(false);
     setErrorText(null);
-    setIsSending(true);
     try {
-      await onSend(outgoing);
+      // Do not block input on the full send lifecycle (streaming/history polling).
+      // Parent ChatInterface handles queueing and in-flight status.
+      void Promise.resolve(onSend(outgoing)).catch((error) => {
+        setContent(outgoing);
+        const msg =
+          error instanceof Error ? error.message : "Failed to send message";
+        setErrorText(msg);
+      });
     } catch (error) {
       setContent(outgoing);
       const msg =
         error instanceof Error ? error.message : "Failed to send message";
       setErrorText(msg);
     } finally {
-      setIsSending(false);
-      sendingRef.current = false;
+      // Release local lock immediately so users can type/send next message;
+      // ChatInterface will queue if agent is still responding.
+      queueMicrotask(() => {
+        sendingRef.current = false;
+      });
     }
   };
 
@@ -91,21 +110,27 @@ export function ChatInput({
         e.preventDefault();
         void doSend();
       }}
-      className="p-3 sm:p-4 border-t border-border-default bg-bg-secondary"
+      className={`
+        border-t border-border-default bg-bg-secondary
+        p-2.5 sm:p-4
+      `}
     >
       <div className="flex gap-2">
         <div className="flex-1 flex flex-col gap-1.5">
           <Textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            rows={isExpanded ? 8 : 1}
+            rows={1}
             disabled={disabled}
             className={`flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange overflow-y-auto text-sm ${
               isExpanded
-                ? "resize-y min-h-[180px] max-h-[50vh]"
-                : "resize-none min-h-[40px] max-h-[180px]"
+                ? "resize-y min-h-[160px] max-h-[50vh]"
+                : compact
+                  ? "resize-none min-h-[38px] max-h-[152px]"
+                  : "resize-none min-h-[40px] max-h-[180px]"
             }`}
           />
           {showExpandToggle ? (
@@ -113,20 +138,18 @@ export function ChatInput({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px] text-text-dim hover:text-text-primary"
+                size="icon-sm"
+                className="h-6 w-6 text-text-dim hover:text-text-primary"
                 onClick={() => setIsExpanded((v) => !v)}
+                aria-label={
+                  isExpanded ? "Collapse composer" : "Expand composer"
+                }
+                title={isExpanded ? "Collapse" : "Expand"}
               >
                 {isExpanded ? (
-                  <>
-                    <Minimize2 className="mr-1 h-3.5 w-3.5" />
-                    Collapse
-                  </>
+                  <Minimize2 className="h-3.5 w-3.5" />
                 ) : (
-                  <>
-                    <Expand className="mr-1 h-3.5 w-3.5" />
-                    Expand
-                  </>
+                  <Expand className="h-3.5 w-3.5" />
                 )}
               </Button>
             </div>
@@ -135,7 +158,7 @@ export function ChatInput({
         <Button
           type="submit"
           size="icon"
-          disabled={!content.trim() || isSending || disabled}
+          disabled={!content.trim() || disabled}
           className="shrink-0 bg-accent-orange hover:bg-accent-orange/90 text-white h-10 w-10"
         >
           <Send className="h-4 w-4" />

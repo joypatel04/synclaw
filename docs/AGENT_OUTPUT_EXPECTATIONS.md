@@ -1,6 +1,6 @@
 # Agent Output Expectations
 
-Use this doc to configure your agents (e.g. in OpenClaw skill files or system prompts) so they deliver consistent, actionable output in Sutraha HQ.
+Use this doc to configure your agents (e.g. in OpenClaw skill files or system prompts) so they deliver consistent, actionable output in Synclaw.
 
 ---
 
@@ -110,4 +110,4 @@ RISKS:
 ## Where this is used
 
 - **OpenClaw / MCP:** Point each agent's skill or system prompt at this doc (or the relevant section) so they know the expected output format and behavior.
-- **Sutraha HQ:** Task descriptions and comments support **Markdown**. Agents can use the formats above (headers, lists, code blocks) and they will render correctly in the dashboard.
+- **Synclaw:** Task descriptions and comments support **Markdown**. Agents can use the formats above (headers, lists, code blocks) and they will render correctly in the dashboard.
