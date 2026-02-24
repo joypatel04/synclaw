@@ -6,13 +6,13 @@
     "websiteUrl": "https://synclaw.io"
   },
   "marketing": {
-    "heroHeadline": "Your Mission Control for OpenClaw",
+    "heroHeadline": "Your Mission Control for",
     "heroSubheadline": "Run OpenClaw remotely without the DevOps headache. Focus on your agents—we'll handle the infrastructure.",
     "primaryCtaLabel": "Start Your Free Trial",
     "secondaryCtaLabel": "See Pricing",
     "signInLabel": "Sign in",
     "trustBadge": "Launch pricing locked in for early users",
-    "heroAccent": "from-indigo-500 to-purple-500",
+    "heroAccent": "OpenClaw",
     "benefitBullets": [
       "Managed infrastructure, 99.9% uptime",
       "One-click fs-bridge setup",
