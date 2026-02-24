@@ -22,6 +22,16 @@ const taskPriority = v.union(
   v.literal("none"),
 );
 
+function trimInline(input: string, max = 96): string {
+  const normalized = input
+    .replace(/\r\n/g, "\n")
+    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (normalized.length <= max) return normalized;
+  return `${normalized.slice(0, max - 3)}...`;
+}
+
 /** Create a task (member+). */
 export const create = mutation({
   args: {
@@ -103,12 +113,50 @@ export const update = mutation({
 
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() });
 
+    const changes: string[] = [];
+    if (args.title !== undefined && args.title !== existing.title) {
+      changes.push(`title -> "${trimInline(args.title, 64)}"`);
+    }
+    if (args.priority !== undefined && args.priority !== existing.priority) {
+      changes.push(`priority ${existing.priority} -> ${args.priority}`);
+    }
+    if (args.status !== undefined && args.status !== existing.status) {
+      changes.push(
+        `status ${existing.status.replace("_", " ")} -> ${args.status.replace("_", " ")}`,
+      );
+    }
+    if (args.assigneeIds !== undefined) {
+      changes.push(`assignees -> ${args.assigneeIds.length}`);
+    }
+    if (
+      args.description !== undefined &&
+      args.description !== existing.description
+    ) {
+      const nextSnippet = trimInline(args.description, 88);
+      changes.push(
+        nextSnippet.length > 0
+          ? `description: "${nextSnippet}"`
+          : "description cleared",
+      );
+    }
+    if (args.dueAt !== undefined) {
+      changes.push(
+        args.dueAt === null ? "due date cleared" : "due date updated",
+      );
+    }
+
+    const targetTitle = args.title ?? existing.title;
+    const summary =
+      changes.length > 0
+        ? `${displayName} updated "${targetTitle}": ${changes.join("; ")}`
+        : `${displayName} updated "${targetTitle}"`;
+
     await ctx.db.insert("activities", {
       workspaceId,
       type: "task_updated",
       agentId,
       taskId: id,
-      message: `${displayName} updated task "${existing.title}"`,
+      message: summary,
       metadata: { fields: Object.keys(fields) },
       createdAt: Date.now(),
     });

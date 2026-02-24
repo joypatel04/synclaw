@@ -26,6 +26,16 @@ function normalizeHandle(input: string): string {
   return input.toLowerCase().replace(/[^a-z0-9_]/g, "");
 }
 
+function toCommentSnippet(content: string): string {
+  const normalized = content
+    .replace(/\r\n/g, "\n")
+    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (normalized.length <= 140) return normalized;
+  return `${normalized.slice(0, 137)}...`;
+}
+
 /** Post a comment (member+). */
 export const create = mutation({
   args: {
@@ -75,18 +85,20 @@ export const create = mutation({
       createdAt: now,
     });
 
-    // Log activity
+    // Log activity with useful message context for agents (not generic noise).
     const taskRef = args.taskId ? await ctx.db.get(args.taskId) : null;
+    const snippet = toCommentSnippet(args.content);
     await ctx.db.insert("activities", {
       workspaceId: args.workspaceId,
       type: "message_sent",
       agentId,
       taskId: args.taskId,
       message: taskRef
-        ? `${authorName} commented on "${taskRef.title}"`
-        : `${authorName} posted a message`,
+        ? `${authorName} on "${taskRef.title}": ${snippet}`
+        : `${authorName}: ${snippet}`,
       metadata: {
         mentionedAgentIds,
+        commentSnippet: snippet,
       },
       createdAt: now,
     });

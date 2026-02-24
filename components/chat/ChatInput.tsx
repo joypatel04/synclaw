@@ -23,7 +23,6 @@ export function ChatInput({
   initialValueKey,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const sendingRef = useRef(false);
@@ -54,7 +53,7 @@ export function ChatInput({
     isExpanded || content.length > 140 || content.includes("\n");
 
   const doSend = async () => {
-    if (!content.trim() || isSending) return;
+    if (!content.trim() || disabled) return;
     if (sendingRef.current) return;
     sendingRef.current = true;
 
@@ -64,17 +63,26 @@ export function ChatInput({
     setContent("");
     setIsExpanded(false);
     setErrorText(null);
-    setIsSending(true);
     try {
-      await onSend(outgoing);
+      // Do not block input on the full send lifecycle (streaming/history polling).
+      // Parent ChatInterface handles queueing and in-flight status.
+      void Promise.resolve(onSend(outgoing)).catch((error) => {
+        setContent(outgoing);
+        const msg =
+          error instanceof Error ? error.message : "Failed to send message";
+        setErrorText(msg);
+      });
     } catch (error) {
       setContent(outgoing);
       const msg =
         error instanceof Error ? error.message : "Failed to send message";
       setErrorText(msg);
     } finally {
-      setIsSending(false);
-      sendingRef.current = false;
+      // Release local lock immediately so users can type/send next message;
+      // ChatInterface will queue if agent is still responding.
+      queueMicrotask(() => {
+        sendingRef.current = false;
+      });
     }
   };
 
@@ -135,7 +143,7 @@ export function ChatInput({
         <Button
           type="submit"
           size="icon"
-          disabled={!content.trim() || isSending || disabled}
+          disabled={!content.trim() || disabled}
           className="shrink-0 bg-accent-orange hover:bg-accent-orange/90 text-white h-10 w-10"
         >
           <Send className="h-4 w-4" />
