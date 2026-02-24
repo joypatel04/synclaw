@@ -43,7 +43,7 @@ function ChatContent() {
           </div>
           {canAdmin ? (
             <Button asChild variant="outline" size="sm" className="h-8 gap-2">
-              <Link href="/help/agent-setup">Setup 2.0</Link>
+              <Link href="/help/agent-setup">Setup Guide</Link>
             </Button>
           ) : null}
         </div>

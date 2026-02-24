@@ -283,7 +283,7 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
     <div className="mx-auto max-w-6xl space-y-5 p-3 sm:p-6">
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
         <h1 className="text-lg font-semibold text-text-primary">
-          Agent Setup 2.0
+          Agent Setup Guide
         </h1>
         <p className="mt-1 text-xs text-text-muted">
           Strict 8-file setup for reliable Synclaw backend coordination.
@@ -305,7 +305,7 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
             </Button>
           ))}
           <Button variant="outline" size="sm" asChild>
-            <Link href="/help/agent-setup">Open setup cookbook</Link>
+            <Link href="/help/agent-setup">Open Setup Guide</Link>
           </Button>
         </div>
       </div>

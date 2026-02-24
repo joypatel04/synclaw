@@ -5,15 +5,15 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { REQUIRED_AGENT_SETUP_FILES } from "@/lib/agentSetupTemplates";
 
-function AgentSetupCookbookContent() {
+function AgentSetupGuideContent() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-3 sm:p-6">
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
         <h1 className="text-lg font-semibold text-text-primary sm:text-xl">
-          Agent Setup Cookbook
+          Agent Setup Guide
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Setup 2.0 standard for reliable Synclaw backend coordination.
+          Canonical setup standard for reliable Synclaw backend coordination.
         </p>
       </div>
 
@@ -72,10 +72,10 @@ function AgentSetupCookbookContent() {
   );
 }
 
-export default function AgentSetupCookbookPage() {
+export default function AgentSetupGuidePage() {
   return (
     <AppLayout>
-      <AgentSetupCookbookContent />
+      <AgentSetupGuideContent />
     </AppLayout>
   );
 }

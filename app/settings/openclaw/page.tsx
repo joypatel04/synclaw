@@ -892,12 +892,12 @@ openclaw devices approve <requestId>`}
                   Setup guide
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Open Setup 2.0 for the canonical workflow. Templates below are
+                  Open Setup Guide for the canonical workflow. Templates below are
                   minimal references.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href="/help/agent-setup">Open Setup 2.0</Link>
+                <Link href="/help/agent-setup">Open Setup Guide</Link>
               </Button>
             </div>
 

@@ -119,7 +119,8 @@ function toRelative(rootReal: string, absolutePath: string) {
 async function handleTree(req: IncomingMessage, res: ServerResponse, url: URL) {
   const queryPath = url.searchParams.get("path") ?? ".";
   const { rootReal, candidate } = await resolveSafePath(queryPath);
-  const stat = await fs.stat(candidate);
+  const stat = await fs.stat(candidate).catch(() => null);
+  if (!stat) return json(res, 404, { error: "Path not found" });
   if (!stat.isDirectory()) {
     return json(res, 422, { error: "Path is not a directory" });
   }
@@ -159,7 +160,8 @@ async function handleReadFile(
   }
 
   const { rootReal, candidate } = await resolveSafePath(queryPath);
-  const stat = await fs.stat(candidate);
+  const stat = await fs.stat(candidate).catch(() => null);
+  if (!stat) return json(res, 404, { error: "File not found" });
   if (!stat.isFile()) return json(res, 422, { error: "Path is not a file" });
   if (stat.size > MAX_FILE_BYTES) {
     return json(res, 413, {
@@ -196,7 +198,8 @@ async function handleMeta(req: IncomingMessage, res: ServerResponse, url: URL) {
   const queryPath = url.searchParams.get("path");
   if (!queryPath) return json(res, 400, { error: "Missing path query param" });
   const { rootReal, candidate } = await resolveSafePath(queryPath);
-  const stat = await fs.stat(candidate);
+  const stat = await fs.stat(candidate).catch(() => null);
+  if (!stat) return json(res, 404, { error: "File not found" });
   if (!stat.isFile()) return json(res, 422, { error: "Path is not a file" });
   if (stat.size > MAX_FILE_BYTES) {
     return json(res, 413, {
@@ -248,7 +251,15 @@ async function handleWriteFile(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
-  await fs.mkdir(path.dirname(candidate), { recursive: true });
+  if (!stat) {
+    const parentStat = await fs.stat(path.dirname(candidate)).catch(() => null);
+    if (!parentStat || !parentStat.isDirectory()) {
+      return json(res, 409, {
+        error:
+          "Parent directory does not exist. Create the agent workspace folder in OpenClaw first.",
+      });
+    }
+  }
   await fs.writeFile(candidate, content, "utf8");
   const newStat = await fs.stat(candidate);
   const hash = await sha256(content);

@@ -58,7 +58,7 @@ export function ChatAgentSelector() {
       <EmptyState
         icon={MessageSquare}
         title="No agents yet"
-        description="Create your first agent using recipe flow, then continue setup in Chat."
+        description="Create your first agent using recipe flow, then continue in Agent Setup Guide."
       >
         {canAdmin ? (
           <Button className="bg-accent-orange hover:bg-accent-orange/90 text-white" asChild>

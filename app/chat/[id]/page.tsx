@@ -36,7 +36,7 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           {canAdmin ? (
             <Button asChild variant="outline" size="sm" className="h-8 gap-2">
-              <Link href={`/agents/${agentId}/setup`}>Setup 2.0</Link>
+              <Link href={`/agents/${agentId}/setup`}>Setup Guide</Link>
             </Button>
           ) : null}
         </div>

@@ -188,19 +188,24 @@ export function AgentRecipeWizard() {
 
   return (
     <div className="mx-auto max-w-3xl p-3 sm:p-6">
-      <div className="flex items-start justify-between gap-3 mb-6">
+      <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-text-primary">
             New agent (recipe)
           </h1>
           <p className="mt-1 text-xs text-text-muted">
-            Create agent metadata + SPEC prompt. You can either register only
-            (no redirect) or continue guided setup in Chat.
+            Create agent metadata + SPEC prompt, then continue with Agent Setup
+            Guide (recommended) or register only if already configured.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" className="h-8">
-          <Link href="/agents">Back</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm" className="h-8">
+            <Link href="/help/agent-setup">Open Setup Guide</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-8">
+            <Link href="/agents">Back</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -349,7 +354,7 @@ export function AgentRecipeWizard() {
                     : "Create agent in Synclaw"
                 }
               >
-                {creating ? "Creating..." : "Create and open Setup 2.0"}
+                {creating ? "Creating..." : "Create and open Setup Guide"}
               </Button>
               <Button
                 variant="outline"
@@ -368,9 +373,6 @@ export function AgentRecipeWizard() {
               >
                 {creating ? "Creating..." : "Create on Convex only"}
               </Button>
-              <Button asChild variant="outline">
-                <Link href="/help/agent-setup">Setup cookbook</Link>
-              </Button>
             </div>
             {createError ? (
               <p className="text-xs text-status-blocked">{createError}</p>
@@ -381,8 +383,8 @@ export function AgentRecipeWizard() {
               </p>
             ) : (
               <p className="text-[11px] text-text-dim">
-                Use chat setup for guided files/cron, or register only if your
-                OpenClaw agent is already configured.
+                Recommended: open Setup Guide after creation. Use register-only
+                when your OpenClaw agent files/cron are already configured.
               </p>
             )}
           </div>

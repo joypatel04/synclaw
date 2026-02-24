@@ -478,9 +478,43 @@ export function ScopedFilesystemPanel({
       {filesystemState === "ready" ? (
         <>
           {missingFolder ? (
-            <div className="rounded-xl border border-status-review/50 bg-status-review/10 p-3 text-xs text-status-review">
-              Folder <span className="font-mono">{basePath}</span> not found
-              under bridge root.
+            <div className="space-y-3 rounded-xl border border-status-review/50 bg-status-review/10 p-4 text-xs text-status-review">
+              <p className="font-medium">
+                Agent workspace folder is missing:{" "}
+                <span className="font-mono">{basePath}</span>
+              </p>
+              <p className="text-status-review/90">
+                Filesystem will stay read-only until this folder exists under
+                your fs-bridge root path.
+              </p>
+              <ol className="list-decimal space-y-1 pl-4 text-status-review/90">
+                <li>
+                  In OpenClaw, create folder{" "}
+                  <span className="font-mono">{basePath}</span> in your
+                  workspace root.
+                </li>
+                <li>
+                  Add baseline agent files (at minimum{" "}
+                  <span className="font-mono">SYNCLAW_PROTOCOL.md</span> and{" "}
+                  <span className="font-mono">HEARTBEAT.md</span>).
+                </li>
+                <li>Return here and click refresh to load the folder.</li>
+              </ol>
+              <div className="flex flex-wrap gap-3 text-xs">
+                <Link
+                  href="/help/agent-setup"
+                  className="text-accent-orange hover:underline"
+                >
+                  Open Agent Setup Guide
+                </Link>
+                <button
+                  type="button"
+                  className="text-accent-orange hover:underline"
+                  onClick={() => void openDirectory(".", true)}
+                >
+                  Refresh Filesystem
+                </button>
+              </div>
             </div>
           ) : null}
 

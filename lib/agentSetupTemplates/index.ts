@@ -31,8 +31,6 @@ export function deriveWorkspaceFolderPath(agent: {
   sessionKey: string;
   workspaceFolderPath?: string;
 }): string {
-  const explicit = (agent.workspaceFolderPath ?? "").trim();
-  if (explicit) return explicit;
   if (agent.sessionKey === "agent:main:main") return "workspace";
   const slug = toWorkspaceSlug(agent.name) || "agent";
   return `workspace-${slug}`;

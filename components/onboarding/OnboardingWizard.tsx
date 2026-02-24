@@ -264,7 +264,7 @@ export function OnboardingWizard() {
             Workspace setup
           </h1>
           <p className="mt-0.5 text-xs text-text-muted">
-            Complete prerequisites, then continue setup in Chat.
+            Complete prerequisites, then continue in Agent Setup Guide.
           </p>
         </div>
       </div>
@@ -429,7 +429,7 @@ export function OnboardingWizard() {
                   className="bg-teal hover:bg-teal/90 text-white"
                   onClick={() => goChatSetup(String(status.mainAgentId))}
                 >
-                  Continue in chat
+                  Open Setup Guide
                 </Button>
               </div>
             ) : (
@@ -515,7 +515,7 @@ export function OnboardingWizard() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <p className="text-xs text-text-muted">
-            After prerequisites, continue with Setup 2.0 for strict file-pack
+            After prerequisites, continue with Agent Setup Guide for strict file-pack
             validation and runtime checks.
           </p>
           <div className="mt-3">
@@ -527,7 +527,7 @@ export function OnboardingWizard() {
                     : "/agents"
                 }
               >
-                Open Setup 2.0
+                Open Setup Guide
               </Link>
             </Button>
           </div>

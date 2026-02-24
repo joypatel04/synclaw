@@ -146,20 +146,20 @@ function HelpContent() {
               <span className="font-mono text-xs">/onboarding</span>.
             </li>
             <li>Create new agents from recipe flow.</li>
-            <li>Open Agent Setup 2.0 and complete strict validation.</li>
+            <li>Open Agent Setup Guide and complete strict validation.</li>
           </ol>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Button
               asChild
               className="bg-accent-orange hover:bg-accent-orange/90 text-white"
             >
-              <Link href="/help/agent-setup">Open Setup 2.0</Link>
+              <Link href="/help/agent-setup">Open Setup Guide</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/agents/new">Create agent (recipe)</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/help/agent-setup">Agent setup cookbook</Link>
+              <Link href="/help/agent-setup">Agent Setup Guide</Link>
             </Button>
           </div>
         </div>

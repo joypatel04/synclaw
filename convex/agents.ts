@@ -76,12 +76,10 @@ export const getAgentDetail = query({
       name: agent.name,
       sessionKey: agent.sessionKey,
     });
-    const effectiveWorkspaceFolderPath =
-      (agent.workspaceFolderPath ?? "").trim() || defaultWorkspaceFolderPath;
     return {
       agent,
       defaultWorkspaceFolderPath,
-      effectiveWorkspaceFolderPath,
+      effectiveWorkspaceFolderPath: defaultWorkspaceFolderPath,
       renameChoiceNeeded: false,
     };
   },
@@ -614,32 +612,12 @@ export const update = mutation({
 
     const nextName = args.name ?? agent.name;
     const nextSessionKey = args.sessionKey ?? agent.sessionKey;
-    const previousDefaultPath = deriveDefaultWorkspaceFolderPath({
-      name: agent.name,
-      sessionKey: agent.sessionKey,
-    });
     const nextDefaultPath = deriveDefaultWorkspaceFolderPath({
       name: nextName,
       sessionKey: nextSessionKey,
     });
-    const currentEffectivePath =
-      (agent.workspaceFolderPath ?? "").trim() || previousDefaultPath;
-    const mappingWouldChange = nextDefaultPath !== previousDefaultPath;
-
-    if (mappingWouldChange && !args.workspaceFolderPathChoice) {
-      const errorPayload = {
-        code: "WORKSPACE_FOLDER_RENAME_CHOICE_REQUIRED",
-        currentWorkspaceFolderPath: currentEffectivePath,
-        newDefaultWorkspaceFolderPath: nextDefaultPath,
-      };
-      throw new Error(JSON.stringify(errorPayload));
-    }
-
-    if (args.workspaceFolderPathChoice === "keep_existing") {
-      updates.workspaceFolderPath = currentEffectivePath;
-    } else if (args.workspaceFolderPathChoice === "use_new_default") {
-      updates.workspaceFolderPath = nextDefaultPath;
-    }
+    // Enforce name-based folder mapping. We do not keep arbitrary/custom paths.
+    updates.workspaceFolderPath = nextDefaultPath;
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(args.id, updates);
@@ -657,7 +635,7 @@ export const update = mutation({
   },
 });
 
-/** Set a custom workspace folder path for an agent (owner only). */
+/** Set workspace folder path for an agent (owner only, validated to default mapping). */
 export const setWorkspaceFolderPath = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -671,14 +649,16 @@ export const setWorkspaceFolderPath = mutation({
       throw new Error("Agent not found");
     }
     const normalized = args.workspaceFolderPath.trim().replace(/\\/g, "/");
-    if (
-      !normalized ||
-      normalized.includes("..") ||
-      normalized.startsWith("/")
-    ) {
-      throw new Error("Invalid workspace folder path");
+    const expected = deriveDefaultWorkspaceFolderPath({
+      name: agent.name,
+      sessionKey: agent.sessionKey,
+    });
+    if (normalized !== expected) {
+      throw new Error(
+        `workspaceFolderPath must match agent name mapping. Expected "${expected}".`,
+      );
     }
-    await ctx.db.patch(args.id, { workspaceFolderPath: normalized });
+    await ctx.db.patch(args.id, { workspaceFolderPath: expected });
   },
 });
 

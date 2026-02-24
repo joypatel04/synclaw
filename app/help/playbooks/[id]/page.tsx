@@ -122,11 +122,11 @@ function PlaybookPageInner() {
                 asChild
                 className="bg-accent-orange hover:bg-accent-orange/90 text-white"
               >
-                <Link href="/help/agent-setup">Open Setup 2.0</Link>
+                <Link href="/help/agent-setup">Open Setup Guide</Link>
               </Button>
             )}
             <Button asChild variant="outline">
-              <Link href="/help/agent-setup">Open setup cookbook</Link>
+              <Link href="/help/agent-setup">Open Setup Guide</Link>
             </Button>
           </div>
         </div>
