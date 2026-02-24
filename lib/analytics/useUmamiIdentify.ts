@@ -6,7 +6,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useConvexAuth } from '@convex-dev/auth/react';
+import { useConvexAuth } from 'convex/react';
 import { identifyUser, clearUserIdentity } from './track';
 
 /**

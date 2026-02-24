@@ -20,6 +20,7 @@ export const DASHBOARD_EVENTS = {
   TASKS_VISIT: 'tasks_visit',
   CHAT_VISIT: 'chat_visit',
   FILES_VISIT: 'files_visit',
+  BROADCASTS_VISIT: 'broadcasts_visit',
   DOCS_VISIT: 'docs_visit',
 } as const;
 

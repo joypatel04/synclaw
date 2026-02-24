@@ -164,7 +164,7 @@ export function trackSectionVisit(section: SectionType) {
     tasks: DASHBOARD_EVENTS.TASKS_VISIT,
     chat: DASHBOARD_EVENTS.CHAT_VISIT,
     files: DASHBOARD_EVENTS.FILES_VISIT,
-    broadcasts: DASHBOARD_EVENTS.BROADCAST_VISIT,
+    broadcasts: DASHBOARD_EVENTS.BROADCASTS_VISIT,
     docs: DASHBOARD_EVENTS.DOCS_VISIT,
   };
 
