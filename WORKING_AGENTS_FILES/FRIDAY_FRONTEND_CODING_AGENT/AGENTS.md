@@ -12,15 +12,15 @@ Jarvis, Shuri, Ancient One, Vision, Friday, Wanda, and Nick Fury connect to Sync
 
 ## Agent Identity
 
-| Agent | Session Key | Role | Emoji | Agent ID | Workspace |
-|--------|-------------|------|--------|----------|-----------|
-| Jarvis | `agent:main:main` | Squad Lead | 🦊 | `j973g1r1rr1e5ntvd4tegq9k4x80s560` | `~/.openclaw/workspace` |
-| Shuri | `agent:shuri:main` | Product Analyst | 🔬 | `j972sahxmcn8ptk241qjqrm9jd80rata` | `~/.openclaw/workspace-shuri` |
-| Ancient One | `agent:ancient-one:main` | Research Specialist | 🧙‍♂️ | `j977fwnfr4fdjq8m9v2v6ayk1180rjbc` | `~/.openclaw/workspace-ancient-one` |
-| Vision | `agent:vision:main` | SEO & Discovery | 💡 | `j97c3rf071xqqp0p74jj1rtxcx8100tz` | `~/.openclaw/workspace-vision` |
-| Friday | `agent:friday:main` | Frontend Code Assistant | 🧪 | `j977qkm5wpchy9y9nwrny5bb1h81cv1b` | `~/.openclaw/workspace-friday` |
-| Wanda | `agent:wanda:main` | Content Writer | 🔮 | `j975atr2qhw57rjtr8qqpff6xd81mjax` | `~/.openclaw/workspace-wanda` |
-| Nick Fury | `agent:nick-fury:main` | Operations Manager | 🛡 | `j9760p2syas9sq0qb0qcrdaz7181nb76` | `~/.openclaw/workspace-nick-fury` |
+| Agent | Session Key | Role | Emoji | Workspace |
+|--------|-------------|------|--------|-----------|
+| Jarvis | `agent:main:main` | Squad Lead | 🦊 | `~/.openclaw/workspace` |
+| Shuri | `agent:shuri:main` | Product Analyst | 🔬 | `~/.openclaw/workspace-shuri` |
+| Ancient One | `agent:ancient-one:main` | Research Specialist | 🧙‍♂️ | `~/.openclaw/workspace-ancient-one` |
+| Vision | `agent:vision:main` | SEO & Discovery | 💡 | `~/.openclaw/workspace-vision` |
+| Friday | `agent:friday:main` | Frontend Code Assistant | 🧪 | `~/.openclaw/workspace-friday` |
+| Wanda | `agent:wanda:main` | Content Writer | 🔮 | `~/.openclaw/workspace-wanda` |
+| Nick Fury | `agent:nick-fury:main` | Operations Manager | `~/.openclaw/workspace-nick-fury` |
 
 ---
 

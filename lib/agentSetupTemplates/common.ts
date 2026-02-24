@@ -109,9 +109,9 @@ export function buildAgentsMd(input: {
 
 ## Agent Identity
 
-| Agent | Session Key | Role | Agent ID | Workspace Path |
-|-------|-------------|------|----------|----------------|
-${rows || "| (none) |  |  |  |  |"}
+| Agent | Session Key | Role | Workspace Path |
+|-------|-------------|------|--------------------------|
+${rows || "| (none) |  |  |  |"}
 
 ## Coordination Rules
 
