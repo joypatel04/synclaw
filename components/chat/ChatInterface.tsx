@@ -1,7 +1,12 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { ChevronDown, MessageSquare } from "lucide-react";
+import {
+  ChevronDown,
+  MessageSquare,
+  PanelBottomOpen,
+  SquareTerminal,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +14,12 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { clearChatDraft, consumeChatDraft } from "@/lib/chatDraft";
@@ -61,6 +72,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   const [gatewayAgentCount, setGatewayAgentCount] = useState<number | null>(
     null,
   );
+  const [showMobileActions, setShowMobileActions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const localMessagesRef = useRef<UiChatMessage[]>([]);
   const localIndexRef = useRef<Map<string, number>>(new Map());
   const localSeqRef = useRef(1);
@@ -110,7 +123,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     const el = viewportRef.current;
     if (!el) return;
 
-    const thresholdPx = 120;
+    const thresholdPx = isMobile ? 220 : 120;
     const onScroll = () => {
       const distanceFromBottom =
         el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -122,6 +135,15 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 639px)");
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
   useEffect(
@@ -1093,15 +1115,23 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     gatewayModelProvider,
   ]);
 
+  const sortedMessages = useMemo(() => {
+    return localMessages
+      .slice()
+      .sort(
+        (a, b) =>
+          (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
+          (a.localSeq ?? 0) - (b.localSeq ?? 0) ||
+          a.id.localeCompare(b.id),
+      );
+  }, [localMessages]);
+
   return (
     <div
-      className={cn(
-        "flex h-[calc(100dvh-7rem)] min-h-0 flex-col overflow-hidden sm:h-[calc(100dvh-3.5rem)]",
-        className,
-      )}
+      className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}
     >
-      <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6 sm:py-3">
-        <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-bg-tertiary text-lg sm:text-xl">
+      <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-3 py-2 sm:px-6 sm:py-3">
+        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-bg-tertiary text-base sm:text-xl">
           {agent.emoji}
         </div>
         <div className="min-w-0 flex-1">
@@ -1112,7 +1142,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
             {agent.role}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <div className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex">
           {canChatBase && (
             <Button
               variant="outline"
@@ -1140,6 +1170,32 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
             {agent.status}
           </span>
         </div>
+        <div className="flex items-center gap-1.5 sm:hidden">
+          {activeRun?.externalRunId && canChat && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleAbort}
+            >
+              Stop
+            </Button>
+          )}
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${agent.status === "active" ? "bg-status-active" : agent.status === "error" ? "bg-status-blocked" : agent.status === "offline" ? "bg-text-muted" : "bg-status-idle"}`}
+          />
+          {canChatBase ? (
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="h-7 w-7"
+              aria-label="Open chat actions"
+              onClick={() => setShowMobileActions(true)}
+            >
+              <PanelBottomOpen className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
       </div>
       {showGatewayPanel && canChatBase && (
         <div className="border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6">
@@ -1162,7 +1218,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           className="h-full bg-bg-secondary"
           viewportRef={viewportRef}
         >
-          <div className="space-y-3 p-3 sm:space-y-4 sm:p-6">
+          <div className="space-y-2.5 p-2.5 sm:space-y-4 sm:p-6">
             {!canEdit ? (
               <EmptyState
                 icon={MessageSquare}
@@ -1202,14 +1258,14 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
                   <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
                 </Button>
               </EmptyState>
-            ) : localMessages.length === 0 ? (
+            ) : sortedMessages.length === 0 ? (
               <EmptyState
                 icon={MessageSquare}
                 title={`Start chatting with ${agent.name}`}
                 description="Messages stream directly from OpenClaw"
               />
             ) : (
-              localMessages.map((msg) => (
+              sortedMessages.map((msg) => (
                 <div key={msg.id}>
                   <ChatMessage
                     message={msg}
@@ -1217,6 +1273,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
                     agentName={agent.name}
                     userName={me?.name}
                     userImage={me?.image ?? undefined}
+                    compact={isMobile}
                   />
                   {msg.state === "failed" &&
                     msg.externalMessageId &&
@@ -1243,7 +1300,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
             type="button"
             size="icon"
             variant="secondary"
-            className="absolute bottom-24 right-4 z-10 h-9 w-9 rounded-full shadow-md sm:bottom-4"
+            className="absolute bottom-20 right-3 z-10 h-9 w-9 rounded-full shadow-md sm:bottom-4 sm:right-4"
             onClick={() => scrollToBottom("smooth")}
             aria-label="Scroll to bottom"
           >
@@ -1260,6 +1317,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           disabled={!canChat}
           initialValue={draft ?? undefined}
           initialValueKey={draftKey}
+          compact={isMobile}
           statusText={
             queuedCount > 0
               ? `Queued: ${queuedCount} (will send after the agent finishes)`
@@ -1269,6 +1327,56 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           }
         />
       </div>
+
+      <Sheet open={showMobileActions} onOpenChange={setShowMobileActions}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-2xl border-border-default bg-bg-secondary p-0 sm:hidden"
+        >
+          <SheetHeader className="border-b border-border-default px-4 py-3">
+            <SheetTitle className="text-sm text-text-primary">
+              Chat Actions
+            </SheetTitle>
+          </SheetHeader>
+          <div className="space-y-3 p-4">
+            {canChatBase ? (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => {
+                  setShowMobileActions(false);
+                  setShowGatewayPanel((v) => !v);
+                }}
+              >
+                <SquareTerminal className="h-4 w-4" />
+                {showGatewayPanel ? "Hide OpenClaw Info" : "Show OpenClaw Info"}
+              </Button>
+            ) : null}
+            {activeRun?.externalRunId && canChat ? (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => {
+                  setShowMobileActions(false);
+                  void handleAbort();
+                }}
+              >
+                Stop Current Run
+              </Button>
+            ) : null}
+            <div className="flex flex-wrap gap-1.5">
+              {gatewayFeatures.map((feature) => (
+                <span
+                  key={feature}
+                  className="rounded-full border border-border-default bg-bg-tertiary px-2 py-0.5 text-[11px] text-text-secondary"
+                >
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

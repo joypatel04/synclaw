@@ -34,6 +34,7 @@ interface ChatMessageProps {
   agentName?: string;
   userName?: string;
   userImage?: string;
+  compact?: boolean;
 }
 
 export function ChatMessage({
@@ -42,6 +43,7 @@ export function ChatMessage({
   agentName = "Agent",
   userName,
   userImage,
+  compact = false,
 }: ChatMessageProps) {
   const isUser = message.fromUser;
   const state = message.state;
@@ -95,6 +97,10 @@ export function ChatMessage({
             : state === "aborted"
               ? "Aborted"
               : null;
+  const commandPreview = plainText.split("\n")[0] ?? plainText;
+  const bubbleClass = compact
+    ? "group relative min-w-0 w-fit max-w-[88%] rounded-2xl px-3 py-2 border shadow-xs"
+    : "group relative min-w-0 w-fit max-w-[92%] sm:max-w-[44rem] rounded-2xl px-4 py-2.5 border shadow-xs";
 
   if (isTool) {
     const ok = state !== "failed";
@@ -105,10 +111,22 @@ export function ChatMessage({
         : undefined;
     return (
       <div className={cn("flex gap-3", "flex-row")}>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
+        <div
+          className={cn(
+            "shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary",
+            compact ? "flex h-7 w-7" : "flex h-8 w-8",
+          )}
+        >
           {agentEmoji}
         </div>
-        <div className="min-w-0 w-fit max-w-[92%] sm:max-w-[44rem] rounded-2xl bg-bg-tertiary rounded-tl-sm px-4 py-2.5">
+        <div
+          className={cn(
+            "min-w-0 w-fit rounded-2xl bg-bg-tertiary rounded-tl-sm",
+            compact
+              ? "max-w-[88%] px-3 py-2"
+              : "max-w-[92%] sm:max-w-[44rem] px-4 py-2.5",
+          )}
+        >
           <p className="text-xs font-medium text-text-muted mb-1">
             {agentName}
           </p>
@@ -118,11 +136,18 @@ export function ChatMessage({
             command={message.content}
             output={outputText}
           >
-            <div className="rounded-xl border border-border-default bg-bg-secondary p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-text-muted">🧩</span>
-                  <span className="font-mono text-sm font-semibold text-text-primary">
+            <div
+              className={cn(
+                "rounded-xl border border-border-default bg-bg-secondary",
+                compact ? "p-2.5" : "p-3",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2.5">
+                <div className="min-w-0 flex items-center gap-2">
+                  <span className="text-text-muted" aria-hidden>
+                    🧩
+                  </span>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wide text-text-primary">
                     exec
                   </span>
                 </div>
@@ -134,27 +159,28 @@ export function ChatMessage({
                   )}
                 </div>
               </div>
-              <pre className="mt-2 text-[12px] overflow-x-auto rounded-md bg-bg-tertiary p-2 font-mono text-text-primary">
-                {message.content}
-              </pre>
-              <div
+              <p
                 className={cn(
-                  "mt-2 text-[11px]",
-                  ok ? "text-text-dim" : "text-status-blocked",
+                  "mt-1.5 truncate font-mono text-text-primary",
+                  compact ? "text-[11px]" : "text-[12px]",
                 )}
+                title={message.content}
               >
-                {ok ? "Completed" : "Failed"}
+                {commandPreview || "(missing command)"}
+              </p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span
+                  className={cn(
+                    "text-[11px]",
+                    ok ? "text-text-dim" : "text-status-blocked",
+                  )}
+                >
+                  {ok ? "Completed" : "Failed"}
+                </span>
+                <span className="text-[11px] text-text-muted underline">
+                  Tap for details
+                </span>
               </div>
-              {outputText && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer select-none text-[11px] text-text-dim hover:text-text-primary underline">
-                    {ok ? "Show output" : "Show error"}
-                  </summary>
-                  <pre className="mt-2 text-[10px] overflow-x-auto rounded-md bg-bg-tertiary p-2">
-                    {outputText}
-                  </pre>
-                </details>
-              )}
             </div>
           </ToolOutputSheet>
           <Timestamp
@@ -169,7 +195,10 @@ export function ChatMessage({
   return (
     <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
       {isUser ? (
-        <Avatar size="default" className="shrink-0">
+        <Avatar
+          size={compact ? "sm" : "default"}
+          className={cn("shrink-0", compact ? "h-7 w-7" : undefined)}
+        >
           {userImage ? (
             <AvatarImage src={userImage} alt={userName ?? "You"} />
           ) : null}
@@ -178,13 +207,18 @@ export function ChatMessage({
           </AvatarFallback>
         </Avatar>
       ) : (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary">
+        <div
+          className={cn(
+            "shrink-0 items-center justify-center rounded-full text-sm bg-bg-tertiary",
+            compact ? "flex h-7 w-7" : "flex h-8 w-8",
+          )}
+        >
           {agentEmoji}
         </div>
       )}
       <div
         className={cn(
-          "group relative min-w-0 w-fit max-w-[92%] sm:max-w-[44rem] rounded-2xl px-4 py-2.5 border shadow-xs",
+          bubbleClass,
           isUser
             ? "bg-accent-orange-dim border-accent-orange/25 rounded-tr-sm"
             : "bg-bg-primary border-border-default rounded-tl-sm",
@@ -221,7 +255,10 @@ export function ChatMessage({
         {errorMessage && (
           <p className="mt-1 text-[10px] text-status-blocked">{errorMessage}</p>
         )}
-        <Timestamp time={message.createdAt} className="mt-1 block text-right" />
+        <Timestamp
+          time={message.createdAt}
+          className={cn("block text-right", compact ? "mt-0.5" : "mt-1")}
+        />
       </div>
     </div>
   );

@@ -31,7 +31,11 @@ function ChatSessionContent({ sessionKey }: { sessionKey: string }) {
     sessionKey,
   };
 
-  return <ChatInterface agent={agentLike} />;
+  return (
+    <div className="h-full min-h-0">
+      <ChatInterface agent={agentLike} className="h-full min-h-0" />
+    </div>
+  );
 }
 
 export default function ChatSessionPage() {
@@ -59,7 +63,9 @@ export default function ChatSessionPage() {
   const decoded = decodeURIComponent(sessionKey);
   return (
     <AppLayout>
-      <ChatSessionContent sessionKey={decoded} />
+      <div className="h-full min-h-0">
+        <ChatSessionContent sessionKey={decoded} />
+      </div>
     </AppLayout>
   );
 }

@@ -22,7 +22,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
         // Responsive safety:
         // - `break-words` prevents long tokens from blowing out the bubble
         // - tables become scrollable by switching them to block-level
-        "markdown-content text-inherit break-words",
+        "markdown-content min-w-0 max-w-full overflow-x-hidden text-inherit break-words [overflow-wrap:anywhere]",
         className,
       )}
     >
@@ -54,7 +54,10 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             </h3>
           ),
           p: ({ children, ...props }) => (
-            <p {...props} className="my-1 first:mt-0 last:mb-0">
+            <p
+              {...props}
+              className="my-1 first:mt-0 last:mb-0 [overflow-wrap:anywhere]"
+            >
               {children}
             </p>
           ),
@@ -123,7 +126,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                     // Inline code should read like a "chip" (similar to the tool command pill),
                     // and remain visible on both agent and user bubbles.
                     "font-mono text-[12px] rounded-md border border-border-default bg-bg-secondary/70 px-1.5 py-0.5 text-text-primary",
-                    "break-words",
+                    "break-all",
                     className,
                   )}
                 >
@@ -136,7 +139,10 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             return (
               <code
                 {...props}
-                className={cn("font-mono text-[12px] leading-relaxed", className)}
+                className={cn(
+                  "font-mono text-[12px] leading-relaxed",
+                  className,
+                )}
               >
                 {children}
               </code>

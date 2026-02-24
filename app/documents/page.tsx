@@ -381,11 +381,11 @@ function DocumentsContent() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="hidden lg:block">{sidebar}</aside>
 
         <main className="order-1 lg:order-none">
-          <div className="mb-4 flex gap-2 overflow-x-auto">
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
             {DOC_TYPES.map((t) => (
               <button
                 type="button"
@@ -420,11 +420,11 @@ function DocumentsContent() {
                 return (
                   <div
                     key={doc._id}
-                    className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-5 transition-smooth hover:border-border-hover"
+                    className="rounded-xl border border-border-default bg-bg-secondary p-3 sm:p-5 transition-smooth hover:border-border-hover"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           <h3 className="truncate text-sm font-semibold text-text-primary">
                             {doc.isGlobalContext && (
                               <Globe className="mr-1 inline h-3.5 w-3.5 text-accent-orange" />
@@ -444,7 +444,7 @@ function DocumentsContent() {
                           {doc.content}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
                         <span
                           className={cn(
                             "rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
@@ -467,23 +467,25 @@ function DocumentsContent() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                      <span>v{doc.version ?? 1}</span>
-                      <span>•</span>
-                      <span>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-text-muted sm:mt-4 sm:text-xs">
+                      <span className="rounded bg-bg-primary/60 px-1.5 py-0.5">
+                        v{doc.version ?? 1}
+                      </span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="truncate max-w-full">
                         Created by{" "}
                         {createdBy
                           ? `${createdBy.emoji} ${createdBy.name}`
                           : "Unknown"}
                       </span>
-                      <span>•</span>
-                      <span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="truncate max-w-full">
                         Edited by{" "}
                         {editedBy
                           ? `${editedBy.emoji} ${editedBy.name}`
                           : "Unknown"}
                       </span>
-                      <span>•</span>
+                      <span className="hidden sm:inline">•</span>
                       <Timestamp time={doc.updatedAt ?? doc.createdAt} />
                     </div>
                   </div>

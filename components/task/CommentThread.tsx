@@ -141,19 +141,19 @@ export function CommentThread({ taskId }: CommentThreadProps) {
         ) : (
           <div className="space-y-4">
             {messages.map((msg) => (
-              <div key={msg._id} className="flex gap-3">
+              <div key={msg._id} className="flex gap-2.5 sm:gap-3">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">
                   {getAgentEmoji(msg.agentId) ?? "👤"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">
                         {getAuthorLabel(msg as Doc<"messages">)}
                       </span>
                       <Timestamp time={msg.createdAt} />
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
                       {canEdit && (
                         <Button
                           type="button"
@@ -187,7 +187,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
                       ) : null}
                     </div>
                   </div>
-                  <div className="mt-1 text-sm text-text-secondary leading-relaxed">
+                  <div className="mt-1 min-w-0 max-w-full overflow-x-hidden text-sm text-text-secondary leading-relaxed">
                     <MarkdownContent content={msg.content} />
                   </div>
                 </div>
