@@ -277,8 +277,25 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       const closeInTime =
         Math.abs((m.createdAt ?? 0) - (last.createdAt ?? 0)) <= windowMs;
 
+      const assistantInFlightMerge =
+        m.role === "assistant" &&
+        last.role === "assistant" &&
+        (m.state === "streaming" ||
+          m.state === "sending" ||
+          last.state === "streaming" ||
+          last.state === "sending");
+      const assistantIdMerge =
+        m.role === "assistant" &&
+        last.role === "assistant" &&
+        ((Boolean(m.externalRunId) && m.externalRunId === last.externalRunId) ||
+          (Boolean(m.externalMessageId) &&
+            m.externalMessageId === last.externalMessageId));
+      const allowAssistantTextMerge =
+        m.role !== "assistant" ||
+        (assistantInFlightMerge || assistantIdMerge);
+
       // Only merge if they look like the same message arriving twice right away.
-      if (sameKind && sameText && closeInTime) {
+      if (sameKind && sameText && closeInTime && allowAssistantTextMerge) {
         const keep = last;
         const incoming = m;
         const merged: UiChatMessage = {
@@ -368,6 +385,21 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         if (Math.abs(mt - ts) > windowMs) continue;
         return i;
       }
+    }
+
+    // Assistant messages are high-risk for accidental mid-thread merges when text
+    // repeats (e.g. short completions). Without a stable run id, only merge into an
+    // active in-flight assistant bubble.
+    if (candidate.role === "assistant" && !candidate.fromUser) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role !== "assistant") continue;
+        if (m.state !== "streaming" && m.state !== "sending") continue;
+        const mt = m.createdAt ?? 0;
+        if (Math.abs(mt - ts) > windowMs) continue;
+        return i;
+      }
+      return undefined;
     }
 
     // Scan from the end (most likely duplicates are recent).
@@ -1109,8 +1141,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       .slice()
       .sort(
         (a, b) =>
-          (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
           (a.localSeq ?? 0) - (b.localSeq ?? 0) ||
+          (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
           a.id.localeCompare(b.id),
       );
   }, [localMessages]);
