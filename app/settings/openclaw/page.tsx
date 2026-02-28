@@ -35,6 +35,12 @@ import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawCo
 import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
 import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import {
+  mapOpenClawSetupError,
+  OPENCLAW_METHOD_CARDS,
+  recommendTransportMode,
+  type OpenClawTransportMode,
+} from "@/lib/openclawSetupMethods";
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -105,6 +111,15 @@ function OpenClawSettingsContent() {
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
+  const [transportMode, setTransportMode] =
+    useState<OpenClawTransportMode>("direct_ws");
+  const [connectorId, setConnectorId] = useState("");
+  const [connectorStatus, setConnectorStatus] = useState<
+    "online" | "offline" | "degraded"
+  >("offline");
+  const [connectorLastSeenAt, setConnectorLastSeenAt] = useState<number | null>(
+    null,
+  );
   const [role, setRole] = useState("operator");
   const [scopesCsv, setScopesCsv] = useState(
     "operator.read,operator.write,operator.admin",
@@ -134,6 +149,9 @@ function OpenClawSettingsContent() {
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [localAuthRev, setLocalAuthRev] = useState(0);
+  const [activeChecklistTab, setActiveChecklistTab] =
+    useState<OpenClawTransportMode>("direct_ws");
+  const [lastTestedAt, setLastTestedAt] = useState<number | null>(null);
   const copy = async (id: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopiedId(id);
@@ -142,6 +160,20 @@ function OpenClawSettingsContent() {
 
   useEffect(() => {
     if (!summary) return;
+    const nextMode =
+      (summary.transportMode as OpenClawTransportMode) ?? "direct_ws";
+    setTransportMode(nextMode);
+    setActiveChecklistTab(nextMode);
+    setConnectorId(summary.connectorId ?? "");
+    setConnectorStatus(
+      (summary.connectorStatus as "online" | "offline" | "degraded") ??
+        "offline",
+    );
+    setConnectorLastSeenAt(
+      typeof summary.connectorLastSeenAt === "number"
+        ? summary.connectorLastSeenAt
+        : null,
+    );
     setWsUrl(summary.wsUrl ?? "");
     setRole(summary.role ?? "operator");
     setScopesCsv((summary.scopes ?? []).join(",") || scopesCsv);
@@ -168,6 +200,10 @@ function OpenClawSettingsContent() {
     typeof window !== "undefined" && window.location.protocol === "https:";
   const isInsecureWsUrl = wsUrl.trim().toLowerCase().startsWith("ws://");
   const showMixedContentWarning = isHttpsPage && isInsecureWsUrl;
+  const recommendedMode = useMemo(
+    () => recommendTransportMode(wsUrl, isHttpsPage),
+    [isHttpsPage, wsUrl],
+  );
 
   const localAuthState = useMemo(() => {
     if (typeof window === "undefined") {
@@ -295,6 +331,10 @@ function OpenClawSettingsContent() {
       await upsert({
         workspaceId,
         wsUrl,
+        transportMode,
+        connectorId: connectorId.trim() || undefined,
+        connectorStatus,
+        connectorLastSeenAt,
         protocol: "req",
         clientId: "openclaw-control-ui",
         clientMode: "webchat",
@@ -345,6 +385,29 @@ function OpenClawSettingsContent() {
         });
         return;
       }
+      if ((cfg.transportMode ?? "direct_ws") === "connector") {
+        if (!cfg.connectorId) {
+          setTestResult({
+            status: "error",
+            message: "Missing connector ID.",
+          });
+          return;
+        }
+        if ((cfg.connectorStatus ?? "offline") !== "online") {
+          setTestResult({
+            status: "error",
+            message:
+              "Connector Offline: start your connector process and verify connectivity.",
+          });
+          return;
+        }
+        setTestResult({
+          status: "ok",
+          message: "Connector is online and ready.",
+        });
+        setLastTestedAt(Date.now());
+        return;
+      }
       if (!cfg.wsUrl) {
         setTestResult({ status: "error", message: "Missing wsUrl." });
         return;
@@ -376,11 +439,15 @@ function OpenClawSettingsContent() {
           status: "ok",
           message: status?.message ?? "Connected.",
         });
+        setLastTestedAt(Date.now());
       } finally {
         await client.disconnect().catch(() => {});
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = mapOpenClawSetupError(
+        e instanceof Error ? e.message : String(e),
+        transportMode,
+      );
       setTestResult({ status: "error", message });
       if (client) {
         setTestStatus(client.getConnectionStatus());
@@ -390,6 +457,22 @@ function OpenClawSettingsContent() {
       setTesting(false);
     }
   };
+
+  const connectionHealth = useMemo(() => {
+    if (testResult.status === "ok") return "Connected";
+    if (transportMode === "connector" && connectorStatus !== "online") {
+      return "Connector Offline";
+    }
+    if (
+      testStatus?.state === "PAIRING_REQUIRED" ||
+      testStatus?.state === "PAIRING_PENDING" ||
+      testStatus?.state === "SCOPES_INSUFFICIENT"
+    ) {
+      return "Needs Pairing";
+    }
+    if (testResult.status === "error") return "Invalid Config";
+    return "Not Verified";
+  }, [connectorStatus, testResult.status, testStatus?.state, transportMode]);
 
   if (!canAdmin) {
     return (
@@ -440,31 +523,137 @@ function OpenClawSettingsContent() {
 
       <div className="space-y-8">
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary mb-1">
+            Connection Method
+          </h2>
+          <p className="text-xs text-text-muted">
+            Choose how this workspace connects to OpenClaw. Switching methods
+            can require a different setup path.
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {OPENCLAW_METHOD_CARDS.map((method) => {
+              const active = transportMode === method.mode;
+              const suggested = recommendedMode === method.mode;
+              return (
+                <button
+                  key={method.mode}
+                  type="button"
+                  onClick={() => {
+                    setTransportMode(method.mode);
+                    setActiveChecklistTab(method.mode);
+                  }}
+                  className={`rounded-xl border p-3 text-left ${
+                    active
+                      ? "border-accent-orange/50 bg-accent-orange/10"
+                      : "border-border-default bg-bg-primary"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-text-primary">
+                      {method.title}
+                    </p>
+                    {suggested ? (
+                      <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                        Suggested
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    {method.subtitle}
+                  </p>
+                  <p className="mt-2 text-[11px] text-text-secondary">
+                    Use when: {method.useWhen}
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-dim">
+                    Setup time: {method.setupTime}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Connection
           </h2>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-text-secondary">WebSocket URL</Label>
-              <Input
-                value={wsUrl}
-                onChange={(e) => setWsUrl(e.target.value)}
-                placeholder="wss://claw.sahayoga.in"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              />
-              <p className="text-[11px] text-text-dim">
-                Make sure this origin is allowed in OpenClaw:
-                <span className="ml-1 font-mono text-text-muted">{origin}</span>
-              </p>
-              {showMixedContentWarning ? (
-                <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
-                  This app is running on HTTPS. Browsers often block{" "}
-                  <code className="font-mono">ws://</code> as mixed content.
-                  Prefer <code className="font-mono">wss://</code>. Or setup
-                  self-hosted Synclaw.
+            {transportMode === "connector" ? (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Connector ID</Label>
+                  <Input
+                    value={connectorId}
+                    onChange={(e) => setConnectorId(e.target.value)}
+                    placeholder="connector-workspace-prod-01"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                  />
                 </div>
-              ) : null}
-            </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                    <p className="text-[11px] text-text-dim">
+                      Connector status
+                    </p>
+                    <p className="mt-1 text-xs text-text-primary capitalize">
+                      {connectorStatus}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                    <p className="text-[11px] text-text-dim">Last seen</p>
+                    <p className="mt-1 text-xs text-text-primary">
+                      {connectorLastSeenAt
+                        ? new Date(connectorLastSeenAt).toLocaleString()
+                        : "Not reported"}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                  <p className="text-[11px] text-text-dim">
+                    Connector startup template
+                  </p>
+                  <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-bg-primary p-2 font-mono text-[11px] text-text-primary">
+                    {`SUTRAHA_CONNECTOR_ID=${connectorId || "<connector-id>"}
+SUTRAHA_WORKSPACE_ID=${String(workspaceId)}
+OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
+./sutraha-connector start`}
+                  </pre>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-text-secondary">WebSocket URL</Label>
+                <Input
+                  value={wsUrl}
+                  onChange={(e) => setWsUrl(e.target.value)}
+                  placeholder={
+                    transportMode === "self_hosted_local"
+                      ? "ws://localhost:8788"
+                      : "wss://claw.sahayoga.in"
+                  }
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+                <p className="text-[11px] text-text-dim">
+                  Make sure this origin is allowed in OpenClaw:
+                  <span className="ml-1 font-mono text-text-muted">
+                    {origin}
+                  </span>
+                </p>
+                {showMixedContentWarning ? (
+                  <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
+                    This app is running on HTTPS. Browsers often block{" "}
+                    <code className="font-mono">ws://</code> as mixed content.
+                    Prefer <code className="font-mono">wss://</code>. Or use
+                    Private Connector.
+                  </div>
+                ) : null}
+                {transportMode === "self_hosted_local" ? (
+                  <p className="text-[11px] text-text-dim">
+                    Local mode is recommended only when Sutraha is also hosted
+                    inside your private/local network.
+                  </p>
+                ) : null}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -546,6 +735,11 @@ function OpenClawSettingsContent() {
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Secrets
           </h2>
+          <p className="mb-4 text-[11px] text-text-dim">
+            {transportMode === "connector"
+              ? "For connector/private network flows, you can use token or password auth."
+              : "For direct WebSocket flows, use token/password as required by your gateway."}
+          </p>
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -690,63 +884,121 @@ function OpenClawSettingsContent() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary">
-            Pairing-first checklist
+            Connection Health
           </h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Use this exact order for strict device-auth setup.
-          </p>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Status</p>
+              <p className="mt-1 text-xs text-text-primary">
+                {connectionHealth}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Method</p>
+              <p className="mt-1 text-xs text-text-primary">
+                {
+                  OPENCLAW_METHOD_CARDS.find((m) => m.mode === transportMode)
+                    ?.title
+                }
+              </p>
+            </div>
+            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+              <p className="text-[11px] text-text-dim">Last test</p>
+              <p className="mt-1 text-xs text-text-primary">
+                {lastTestedAt
+                  ? new Date(lastTestedAt).toLocaleString()
+                  : "Not run"}
+              </p>
+            </div>
+          </div>
+        </div>
 
-          <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
-            <li>
-              Save gateway URL + token, then click{" "}
-              <span className="font-medium">Initiate pairing handshake</span>{" "}
-              (Test connection).
-            </li>
-            <li>
-              Add this Sutraha origin to OpenClaw allowed origins:
-              <div className="mt-1 flex items-center gap-2">
-                <code className="rounded bg-bg-tertiary px-2 py-1 font-mono text-[11px] text-text-primary">
-                  {origin || "(open this page in browser to detect origin)"}
-                </code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={!origin}
-                  title={copiedId === "origin" ? "Copied" : "Copy origin"}
-                  onClick={() => void copy("origin", origin)}
-                >
-                  {copiedId === "origin" ? (
-                    <Check className="h-4 w-4 text-status-active" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </li>
-            <li>
-              Approve this device in OpenClaw:
-              <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {`openclaw devices list
-openclaw devices approve <requestId>`}
-              </pre>
-            </li>
-            <li>
-              Rotate required scopes for this exact device id:
-              <pre className="mt-1 overflow-auto rounded-lg border border-border-default bg-bg-primary p-2 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-                {`openclaw devices rotate \\
-  --device <deviceId> \\
-  --role operator \\
-  --scope operator.read \\
-  --scope operator.write \\
-  --scope operator.admin`}
-              </pre>
-            </li>
-            <li>
-              Verify read + admin access by clicking{" "}
-              <span className="font-medium">Test connection</span> again.
-            </li>
-          </ol>
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">
+            Setup Checklist
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {OPENCLAW_METHOD_CARDS.map((method) => (
+              <Button
+                key={method.mode}
+                type="button"
+                size="sm"
+                variant={
+                  activeChecklistTab === method.mode ? "default" : "outline"
+                }
+                className={
+                  activeChecklistTab === method.mode
+                    ? "bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    : ""
+                }
+                onClick={() => setActiveChecklistTab(method.mode)}
+              >
+                {method.title}
+              </Button>
+            ))}
+          </div>
+
+          {activeChecklistTab === "connector" ? (
+            <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
+              <li>Set Connection Method to Private Connector and save.</li>
+              <li>
+                Run connector on your private host with workspace + connector
+                ID.
+              </li>
+              <li>Verify connector status shows online, then click Test.</li>
+              <li>Open Chat and confirm messages stream successfully.</li>
+            </ol>
+          ) : activeChecklistTab === "self_hosted_local" ? (
+            <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
+              <li>
+                Make sure Sutraha and OpenClaw are on the same local/private
+                network.
+              </li>
+              <li>Set local ws:// URL and save.</li>
+              <li>Run Test and complete pairing/scopes if required.</li>
+              <li>
+                If browser is HTTPS and ws:// is blocked, switch to Connector
+                mode.
+              </li>
+            </ol>
+          ) : (
+            <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
+              <li>Save gateway URL + token, then click Test.</li>
+              <li>
+                Add this Sutraha origin to OpenClaw allowed origins:
+                <div className="mt-1 flex items-center gap-2">
+                  <code className="rounded bg-bg-tertiary px-2 py-1 font-mono text-[11px] text-text-primary">
+                    {origin || "(open this page in browser to detect origin)"}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={!origin}
+                    title={copiedId === "origin" ? "Copied" : "Copy origin"}
+                    onClick={() => void copy("origin", origin)}
+                  >
+                    {copiedId === "origin" ? (
+                      <Check className="h-4 w-4 text-status-active" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </li>
+              <li>Approve device and rotate scopes in OpenClaw.</li>
+              <li>Run Test again and verify chat access.</li>
+            </ol>
+          )}
+        </div>
+
+        <details className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <summary className="cursor-pointer text-sm font-semibold text-text-primary">
+            Advanced diagnostics
+          </summary>
+          <p className="mt-2 text-xs text-text-muted">
+            Diagnostics for this browser session.
+          </p>
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
@@ -783,18 +1035,6 @@ openclaw devices approve <requestId>`}
                   : ""}
               </p>
             </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">
-            Local auth state
-          </h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Diagnostics for this browser session.
-          </p>
-
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
               <p className="text-[11px] text-text-dim">
                 Device-auth pairing mode
@@ -882,9 +1122,9 @@ openclaw devices approve <requestId>`}
                 "Run Test connection to generate diagnostics."}
             </pre>
           </div>
-        </div>
+        </details>
 
-        {summary?.wsUrl ? (
+        {summary ? (
           <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -892,8 +1132,8 @@ openclaw devices approve <requestId>`}
                   Setup guide
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Open Setup Guide for the canonical workflow. Templates below are
-                  minimal references.
+                  Open Setup Guide for the canonical workflow. Templates below
+                  are minimal references.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">

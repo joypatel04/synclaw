@@ -3,12 +3,16 @@ import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
 import { decryptSecretFromHex, encryptSecretToHex } from "./lib/secretCrypto";
 
+const transportModeValidator = v.union(
+  v.literal("direct_ws"),
+  v.literal("connector"),
+  v.literal("self_hosted_local"),
+);
+
+type TransportMode = "direct_ws" | "connector" | "self_hosted_local";
+
 function normalizeScopes(scopes: string[], role?: string): string[] {
-  const out = new Set(
-    scopes
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
+  const out = new Set(scopes.map((s) => s.trim()).filter(Boolean));
 
   if (out.size === 0) {
     out.add("operator.read");
@@ -32,11 +36,18 @@ function validateWsUrl(input: string): string {
   return wsUrl;
 }
 
+function normalizeTransportMode(input?: string): TransportMode {
+  if (input === "connector" || input === "self_hosted_local") return input;
+  return "direct_ws";
+}
+
 function validateHttpUrl(input: string): string {
   const value = input.trim();
   if (!value) return "";
   if (!/^https?:\/\//i.test(value)) {
-    throw new Error('filesBridgeBaseUrl must start with "http://" or "https://"');
+    throw new Error(
+      'filesBridgeBaseUrl must start with "http://" or "https://"',
+    );
   }
   return value.replace(/\/+$/, "");
 }
@@ -53,6 +64,10 @@ export const getConfigSummary = query({
     if (!row) return null;
 
     return {
+      transportMode: normalizeTransportMode(row.transportMode),
+      connectorId: row.connectorId ?? "",
+      connectorStatus: row.connectorStatus ?? "offline",
+      connectorLastSeenAt: row.connectorLastSeenAt ?? null,
       wsUrl: row.wsUrl,
       protocol: row.protocol,
       clientId: row.clientId,
@@ -108,6 +123,10 @@ export const getClientConfig = query({
         : undefined;
 
     return {
+      transportMode: normalizeTransportMode(row.transportMode),
+      connectorId: row.connectorId ?? "",
+      connectorStatus: row.connectorStatus ?? "offline",
+      connectorLastSeenAt: row.connectorLastSeenAt ?? null,
       wsUrl: row.wsUrl,
       protocol: row.protocol,
       authToken,
@@ -132,6 +151,12 @@ export const upsertConfig = mutation({
   args: {
     workspaceId: v.id("workspaces"),
     wsUrl: v.string(),
+    transportMode: v.optional(transportModeValidator),
+    connectorId: v.optional(v.string()),
+    connectorStatus: v.optional(
+      v.union(v.literal("online"), v.literal("offline"), v.literal("degraded")),
+    ),
+    connectorLastSeenAt: v.optional(v.union(v.number(), v.null())),
     protocol: v.union(v.literal("req"), v.literal("jsonrpc")),
     clientId: v.string(),
     clientMode: v.string(),
@@ -153,7 +178,17 @@ export const upsertConfig = mutation({
     const membership = await requireRole(ctx, args.workspaceId, "owner");
 
     const now = Date.now();
-    const wsUrl = validateWsUrl(args.wsUrl);
+    const transportMode = normalizeTransportMode(args.transportMode);
+    const wsUrlRaw = args.wsUrl.trim();
+    const wsUrl =
+      transportMode === "connector" ? wsUrlRaw : validateWsUrl(args.wsUrl);
+    if (
+      transportMode === "connector" &&
+      args.connectorId !== undefined &&
+      !args.connectorId.trim()
+    ) {
+      throw new Error("connectorId is required for connector transport mode");
+    }
     const scopes = normalizeScopes(args.scopes, args.role);
 
     const existing = await ctx.db
@@ -187,7 +222,10 @@ export const upsertConfig = mutation({
     }
 
     if (args.filesBridgeToken !== undefined) {
-      if (args.filesBridgeToken === null || args.filesBridgeToken.trim() === "") {
+      if (
+        args.filesBridgeToken === null ||
+        args.filesBridgeToken.trim() === ""
+      ) {
         secretPatch.filesBridgeTokenCiphertextHex = undefined;
         secretPatch.filesBridgeTokenIvHex = undefined;
       } else {
@@ -211,6 +249,19 @@ export const upsertConfig = mutation({
     const base = {
       workspaceId: args.workspaceId,
       wsUrl,
+      transportMode,
+      connectorId:
+        args.connectorId !== undefined
+          ? args.connectorId.trim()
+          : (existing?.connectorId ?? ""),
+      connectorStatus:
+        args.connectorStatus ?? existing?.connectorStatus ?? "offline",
+      connectorLastSeenAt:
+        args.connectorLastSeenAt === null
+          ? undefined
+          : (args.connectorLastSeenAt ??
+            existing?.connectorLastSeenAt ??
+            undefined),
       protocol: args.protocol,
       clientId: args.clientId || "openclaw-control-ui",
       clientMode: args.clientMode || "webchat",

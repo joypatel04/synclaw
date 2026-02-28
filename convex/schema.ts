@@ -183,6 +183,18 @@ export default defineSchema({
   openclawGatewayConfigs: defineTable({
     workspaceId: v.id("workspaces"),
     wsUrl: v.string(),
+    transportMode: v.optional(
+      v.union(
+        v.literal("direct_ws"),
+        v.literal("connector"),
+        v.literal("self_hosted_local"),
+      ),
+    ),
+    connectorId: v.optional(v.string()),
+    connectorStatus: v.optional(
+      v.union(v.literal("online"), v.literal("offline"), v.literal("degraded")),
+    ),
+    connectorLastSeenAt: v.optional(v.number()),
     protocol: v.union(v.literal("req"), v.literal("jsonrpc")),
     clientId: v.string(),
     clientMode: v.string(),

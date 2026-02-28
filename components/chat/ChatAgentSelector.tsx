@@ -14,9 +14,16 @@ import { OpenClawSessionsList } from "./OpenClawSessionsList";
 export function ChatAgentSelector() {
   const { workspaceId, canEdit, canAdmin } = useWorkspace();
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
-  const openclawSummary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
+  const openclawSummary = useQuery(api.openclaw.getConfigSummary, {
+    workspaceId,
+  });
 
-  const hasOpenClaw = Boolean(openclawSummary && openclawSummary.wsUrl);
+  const hasOpenClaw = Boolean(
+    openclawSummary &&
+      ((openclawSummary.transportMode ?? "direct_ws") === "connector"
+        ? openclawSummary.connectorId
+        : openclawSummary.wsUrl),
+  );
 
   if (!canEdit) {
     return (
@@ -41,7 +48,7 @@ export function ChatAgentSelector() {
       <EmptyState
         icon={Settings2}
         title="Connect OpenClaw to start chatting"
-        description="Configure your OpenClaw gateway URL and token in Settings."
+        description="Choose a connection method and complete setup in OpenClaw Settings."
       >
         <Button
           asChild
@@ -61,7 +68,10 @@ export function ChatAgentSelector() {
         description="Create your first agent using recipe flow, then continue in Agent Setup Guide."
       >
         {canAdmin ? (
-          <Button className="bg-accent-orange hover:bg-accent-orange/90 text-white" asChild>
+          <Button
+            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            asChild
+          >
             <Link href="/agents/new">Create agent (recipe)</Link>
           </Button>
         ) : (
@@ -82,14 +92,30 @@ export function ChatAgentSelector() {
         <div className="flex flex-col gap-3">
           {agents.map((agent) => {
             return (
-              <Link key={agent._id} href={`/chat/${agent._id}`} className="block">
+              <Link
+                key={agent._id}
+                href={`/chat/${agent._id}`}
+                className="block"
+              >
                 <div className="group flex items-center gap-4 rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth hover:border-border-hover hover:bg-bg-tertiary">
-                  <AgentAvatar emoji={agent.emoji} name={agent.name} size="lg" status={agent.status} />
+                  <AgentAvatar
+                    emoji={agent.emoji}
+                    name={agent.name}
+                    size="lg"
+                    status={agent.status}
+                  />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2"><h3 className="text-sm font-semibold text-text-primary">{agent.name}</h3><StatusBadge status={agent.status} /></div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-text-primary">
+                        {agent.name}
+                      </h3>
+                      <StatusBadge status={agent.status} />
+                    </div>
                     <p className="text-xs text-text-muted">{agent.role}</p>
                   </div>
-                  <div className="text-text-muted group-hover:text-accent-orange transition-smooth"><MessageSquare className="h-5 w-5" /></div>
+                  <div className="text-text-muted group-hover:text-accent-orange transition-smooth">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
                 </div>
               </Link>
             );

@@ -167,8 +167,8 @@ export function AgentSetupWizard() {
   }, [agent]);
 
   const heartbeatMinutes = useMemo(() => {
-    // Default to 60 minutes; recipe wizard already suggests better defaults per recipe.
-    return isMain ? 720 : 60;
+    // Default to 30 minutes; recipe wizard already suggests better defaults per recipe.
+    return isMain ? 30 : 30;
   }, [isMain]);
 
   const heartbeatMd = useMemo(() => {

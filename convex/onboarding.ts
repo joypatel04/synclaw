@@ -6,7 +6,7 @@ import { requireMember } from "./lib/permissions";
  * Workspace onboarding status.
  *
  * "Complete" means:
- * - OpenClaw Gateway config exists (wsUrl saved)
+ * - OpenClaw Gateway config exists (mode-specific connection target saved)
  * - Canonical main agent exists (sessionKey: agent:main:main)
  */
 export const getStatus = query({
@@ -20,7 +20,11 @@ export const getStatus = query({
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .first();
 
-    const openclawConfigured = Boolean(openclaw?.wsUrl);
+    const transportMode = openclaw?.transportMode ?? "direct_ws";
+    const openclawConfigured = Boolean(
+      openclaw &&
+        (transportMode === "connector" ? openclaw.connectorId : openclaw.wsUrl),
+    );
 
     // We don't have a compound index for (workspaceId, sessionKey), so we scan
     // the workspace agents. This should remain small in normal usage.
@@ -29,7 +33,8 @@ export const getStatus = query({
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
 
-    const mainAgent = agents.find((a) => a.sessionKey === "agent:main:main") ?? null;
+    const mainAgent =
+      agents.find((a) => a.sessionKey === "agent:main:main") ?? null;
     const mainAgentId = mainAgent ? mainAgent._id : null;
 
     const isComplete = openclawConfigured && mainAgentId !== null;
@@ -42,4 +47,3 @@ export const getStatus = query({
     };
   },
 });
-

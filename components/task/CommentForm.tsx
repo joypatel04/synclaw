@@ -91,6 +91,14 @@ export function CommentForm({ taskId }: CommentFormProps) {
         "OpenClaw is not configured. Comment posted, but spawn could not be sent.",
       );
     }
+    if ((openclawConfig.transportMode ?? "direct_ws") === "connector") {
+      throw new Error(
+        "Private Connector mode does not support direct browser spawn yet. Use direct WebSocket mode for now.",
+      );
+    }
+    if (!openclawConfig.wsUrl) {
+      throw new Error("OpenClaw wsUrl is missing.");
+    }
     const client = new OpenClawBrowserGatewayClient(
       {
         wsUrl: openclawConfig.wsUrl,
@@ -148,7 +156,9 @@ export function CommentForm({ taskId }: CommentFormProps) {
       setContent("");
 
       if (!task) {
-        setSpawnError("Comment posted. Task details are still loading; retry spawn.");
+        setSpawnError(
+          "Comment posted. Task details are still loading; retry spawn.",
+        );
         return;
       }
       const selectedAgent = eligibleAgents.find((a) => a._id === spawnAgentId);
@@ -237,7 +247,9 @@ export function CommentForm({ taskId }: CommentFormProps) {
     setSpawnSuccess(null);
     try {
       await sendSpawn(failedSpawn);
-      setSpawnSuccess(`Spawned ${failedSpawn.agentName} in isolated run session.`);
+      setSpawnSuccess(
+        `Spawned ${failedSpawn.agentName} in isolated run session.`,
+      );
       setFailedSpawn(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -252,11 +264,14 @@ export function CommentForm({ taskId }: CommentFormProps) {
     setContent(value);
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1 && lastAtIndex === value.length - 1) {
-      setShowMentions(true); setMentionFilter("");
+      setShowMentions(true);
+      setMentionFilter("");
     } else if (lastAtIndex !== -1) {
       const afterAt = value.substring(lastAtIndex + 1);
-      if (!afterAt.includes(" ")) { setShowMentions(true); setMentionFilter(afterAt.toLowerCase()); }
-      else setShowMentions(false);
+      if (!afterAt.includes(" ")) {
+        setShowMentions(true);
+        setMentionFilter(afterAt.toLowerCase());
+      } else setShowMentions(false);
     } else setShowMentions(false);
   };
 
@@ -276,9 +291,15 @@ export function CommentForm({ taskId }: CommentFormProps) {
       {showMentions && filteredAgents.length > 0 && (
         <div className="absolute bottom-full mb-1 left-0 w-full rounded-lg border border-border-default bg-bg-tertiary p-1 shadow-lg z-10">
           {filteredAgents.map((agent) => (
-            <button key={agent._id} type="button" onClick={() => insertMention(agent.name)}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-text-primary hover:bg-bg-hover transition-smooth">
-              <span>{agent.emoji}</span><span className="font-medium">{agent.name}</span><span className="text-text-muted text-xs">{agent.role}</span>
+            <button
+              key={agent._id}
+              type="button"
+              onClick={() => insertMention(agent.name)}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-text-primary hover:bg-bg-hover transition-smooth"
+            >
+              <span>{agent.emoji}</span>
+              <span className="font-medium">{agent.name}</span>
+              <span className="text-text-muted text-xs">{agent.role}</span>
             </button>
           ))}
         </div>

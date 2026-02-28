@@ -14,6 +14,12 @@ import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
 import { Check, Settings2, Zap } from "lucide-react";
 import { setChatDraft } from "@/lib/chatDraft";
 import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
+import {
+  mapOpenClawSetupError,
+  OPENCLAW_METHOD_CARDS,
+  recommendTransportMode,
+  type OpenClawTransportMode,
+} from "@/lib/openclawSetupMethods";
 
 type Protocol = "req";
 
@@ -87,6 +93,15 @@ export function OnboardingWizard() {
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
+  const [transportMode, setTransportMode] =
+    useState<OpenClawTransportMode>("direct_ws");
+  const [connectorId, setConnectorId] = useState("");
+  const [connectorStatus, setConnectorStatus] = useState<
+    "online" | "offline" | "degraded"
+  >("offline");
+  const [connectorLastSeenAt, setConnectorLastSeenAt] = useState<number | null>(
+    null,
+  );
   const [tokenDraft, setTokenDraft] = useState("");
   const [passwordDraft, setPasswordDraft] = useState("");
   const [protocol, setProtocol] = useState<Protocol>("req");
@@ -111,6 +126,19 @@ export function OnboardingWizard() {
 
   useEffect(() => {
     if (!summary) return;
+    setTransportMode(
+      (summary.transportMode as OpenClawTransportMode) ?? "direct_ws",
+    );
+    setConnectorId(summary.connectorId ?? "");
+    setConnectorStatus(
+      (summary.connectorStatus as "online" | "offline" | "degraded") ??
+        "offline",
+    );
+    setConnectorLastSeenAt(
+      typeof summary.connectorLastSeenAt === "number"
+        ? summary.connectorLastSeenAt
+        : null,
+    );
     setWsUrl(summary.wsUrl ?? "");
     setProtocol((summary.protocol as Protocol) ?? "req");
     setClientId(summary.clientId ?? "openclaw-control-ui");
@@ -129,6 +157,14 @@ export function OnboardingWizard() {
   }, [summary?.updatedAt]);
 
   const scopes = useMemo(() => parseScopesCsv(scopesCsv), [scopesCsv]);
+  const isHttpsPage =
+    typeof window !== "undefined" && window.location.protocol === "https:";
+  const recommendedMode = useMemo(
+    () => recommendTransportMode(wsUrl, isHttpsPage),
+    [isHttpsPage, wsUrl],
+  );
+  const showMixedContentWarning =
+    isHttpsPage && wsUrl.trim().toLowerCase().startsWith("ws://");
 
   const step1Done = Boolean(status?.openclawConfigured);
   const step2Done = Boolean(status?.mainAgentId);
@@ -140,43 +176,56 @@ export function OnboardingWizard() {
     setTesting(true);
     setTestResult({ status: "idle" });
     try {
-      if (!wsUrl.trim()) throw new Error("WebSocket URL is required.");
-
-      const client = new OpenClawBrowserGatewayClient(
-        {
-          wsUrl: wsUrl.trim(),
-          protocol,
-          authToken: tokenDraft.trim() ? tokenDraft.trim() : undefined,
-          password: passwordDraft.trim() ? passwordDraft.trim() : undefined,
-          clientId,
-          clientMode,
-          clientPlatform,
-          role,
-          scopes,
-          subscribeOnConnect,
-          subscribeMethod,
-        },
-        async () => {},
-      );
-
-      try {
-        await client.connect();
-        const candidates = ["health.get", "health", "gateway.health"];
-        for (const method of candidates) {
-          try {
-            await client.request(method, {});
-            break;
-          } catch {
-            // try next
-          }
+      let connectorOfflineWarning = false;
+      if (transportMode === "connector") {
+        if (!connectorId.trim()) {
+          throw new Error("Connector ID is required for Private Connector.");
         }
-      } finally {
-        await client.disconnect().catch(() => {});
+        if (connectorStatus !== "online") {
+          connectorOfflineWarning = true;
+        }
+      } else {
+        if (!wsUrl.trim()) throw new Error("WebSocket URL is required.");
+        const client = new OpenClawBrowserGatewayClient(
+          {
+            wsUrl: wsUrl.trim(),
+            protocol,
+            authToken: tokenDraft.trim() ? tokenDraft.trim() : undefined,
+            password: passwordDraft.trim() ? passwordDraft.trim() : undefined,
+            clientId,
+            clientMode,
+            clientPlatform,
+            role,
+            scopes,
+            subscribeOnConnect,
+            subscribeMethod,
+          },
+          async () => {},
+        );
+
+        try {
+          await client.connect();
+          const candidates = ["health.get", "health", "gateway.health"];
+          for (const method of candidates) {
+            try {
+              await client.request(method, {});
+              break;
+            } catch {
+              // try next
+            }
+          }
+        } finally {
+          await client.disconnect().catch(() => {});
+        }
       }
 
       await upsertOpenClaw({
         workspaceId,
         wsUrl: wsUrl.trim(),
+        transportMode,
+        connectorId: connectorId.trim() || undefined,
+        connectorStatus,
+        connectorLastSeenAt,
         protocol,
         clientId,
         clientMode,
@@ -193,11 +242,20 @@ export function OnboardingWizard() {
 
       setTokenDraft("");
       setPasswordDraft("");
-      setTestResult({ status: "ok", message: "Connected and saved." });
+      setTestResult({
+        status: connectorOfflineWarning ? "error" : "ok",
+        message:
+          transportMode === "connector"
+            ? connectorOfflineWarning
+              ? "Saved, but connector is offline. Start connector and run test again."
+              : "Connector configuration saved."
+            : "Connected and saved.",
+      });
     } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
       setTestResult({
         status: "error",
-        message: e instanceof Error ? e.message : String(e),
+        message: mapOpenClawSetupError(raw, transportMode),
       });
     } finally {
       setTesting(false);
@@ -279,46 +337,172 @@ export function OnboardingWizard() {
           />
 
           <div className="mt-5 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-text-secondary">WebSocket URL</Label>
-              <Input
-                value={wsUrl}
-                onChange={(e) => setWsUrl(e.target.value)}
-                placeholder="wss://your-openclaw.example.com"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              />
+            <div>
+              <Label className="text-text-secondary">Connection method</Label>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {OPENCLAW_METHOD_CARDS.map((method) => {
+                  const selected = transportMode === method.mode;
+                  const recommended = recommendedMode === method.mode;
+                  return (
+                    <button
+                      key={method.mode}
+                      type="button"
+                      onClick={() => setTransportMode(method.mode)}
+                      className={`rounded-xl border p-3 text-left ${
+                        selected
+                          ? "border-accent-orange/50 bg-accent-orange/10"
+                          : "border-border-default bg-bg-primary"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-text-primary">
+                          {method.title}
+                        </p>
+                        {recommended ? (
+                          <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                            Suggested
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-[11px] text-text-muted">
+                        {method.subtitle}
+                      </p>
+                      <p className="mt-2 text-[11px] text-text-secondary">
+                        Use when: {method.useWhen}
+                      </p>
+                      <p className="mt-1 text-[11px] text-text-secondary">
+                        Need: {method.needs}
+                      </p>
+                      <p className="mt-1 text-[11px] text-text-dim">
+                        Setup: {method.setupTime}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Auth token</Label>
-              <Input
-                value={tokenDraft}
-                onChange={(e) => setTokenDraft(e.target.value)}
-                placeholder="Paste your OpenClaw token..."
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-              />
-            </div>
+            {transportMode === "connector" ? (
+              <div className="space-y-3 rounded-xl border border-border-default bg-bg-primary p-3">
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Connector ID</Label>
+                  <Input
+                    value={connectorId}
+                    onChange={(e) => setConnectorId(e.target.value)}
+                    placeholder="connector-workspace-prod-01"
+                    className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[11px] text-text-dim">
+                      Connector status
+                    </p>
+                    <p className="text-xs text-text-primary capitalize">
+                      {connectorStatus}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[11px] text-text-dim">Last seen</p>
+                    <p className="text-xs text-text-primary">
+                      {connectorLastSeenAt
+                        ? new Date(connectorLastSeenAt).toLocaleString()
+                        : "Not reported"}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border-default bg-bg-tertiary p-2">
+                  <p className="text-[11px] text-text-dim">
+                    Run connector on private host
+                  </p>
+                  <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-bg-primary p-2 font-mono text-[11px] text-text-primary">
+                    {`SUTRAHA_CONNECTOR_ID=${connectorId || "<connector-id>"}
+SUTRAHA_WORKSPACE_ID=${String(workspaceId)}
+OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
+./sutraha-connector start`}
+                  </pre>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">
+                    Connector auth token (optional)
+                  </Label>
+                  <Input
+                    value={tokenDraft}
+                    onChange={(e) => setTokenDraft(e.target.value)}
+                    placeholder="Use token auth if your upstream requires it"
+                    className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">
+                    Connector password (optional)
+                  </Label>
+                  <Input
+                    value={passwordDraft}
+                    onChange={(e) => setPasswordDraft(e.target.value)}
+                    placeholder="Use password auth (common in tailnet/private setups)"
+                    className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-text-dim">
+                    You can configure either token or password for connector
+                    upstream auth.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">WebSocket URL</Label>
+                  <Input
+                    value={wsUrl}
+                    onChange={(e) => setWsUrl(e.target.value)}
+                    placeholder={
+                      transportMode === "self_hosted_local"
+                        ? "ws://localhost:8788"
+                        : "wss://your-openclaw.example.com"
+                    }
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                  />
+                  {showMixedContentWarning ? (
+                    <p className="text-[11px] text-status-review">
+                      HTTPS pages usually block ws://. Prefer connector or
+                      public wss://.
+                    </p>
+                  ) : null}
+                </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Role</Label>
-                <Input
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  placeholder="operator"
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Scopes</Label>
-                <Input
-                  value={scopesCsv}
-                  onChange={(e) => setScopesCsv(e.target.value)}
-                  placeholder="operator.read,operator.write,operator.admin"
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Auth token</Label>
+                  <Input
+                    value={tokenDraft}
+                    onChange={(e) => setTokenDraft(e.target.value)}
+                    placeholder="Paste your OpenClaw token..."
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Role</Label>
+                    <Input
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      placeholder="operator"
+                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Scopes</Label>
+                    <Input
+                      value={scopesCsv}
+                      onChange={(e) => setScopesCsv(e.target.value)}
+                      placeholder="operator.read,operator.write,operator.admin"
+                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="hidden">
               <Input value="req" readOnly />
@@ -379,7 +563,7 @@ export function OnboardingWizard() {
               ) : null}
             </div>
 
-            {pairingHintVisible ? (
+            {pairingHintVisible && transportMode !== "connector" ? (
               <div className="rounded-xl border border-accent-orange/30 bg-accent-orange/5 p-3">
                 <p className="text-xs font-semibold text-accent-orange">
                   Pairing approval needed
@@ -515,8 +699,8 @@ export function OnboardingWizard() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <p className="text-xs text-text-muted">
-            After prerequisites, continue with Agent Setup Guide for strict file-pack
-            validation and runtime checks.
+            After prerequisites, continue with Agent Setup Guide for strict
+            file-pack validation and runtime checks.
           </p>
           <div className="mt-3">
             <Button asChild variant="outline" size="sm" className="h-8">

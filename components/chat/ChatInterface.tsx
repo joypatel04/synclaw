@@ -77,18 +77,22 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   const localSeqRef = useRef(1);
   const pendingAssistantKeyRef = useRef<string | null>(null);
 
-  // Direct WS is now mandatory for chat.
-  const useDirectWs = true;
-
   const openclawConfig = useQuery(
     api.openclaw.getClientConfig,
     canEdit ? { workspaceId } : "skip",
   );
+  const isConnectorMode =
+    (openclawConfig?.transportMode ?? "direct_ws") === "connector";
+  const useDirectWs = !isConnectorMode;
   const includeCron = openclawConfig?.includeCron ?? false;
   const historyPollMs = openclawConfig?.historyPollMs ?? 0;
 
   const canChatBase = Boolean(
-    canEdit && openclawConfig && openclawConfig.wsUrl,
+    canEdit &&
+      openclawConfig &&
+      (isConnectorMode
+        ? Boolean(openclawConfig.connectorStatus === "online")
+        : Boolean(openclawConfig.wsUrl)),
   );
   const gatewayBlocked = Boolean(
     gatewayBlock &&
@@ -98,7 +102,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         gatewayBlock.state === "SCOPES_INSUFFICIENT" ||
         gatewayBlock.state === "INVALID_CONFIG"),
   );
-  const canChat = canChatBase && !gatewayBlocked;
+  const canChat = canChatBase && !gatewayBlocked && !isConnectorMode;
   const gatewayConfigKey = useMemo(
     () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
     [openclawConfig],
@@ -291,8 +295,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           (Boolean(m.externalMessageId) &&
             m.externalMessageId === last.externalMessageId));
       const allowAssistantTextMerge =
-        m.role !== "assistant" ||
-        (assistantInFlightMerge || assistantIdMerge);
+        m.role !== "assistant" || assistantInFlightMerge || assistantIdMerge;
 
       // Only merge if they look like the same message arriving twice right away.
       if (sameKind && sameText && closeInTime && allowAssistantTextMerge) {
@@ -613,6 +616,11 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     if (!openclawConfig) {
       throw new Error(
         "OpenClaw is not configured for this workspace. Go to Settings → OpenClaw.",
+      );
+    }
+    if ((openclawConfig.transportMode ?? "direct_ws") === "connector") {
+      throw new Error(
+        "Connector mode chat relay is not available in this client yet. Use direct WS mode or finish connector relay setup.",
       );
     }
     if (!openclawConfig.wsUrl) {
@@ -1277,6 +1285,19 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
                   className="bg-accent-orange hover:bg-accent-orange/90 text-white"
                 >
                   <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
+                </Button>
+              </EmptyState>
+            ) : isConnectorMode ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="Connector mode selected"
+                description="This workspace is configured for Private Connector. Finish relay setup to enable chat in browser."
+              >
+                <Button
+                  asChild
+                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
+                  <Link href="/settings/openclaw">Open OpenClaw settings</Link>
                 </Button>
               </EmptyState>
             ) : sortedMessages.length === 0 ? (

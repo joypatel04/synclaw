@@ -43,7 +43,8 @@ function pickRecentSessionsFromHealth(payload: unknown): OpenClawSessionRow[] {
   const out: OpenClawSessionRow[] = [];
 
   const sessions = asRecord(p.sessions);
-  const recent = sessions && Array.isArray(sessions.recent) ? sessions.recent : [];
+  const recent =
+    sessions && Array.isArray(sessions.recent) ? sessions.recent : [];
   for (const item of recent) {
     const r = asRecord(item);
     const key = r && typeof r.key === "string" ? r.key : null;
@@ -131,14 +132,18 @@ function formatAge(ageSeconds: number): string {
 export function OpenClawSessionsList({
   agents,
 }: {
-  agents: Array<Pick<Doc<"agents">, "sessionKey"> & {
-    name: string;
-    emoji: string;
-  }>;
+  agents: Array<
+    Pick<Doc<"agents">, "sessionKey"> & {
+      name: string;
+      emoji: string;
+    }
+  >;
 }) {
   const { workspaceId, canEdit } = useWorkspace();
   const [sessions, setSessions] = useState<OpenClawSessionRow[]>([]);
-  const [detailsByKey, setDetailsByKey] = useState<Record<string, SessionDetails>>({});
+  const [detailsByKey, setDetailsByKey] = useState<
+    Record<string, SessionDetails>
+  >({});
   const [status, setStatus] = useState<
     "idle" | "connecting" | "connected" | "error"
   >("idle");
@@ -150,6 +155,8 @@ export function OpenClawSessionsList({
     canEdit ? { workspaceId } : "skip",
   );
   const includeCron = openclawConfig?.includeCron ?? false;
+  const isConnectorMode =
+    (openclawConfig?.transportMode ?? "direct_ws") === "connector";
   const gatewayConfigKey = useMemo(
     () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
     [openclawConfig],
@@ -236,6 +243,13 @@ export function OpenClawSessionsList({
       setError("OpenClaw is not configured for this workspace.");
       return;
     }
+    if (isConnectorMode) {
+      setStatus("error");
+      setError(
+        "Other Sessions currently requires direct WebSocket mode. Switch connection method or complete relay implementation.",
+      );
+      return;
+    }
     if (!openclawConfig.wsUrl) {
       setStatus("error");
       setError("OpenClaw wsUrl is missing.");
@@ -315,7 +329,7 @@ export function OpenClawSessionsList({
       void clientRef.current?.disconnect();
       clientRef.current = null;
     };
-  }, [canEdit, gatewayConfigKey]);
+  }, [canEdit, gatewayConfigKey, isConnectorMode]);
 
   // Best-effort: fetch a useful "last message" snippet per session (for the top N).
   useEffect(() => {
@@ -330,7 +344,7 @@ export function OpenClawSessionsList({
     const missing = keys.filter((k) => !detailsByKey[k]);
     if (missing.length === 0) return;
 
-  const run = async () => {
+    const run = async () => {
       // Concurrency limiter to avoid hammering the gateway.
       const concurrency = 4;
       let idx = 0;
@@ -345,9 +359,13 @@ export function OpenClawSessionsList({
           }));
 
           try {
-            const history = await client.getChatHistory({ sessionKey: key, limit: 8 });
+            const history = await client.getChatHistory({
+              sessionKey: key,
+              limit: 8,
+            });
             const display = extractDisplayMessagesFromHistory(history);
-            const last = display.length > 0 ? display[display.length - 1] : null;
+            const last =
+              display.length > 0 ? display[display.length - 1] : null;
             const ctx = extractContextSizeFromHistory(history);
 
             setDetailsByKey((prev) => ({
@@ -384,7 +402,9 @@ export function OpenClawSessionsList({
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-text-muted" />
-          <p className="text-sm font-semibold text-text-primary">Other Sessions</p>
+          <p className="text-sm font-semibold text-text-primary">
+            Other Sessions
+          </p>
         </div>
         <EmptyState
           icon={Activity}
@@ -401,7 +421,9 @@ export function OpenClawSessionsList({
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-text-muted" />
-          <p className="text-sm font-semibold text-text-primary">Other Sessions</p>
+          <p className="text-sm font-semibold text-text-primary">
+            Other Sessions
+          </p>
         </div>
         <div className="flex items-center justify-center py-10">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
@@ -415,7 +437,9 @@ export function OpenClawSessionsList({
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-text-muted" />
-          <p className="text-sm font-semibold text-text-primary">Other Sessions</p>
+          <p className="text-sm font-semibold text-text-primary">
+            Other Sessions
+          </p>
         </div>
         <EmptyState
           icon={Activity}
