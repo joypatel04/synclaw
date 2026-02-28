@@ -183,6 +183,7 @@ export default defineSchema({
   openclawGatewayConfigs: defineTable({
     workspaceId: v.id("workspaces"),
     wsUrl: v.string(),
+    deploymentMode: v.optional(v.union(v.literal("managed"), v.literal("manual"))),
     transportMode: v.optional(
       v.union(
         v.literal("direct_ws"),
@@ -208,6 +209,20 @@ export default defineSchema({
     provisioningMode: v.optional(
       v.union(v.literal("customer_vps"), v.literal("sutraha_managed")),
     ),
+    managedRegionRequested: v.optional(v.string()),
+    managedRegionResolved: v.optional(v.string()),
+    managedStatus: v.optional(
+      v.union(
+        v.literal("queued"),
+        v.literal("provisioning"),
+        v.literal("ready"),
+        v.literal("degraded"),
+        v.literal("failed"),
+      ),
+    ),
+    managedInstanceId: v.optional(v.string()),
+    managedConnectedAt: v.optional(v.number()),
+    managedAutoFallbackUsed: v.optional(v.boolean()),
     serviceTier: v.optional(
       v.union(
         v.literal("self_serve"),
@@ -258,6 +273,10 @@ export default defineSchema({
       v.literal("customer_vps"),
       v.literal("sutraha_managed"),
     ),
+    requestedRegion: v.optional(v.string()),
+    resolvedRegion: v.optional(v.string()),
+    fallbackApplied: v.optional(v.boolean()),
+    connectionAutoApplied: v.optional(v.boolean()),
     status: v.union(
       v.literal("queued"),
       v.literal("running"),
@@ -270,6 +289,8 @@ export default defineSchema({
       v.literal("infra_provisioning"),
       v.literal("openclaw_install"),
       v.literal("gateway_config"),
+      v.literal("security_hardening"),
+      v.literal("synclaw_connected"),
       v.literal("agent_bootstrap"),
       v.literal("verification"),
       v.literal("done"),
@@ -306,6 +327,32 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byWorkspaceAndCreatedAt", ["workspaceId", "createdAt"]),
+
+  // ─── Workspace model provider keys (encrypted at rest) ─────────
+  workspaceModelProviderKeys: defineTable({
+    workspaceId: v.id("workspaces"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("gemini"),
+      v.literal("google_antigravity"),
+      v.literal("z_ai"),
+      v.literal("minimax"),
+    ),
+    label: v.optional(v.string()),
+    keyCiphertextHex: v.string(),
+    keyIvHex: v.string(),
+    status: v.union(
+      v.literal("untested"),
+      v.literal("valid"),
+      v.literal("invalid"),
+    ),
+    lastValidatedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndProvider", ["workspaceId", "provider"]),
 
   // ─── Domain tables (all workspace-scoped) ───────────────────────
 

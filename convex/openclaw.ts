@@ -8,6 +8,10 @@ const transportModeValidator = v.union(
   v.literal("connector"),
   v.literal("self_hosted_local"),
 );
+const deploymentModeValidator = v.union(
+  v.literal("managed"),
+  v.literal("manual"),
+);
 const provisioningModeValidator = v.union(
   v.literal("customer_vps"),
   v.literal("sutraha_managed"),
@@ -31,6 +35,7 @@ const recommendedMethodValidator = v.union(
 );
 
 type TransportMode = "direct_ws" | "connector" | "self_hosted_local";
+type DeploymentMode = "managed" | "manual";
 type ProvisioningMode = "customer_vps" | "sutraha_managed";
 type ServiceTier = "self_serve" | "assisted" | "managed";
 type RecommendedMethod =
@@ -74,9 +79,14 @@ function normalizeTransportMode(input?: string): TransportMode {
   return "direct_ws";
 }
 
+function normalizeDeploymentMode(input?: string): DeploymentMode {
+  if (input === "managed") return "managed";
+  return "manual";
+}
+
 function normalizeProvisioningMode(input?: string): ProvisioningMode {
   if (input === "sutraha_managed") return input;
-  return "customer_vps";
+  return "sutraha_managed";
 }
 
 function normalizeServiceTier(input?: string): ServiceTier {
@@ -220,8 +230,15 @@ export const getConfigSummary = query({
     if (!row) return null;
 
     return {
+      deploymentMode: normalizeDeploymentMode(row.deploymentMode),
       transportMode: normalizeTransportMode(row.transportMode),
       provisioningMode: normalizeProvisioningMode(row.provisioningMode),
+      managedRegionRequested: row.managedRegionRequested ?? "",
+      managedRegionResolved: row.managedRegionResolved ?? "",
+      managedStatus: row.managedStatus ?? "queued",
+      managedInstanceId: row.managedInstanceId ?? "",
+      managedConnectedAt: row.managedConnectedAt ?? null,
+      managedAutoFallbackUsed: Boolean(row.managedAutoFallbackUsed),
       serviceTier: normalizeServiceTier(row.serviceTier),
       setupStatus: normalizeSetupStatus(row.setupStatus),
       ownerContact: row.ownerContact ?? "",
@@ -290,8 +307,15 @@ export const getClientConfig = query({
         : undefined;
 
     return {
+      deploymentMode: normalizeDeploymentMode(row.deploymentMode),
       transportMode: normalizeTransportMode(row.transportMode),
       provisioningMode: normalizeProvisioningMode(row.provisioningMode),
+      managedRegionRequested: row.managedRegionRequested ?? "",
+      managedRegionResolved: row.managedRegionResolved ?? "",
+      managedStatus: row.managedStatus ?? "queued",
+      managedInstanceId: row.managedInstanceId ?? "",
+      managedConnectedAt: row.managedConnectedAt ?? null,
+      managedAutoFallbackUsed: Boolean(row.managedAutoFallbackUsed),
       serviceTier: normalizeServiceTier(row.serviceTier),
       setupStatus: normalizeSetupStatus(row.setupStatus),
       ownerContact: row.ownerContact ?? "",
@@ -329,8 +353,23 @@ export const upsertConfig = mutation({
   args: {
     workspaceId: v.id("workspaces"),
     wsUrl: v.string(),
+    deploymentMode: v.optional(deploymentModeValidator),
     transportMode: v.optional(transportModeValidator),
     provisioningMode: v.optional(provisioningModeValidator),
+    managedRegionRequested: v.optional(v.string()),
+    managedRegionResolved: v.optional(v.string()),
+    managedStatus: v.optional(
+      v.union(
+        v.literal("queued"),
+        v.literal("provisioning"),
+        v.literal("ready"),
+        v.literal("degraded"),
+        v.literal("failed"),
+      ),
+    ),
+    managedInstanceId: v.optional(v.string()),
+    managedConnectedAt: v.optional(v.union(v.number(), v.null())),
+    managedAutoFallbackUsed: v.optional(v.boolean()),
     serviceTier: v.optional(serviceTierValidator),
     setupStatus: v.optional(setupStatusValidator),
     ownerContact: v.optional(v.string()),
@@ -365,6 +404,7 @@ export const upsertConfig = mutation({
     const membership = await requireRole(ctx, args.workspaceId, "owner");
 
     const now = Date.now();
+    const deploymentMode = normalizeDeploymentMode(args.deploymentMode);
     const transportMode = normalizeTransportMode(args.transportMode);
     const provisioningMode = normalizeProvisioningMode(args.provisioningMode);
     const serviceTier = normalizeServiceTier(args.serviceTier);
@@ -449,8 +489,33 @@ export const upsertConfig = mutation({
     const base = {
       workspaceId: args.workspaceId,
       wsUrl,
+      deploymentMode,
       transportMode,
       provisioningMode,
+      managedRegionRequested:
+        args.managedRegionRequested !== undefined
+          ? args.managedRegionRequested.trim()
+          : (existing?.managedRegionRequested ?? ""),
+      managedRegionResolved:
+        args.managedRegionResolved !== undefined
+          ? args.managedRegionResolved.trim()
+          : (existing?.managedRegionResolved ?? ""),
+      managedStatus:
+        args.managedStatus ?? existing?.managedStatus ?? "queued",
+      managedInstanceId:
+        args.managedInstanceId !== undefined
+          ? args.managedInstanceId.trim()
+          : (existing?.managedInstanceId ?? ""),
+      managedConnectedAt:
+        args.managedConnectedAt === null
+          ? undefined
+          : (args.managedConnectedAt ??
+            existing?.managedConnectedAt ??
+            undefined),
+      managedAutoFallbackUsed:
+        args.managedAutoFallbackUsed ??
+        existing?.managedAutoFallbackUsed ??
+        false,
       serviceTier,
       setupStatus,
       ownerContact:

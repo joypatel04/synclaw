@@ -50,6 +50,22 @@ import {
   recommendTransportMode,
   type OpenClawTransportMode,
 } from "@/lib/openclawSetupMethods";
+import {
+  MANAGED_REGION_OPTIONS,
+  managedRegionLabel,
+  type ManagedRegionCode,
+} from "@/lib/managedRegions";
+
+const MODEL_PROVIDER_OPTIONS = [
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "gemini", label: "Gemini" },
+  { id: "google_antigravity", label: "Google Antigravity" },
+  { id: "z_ai", label: "Z.ai" },
+  { id: "minimax", label: "Minimax" },
+] as const;
+
+type ModelProviderId = (typeof MODEL_PROVIDER_OPTIONS)[number]["id"];
 
 function parseScopesCsv(input: string): string[] {
   return input
@@ -120,15 +136,22 @@ function OpenClawSettingsContent() {
   const confirmSecurityChecklist = useMutation(
     api.openclaw.confirmSecurityChecklist,
   );
-  const createProvisioningJob = useMutation(api.provisioning.createJob);
-  const retryProvisioningJob = useMutation(api.provisioning.retryJob);
-  const verifyProvisioningStack = useMutation(api.provisioning.verifyStack);
+  const createManagedJob = useMutation(api.managedProvisioning.createManagedJob);
+  const retryManagedJob = useMutation(api.managedProvisioning.retryJob);
+  const verifyManagedConnection = useMutation(
+    api.managedProvisioning.verifyManagedConnection,
+  );
+  const managedStatus = useQuery(api.managedProvisioning.getManagedStatus, {
+    workspaceId,
+  });
   const createAssistedSession = useMutation(api.support.createAssistedSession);
+  const upsertWorkspaceKey = useMutation(api.modelKeys.upsertWorkspaceKey);
+  const validateWorkspaceKeys = useMutation(api.modelKeys.validateWorkspaceKeys);
   const createAgent = useMutation(api.agents.create);
-  const provisioningJobs =
-    useQuery(api.provisioning.listJobs, { workspaceId }) ?? [];
   const assistedSessions =
     useQuery(api.support.listAssistedSessions, { workspaceId }) ?? [];
+  const providerKeyStatuses =
+    useQuery(api.modelKeys.listWorkspaceKeyStatus, { workspaceId }) ?? [];
 
   const [wsUrl, setWsUrl] = useState("");
   const [transportMode, setTransportMode] =
@@ -141,9 +164,11 @@ function OpenClawSettingsContent() {
     null,
   );
   const [role, setRole] = useState("operator");
-  const [provisioningMode, setProvisioningMode] = useState<
-    "customer_vps" | "sutraha_managed"
-  >("customer_vps");
+  const [deploymentMode, setDeploymentMode] = useState<"managed" | "manual">(
+    "manual",
+  );
+  const [requestedRegion, setRequestedRegion] =
+    useState<ManagedRegionCode>("eu_central_hil");
   const [serviceTier, setServiceTier] = useState<
     "self_serve" | "assisted" | "managed"
   >("self_serve");
@@ -205,6 +230,18 @@ function OpenClawSettingsContent() {
   const [securityHardeningNotes, setSecurityHardeningNotes] = useState("");
   const [serviceMessage, setServiceMessage] = useState<string | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
+  const [providerKeyDrafts, setProviderKeyDrafts] = useState({
+    openai: "",
+    anthropic: "",
+    gemini: "",
+    google_antigravity: "",
+    z_ai: "",
+    minimax: "",
+  });
+  const [providerKeyMessage, setProviderKeyMessage] = useState<string | null>(
+    null,
+  );
+  const [providerKeyError, setProviderKeyError] = useState<string | null>(null);
   const copy = async (id: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopiedId(id);
@@ -226,9 +263,11 @@ function OpenClawSettingsContent() {
         ? summary.connectorLastSeenAt
         : null,
     );
-    setProvisioningMode(
-      (summary.provisioningMode as "customer_vps" | "sutraha_managed") ??
-        "customer_vps",
+    setDeploymentMode((summary.deploymentMode as "managed" | "manual") ?? "manual");
+    setRequestedRegion(
+      ((summary.managedRegionRequested ||
+        summary.managedRegionResolved) as ManagedRegionCode) ??
+        "eu_central_hil",
     );
     setServiceTier(
       (summary.serviceTier as "self_serve" | "assisted" | "managed") ??
@@ -419,6 +458,7 @@ function OpenClawSettingsContent() {
       await upsert({
         workspaceId,
         wsUrl,
+        deploymentMode,
         transportMode,
         recommendedMethod:
           recommendedMode === "direct_ws"
@@ -426,7 +466,8 @@ function OpenClawSettingsContent() {
             : recommendedMode === "connector"
               ? "connector_advanced"
               : "self_hosted_local",
-        provisioningMode,
+        provisioningMode: "sutraha_managed",
+        managedRegionRequested: requestedRegion,
         serviceTier,
         setupStatus,
         ownerContact,
@@ -596,13 +637,18 @@ function OpenClawSettingsContent() {
     setServiceError(null);
     setServiceMessage(null);
     try {
-      const result = await createProvisioningJob({
+      const result = await createManagedJob({
         workspaceId,
-        provider: "sutraha-control-plane",
-        targetHostType: provisioningMode,
+        requestedRegion,
+        serviceTier,
       });
-      setServiceMessage(`Provisioning job queued (${String(result.jobId)}).`);
-      setSetupStatus("not_started");
+      setDeploymentMode("managed");
+      setSetupStatus("verified");
+      setServiceMessage(
+        result.fallbackApplied
+          ? `Provisioning started. Requested region unavailable; deploying to nearest available region: ${managedRegionLabel(result.resolvedRegion)}.`
+          : `Provisioning started in ${managedRegionLabel(result.resolvedRegion)}.`,
+      );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
     }
@@ -612,16 +658,16 @@ function OpenClawSettingsContent() {
     setServiceError(null);
     setServiceMessage(null);
     try {
-      const latest = provisioningJobs[0];
+      const latest = managedStatus?.latestJob;
       if (!latest) {
         setServiceError("No provisioning job available to retry.");
         return;
       }
-      const result = await retryProvisioningJob({
+      const result = await retryManagedJob({
         workspaceId,
         jobId: latest._id,
       });
-      setServiceMessage(`Retry job queued (${String(result.retryId)}).`);
+      setServiceMessage(`Retry job queued (${String(result.jobId)}).`);
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
     }
@@ -631,20 +677,9 @@ function OpenClawSettingsContent() {
     setServiceError(null);
     setServiceMessage(null);
     try {
-      const result = await verifyProvisioningStack({ workspaceId });
-      setSetupStatus(
-        result.setupStatus as
-          | "not_started"
-          | "infra_ready"
-          | "openclaw_ready"
-          | "agents_ready"
-          | "verified",
-      );
-      setServiceMessage(
-        result.ok
-          ? "Stack verified successfully."
-          : "Verification completed with missing checks.",
-      );
+      const result = await verifyManagedConnection({ workspaceId });
+      setSetupStatus(result.ok ? "verified" : "openclaw_ready");
+      setServiceMessage(result.ok ? "Managed connection verified." : result.nextAction);
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
     }
@@ -669,6 +704,39 @@ function OpenClawSettingsContent() {
       );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const onSaveProviderKey = async (provider: ModelProviderId) => {
+    setProviderKeyMessage(null);
+    setProviderKeyError(null);
+    try {
+      const keyValue = providerKeyDrafts[provider].trim();
+      if (!keyValue) {
+        setProviderKeyError(`Enter a ${provider} key first.`);
+        return;
+      }
+      await upsertWorkspaceKey({
+        workspaceId,
+        provider,
+        key: keyValue,
+      });
+      setProviderKeyDrafts((prev) => ({ ...prev, [provider]: "" }));
+      setProviderKeyMessage(`${provider} key saved (encrypted).`);
+    } catch (e) {
+      setProviderKeyError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const onValidateProviderKeys = async () => {
+    setProviderKeyMessage(null);
+    setProviderKeyError(null);
+    try {
+      const result = await validateWorkspaceKeys({ workspaceId });
+      const validCount = result.results.filter((r) => r.status === "valid").length;
+      setProviderKeyMessage(`Validated ${validCount}/${result.results.length} provider keys.`);
+    } catch (e) {
+      setProviderKeyError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -763,13 +831,14 @@ function OpenClawSettingsContent() {
                     key={method.mode}
                     type="button"
                     onClick={() => {
+                      if (deploymentMode === "managed") return;
                       setTransportMode(method.mode);
                     }}
                     className={`rounded-xl border p-3 text-left ${
                       active
                         ? "border-accent-orange/50 bg-accent-orange/10"
                         : "border-border-default bg-bg-primary"
-                    }`}
+                    } ${deploymentMode === "managed" ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-text-primary">
@@ -811,13 +880,14 @@ function OpenClawSettingsContent() {
                     key={method.mode}
                     type="button"
                     onClick={() => {
+                      if (deploymentMode === "managed") return;
                       setTransportMode(method.mode);
                     }}
                     className={`mt-2 w-full rounded-xl border p-3 text-left ${
                       active
                         ? "border-accent-orange/50 bg-accent-orange/10"
                         : "border-border-default bg-bg-secondary"
-                    }`}
+                    } ${deploymentMode === "managed" ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-text-primary">
@@ -845,24 +915,24 @@ function OpenClawSettingsContent() {
             </h2>
           </div>
           <p className="mt-1 text-xs text-text-muted">
-            Use managed setup when you don&apos;t already have an OpenClaw
-            stack. Choose infra and launch mode, then create a provisioning job.
+            Managed cloud setup: choose region and launch mode, then Sutraha provisions and auto-connects OpenClaw.
           </p>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-text-secondary">Infra option</Label>
+              <Label className="text-text-secondary">Region</Label>
               <select
-                value={provisioningMode}
+                value={requestedRegion}
                 onChange={(e) =>
-                  setProvisioningMode(
-                    e.target.value as "customer_vps" | "sutraha_managed",
-                  )
+                  setRequestedRegion(e.target.value as ManagedRegionCode)
                 }
                 className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
               >
-                <option value="customer_vps">Customer-owned VPS</option>
-                <option value="sutraha_managed">Sutraha-managed cloud</option>
+                {MANAGED_REGION_OPTIONS.map((region) => (
+                  <option key={region.code} value={region.code}>
+                    {region.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="space-y-2">
@@ -936,7 +1006,7 @@ function OpenClawSettingsContent() {
               className="h-8"
               onClick={() => void onCreateProvisioningJob()}
             >
-              Queue provisioning job
+              Launch managed OpenClaw
             </Button>
             <Button
               type="button"
@@ -977,8 +1047,8 @@ function OpenClawSettingsContent() {
                 Latest provisioning job
               </p>
               <p className="mt-1 text-xs text-text-primary">
-                {provisioningJobs[0]
-                  ? `${provisioningJobs[0].status} · ${provisioningJobs[0].step}`
+                {managedStatus?.latestJob
+                  ? `${managedStatus.latestJob.status} · ${managedStatus.latestJob.step}`
                   : "No job yet"}
               </p>
             </div>
@@ -998,10 +1068,157 @@ function OpenClawSettingsContent() {
         </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-text-primary">
+            BYO Model Provider Keys
+          </h2>
+          <p className="mt-1 text-xs text-text-muted">
+            Workspace-level encrypted keys for managed OpenClaw runtime.
+          </p>
+          <div className="mt-3 rounded-md border border-status-review/40 bg-status-review/10 px-3 py-2">
+            <p className="text-[11px] font-semibold text-status-review">
+              API-key-only adapters currently supported
+            </p>
+            <p className="mt-1 text-[11px] text-text-secondary">
+              If a provider requires login/session auth, integration is pending.
+              OAuth/session adapters are not enabled yet.
+            </p>
+          </div>
+          <div className="mt-4 space-y-4">
+            {MODEL_PROVIDER_OPTIONS.map((providerOpt) => {
+              const provider = providerOpt.id;
+              const status = providerKeyStatuses.find((s) => s.provider === provider);
+              return (
+                <div
+                  key={provider}
+                  className="rounded-lg border border-border-default bg-bg-primary p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-text-primary">
+                      {providerOpt.label}
+                    </p>
+                    <p className="text-[11px] text-text-dim">
+                      Status: {status?.status ?? "missing"}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      value={providerKeyDrafts[provider]}
+                      onChange={(e) =>
+                        setProviderKeyDrafts((prev) => ({
+                          ...prev,
+                          [provider]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Paste ${provider} key`}
+                      className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10"
+                      onClick={() => void onSaveProviderKey(provider)}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8"
+                onClick={() => void onValidateProviderKeys()}
+              >
+                Validate provider keys
+              </Button>
+              {providerKeyMessage ? (
+                <span className="text-xs text-status-active">{providerKeyMessage}</span>
+              ) : null}
+              {providerKeyError ? (
+                <span className="text-xs text-status-blocked">{providerKeyError}</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Connection
           </h2>
           <div className="space-y-4">
+            {deploymentMode === "managed" ? (
+              <div className="rounded-lg border border-border-default bg-bg-primary p-3">
+                <p className="text-xs font-semibold text-text-primary">
+                  Managed instance
+                </p>
+                <p className="mt-1 text-[11px] text-text-muted">
+                  This workspace uses Sutraha-managed OpenClaw. Connection is auto-configured.
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Region</p>
+                    <p className="text-xs text-text-primary">
+                      {managedRegionLabel(
+                        managedStatus?.resolvedRegion || managedStatus?.requestedRegion,
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Health</p>
+                    <p className="text-xs text-text-primary">
+                      {managedStatus?.managedStatus ?? "queued"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Setup</p>
+                    <p className="text-xs text-text-primary">
+                      {managedStatus?.setupStatus ?? setupStatus}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Last connect</p>
+                    <p className="text-xs text-text-primary">
+                      {managedStatus?.managedConnectedAt
+                        ? new Date(managedStatus.managedConnectedAt).toLocaleString()
+                        : "Pending"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => void onVerifyProvisioning()}
+                  >
+                    Reconnect / Verify
+                  </Button>
+                  {managedStatus?.fallbackApplied ? (
+                    <p className="text-[11px] text-text-dim">
+                      Deployed to nearest available region.
+                    </p>
+                  ) : null}
+                </div>
+                {managedStatus?.latestJob?.logs?.length ? (
+                  <div className="mt-3 rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[11px] font-semibold text-text-primary">
+                      Live setup activity
+                    </p>
+                    <div className="mt-1 space-y-1 text-[11px] text-text-secondary">
+                      {managedStatus.latestJob.logs.slice(-8).map((log: string) => (
+                        <p key={log} className="font-mono">
+                          {log}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {deploymentMode === "managed" ? null : (
+            <>
             {transportMode === "connector" ? (
               <>
                 <div className="rounded-lg border border-status-review/40 bg-status-review/10 px-3 py-2 text-[11px] text-status-review">
@@ -1124,6 +1341,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
               />
             </div>
+            </>
+            )}
           </div>
         </div>
 
@@ -1172,6 +1391,12 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Secrets
           </h2>
+          {deploymentMode === "managed" ? (
+            <p className="text-[11px] text-text-dim">
+              Managed mode handles gateway credentials automatically. No manual token/password entry is required.
+            </p>
+          ) : (
+          <>
           <p className="mb-4 text-[11px] text-text-dim">
             {transportMode === "connector"
               ? "For connector/private network flows, you can use token or password auth."
@@ -1272,6 +1497,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               )}
             </div>
           </div>
+          </>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1635,7 +1862,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                   MCPorter config
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  BYO mode: Synclaw does not store model provider keys.
+                  BYO mode: provider keys are stored encrypted at workspace scope.
                 </p>
                 <div className="mt-2 flex justify-end">
                   <Button

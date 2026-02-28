@@ -22,6 +22,11 @@ import {
   recommendTransportMode,
   type OpenClawTransportMode,
 } from "@/lib/openclawSetupMethods";
+import {
+  MANAGED_REGION_OPTIONS,
+  managedRegionLabel,
+  type ManagedRegionCode,
+} from "@/lib/managedRegions";
 
 type Protocol = "req";
 
@@ -99,11 +104,15 @@ export function OnboardingWizard() {
   const securityStatus = useQuery(api.openclaw.getSecurityStatus, {
     workspaceId,
   });
-  const createProvisioningJob = useMutation(api.provisioning.createJob);
+  const createManagedJob = useMutation(api.managedProvisioning.createManagedJob);
+  const verifyManagedConnection = useMutation(
+    api.managedProvisioning.verifyManagedConnection,
+  );
+  const managedStatus = useQuery(
+    api.managedProvisioning.getManagedStatus,
+    canAdmin ? { workspaceId } : "skip",
+  );
   const createAssistedSession = useMutation(api.support.createAssistedSession);
-  const provisioningJobs =
-    useQuery(api.provisioning.listJobs, canAdmin ? { workspaceId } : "skip") ??
-    [];
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
@@ -124,9 +133,11 @@ export function OnboardingWizard() {
   const [clientPlatform, setClientPlatform] = useState("web");
   const [role, setRole] = useState("operator");
   const [needsManagedSetup, setNeedsManagedSetup] = useState(false);
-  const [provisioningMode, setProvisioningMode] = useState<
-    "customer_vps" | "sutraha_managed"
-  >("customer_vps");
+  const [deploymentMode, setDeploymentMode] = useState<"managed" | "manual">(
+    "manual",
+  );
+  const [requestedRegion, setRequestedRegion] =
+    useState<ManagedRegionCode>("eu_central_hil");
   const [serviceTier, setServiceTier] = useState<
     "self_serve" | "assisted" | "managed"
   >("self_serve");
@@ -179,9 +190,11 @@ export function OnboardingWizard() {
         ? summary.connectorLastSeenAt
         : null,
     );
-    setProvisioningMode(
-      (summary.provisioningMode as "customer_vps" | "sutraha_managed") ??
-        "customer_vps",
+    setDeploymentMode((summary.deploymentMode as "managed" | "manual") ?? "manual");
+    setNeedsManagedSetup((summary.deploymentMode ?? "manual") === "managed");
+    setRequestedRegion(
+      ((summary.managedRegionRequested || summary.managedRegionResolved) as ManagedRegionCode) ??
+        "eu_central_hil",
     );
     setServiceTier(
       (summary.serviceTier as "self_serve" | "assisted" | "managed") ??
@@ -295,7 +308,8 @@ export function OnboardingWizard() {
             : recommendedMode === "connector"
               ? "connector_advanced"
               : "self_hosted_local",
-        provisioningMode,
+        deploymentMode,
+        provisioningMode: "sutraha_managed",
         serviceTier,
         setupStatus,
         ownerContact,
@@ -373,13 +387,19 @@ export function OnboardingWizard() {
     setServiceError(null);
     setServiceMessage(null);
     try {
-      const result = await createProvisioningJob({
+      const result = await createManagedJob({
         workspaceId,
-        provider: "sutraha-control-plane",
-        targetHostType: provisioningMode,
+        requestedRegion,
+        serviceTier,
       });
-      setServiceMessage(`Provisioning job queued (${String(result.jobId)}).`);
-      setSetupStatus("not_started");
+      setDeploymentMode("managed");
+      setNeedsManagedSetup(true);
+      setSetupStatus("verified");
+      setServiceMessage(
+        result.fallbackApplied
+          ? `Provisioning started. Requested region unavailable; deploying to nearest available region: ${managedRegionLabel(result.resolvedRegion)}.`
+          : `Provisioning started in ${managedRegionLabel(result.resolvedRegion)}.`,
+      );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
     }
@@ -481,8 +501,8 @@ export function OnboardingWizard() {
             </h2>
           </div>
           <p className="mt-1 text-xs text-text-muted">
-            Choose this if you don&apos;t already have an OpenClaw stack. We can
-            guide self-serve provisioning or schedule assisted launch.
+            Choose this if you don&apos;t already have an OpenClaw stack. Sutraha
+            provisions and connects it automatically.
           </p>
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -515,7 +535,7 @@ export function OnboardingWizard() {
                 Set up OpenClaw for me
               </p>
               <p className="mt-1 text-[11px] text-text-muted">
-                Customer VPS or Sutraha-managed cloud provisioning path.
+                Managed cloud only. You choose region, we handle the rest.
               </p>
             </button>
           </div>
@@ -524,20 +544,19 @@ export function OnboardingWizard() {
             <div className="mt-4 space-y-3 rounded-lg border border-border-default bg-bg-primary p-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-text-secondary">Infra option</Label>
+                  <Label className="text-text-secondary">Deployment region</Label>
                   <select
-                    value={provisioningMode}
+                    value={requestedRegion}
                     onChange={(e) =>
-                      setProvisioningMode(
-                        e.target.value as "customer_vps" | "sutraha_managed",
-                      )
+                      setRequestedRegion(e.target.value as ManagedRegionCode)
                     }
                     className="h-10 w-full rounded-md border border-border-default bg-bg-secondary px-3 text-sm text-text-primary"
                   >
-                    <option value="customer_vps">Customer-owned VPS</option>
-                    <option value="sutraha_managed">
-                      Sutraha-managed cloud
-                    </option>
+                    {MANAGED_REGION_OPTIONS.map((region) => (
+                      <option key={region.code} value={region.code}>
+                        {region.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -573,7 +592,7 @@ export function OnboardingWizard() {
                 <Input
                   value={supportNotes}
                   onChange={(e) => setSupportNotes(e.target.value)}
-                  placeholder="Region, provider, timeline, tailnet constraints..."
+                  placeholder="Timeline, security/compliance constraints..."
                   className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
                 />
               </div>
@@ -585,7 +604,7 @@ export function OnboardingWizard() {
                   className="h-8"
                   onClick={() => void onCreateProvisioningJob()}
                 >
-                  Queue provisioning job
+                  Launch managed OpenClaw
                 </Button>
                 <Button
                   size="sm"
@@ -604,11 +623,48 @@ export function OnboardingWizard() {
                 <p className="text-xs text-status-blocked">{serviceError}</p>
               ) : null}
               <p className="text-[11px] text-text-dim">
-                Latest provisioning job:{" "}
-                {provisioningJobs[0]
-                  ? `${provisioningJobs[0].status} · ${provisioningJobs[0].step}`
-                  : "none"}
+                Setup progress:{" "}
+                {managedStatus?.latestJob
+                  ? `${managedStatus.latestJob.status} · ${managedStatus.latestJob.step}`
+                  : "not started"}
               </p>
+              {managedStatus?.resolvedRegion ? (
+                <p className="text-[11px] text-text-dim">
+                  Region: {managedRegionLabel(managedStatus.resolvedRegion)}
+                  {managedStatus.fallbackApplied
+                    ? " (nearest available fallback)"
+                    : ""}
+                </p>
+              ) : null}
+              <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
+                <p>1. Infra provisioning</p>
+                <p>2. Gateway ready</p>
+                <p>3. Security hardened</p>
+                <p>4. Synclaw connected</p>
+                <p>5. Agents verified</p>
+              </div>
+              <div className="rounded-md border border-status-review/40 bg-status-review/10 p-2 text-[11px]">
+                <p className="font-semibold text-status-review">
+                  Provider auth scope: API-key-only
+                </p>
+                <p className="mt-1 text-text-secondary">
+                  Login/session-based provider adapters are not enabled yet.
+                </p>
+              </div>
+              {managedStatus?.latestJob?.logs?.length ? (
+                <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                  <p className="text-[11px] font-semibold text-text-primary">
+                    Live setup activity
+                  </p>
+                  <div className="mt-1 space-y-1 text-[11px] text-text-secondary">
+                    {managedStatus.latestJob.logs.slice(-6).map((log: string) => (
+                      <p key={log} className="font-mono">
+                        {log}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -622,6 +678,56 @@ export function OnboardingWizard() {
           />
 
           <div className="mt-5 space-y-4">
+            {deploymentMode === "managed" ? (
+              <div className="rounded-xl border border-border-default bg-bg-primary p-3">
+                <p className="text-xs font-semibold text-text-primary">
+                  Managed OpenClaw connection
+                </p>
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Synclaw connects automatically for managed workspaces. No manual wsUrl/token setup is required.
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Region</p>
+                    <p className="text-xs text-text-primary">
+                      {managedRegionLabel(
+                        managedStatus?.resolvedRegion || managedStatus?.requestedRegion,
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Status</p>
+                    <p className="text-xs text-text-primary">
+                      {managedStatus?.managedStatus ?? "queued"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Connected</p>
+                    <p className="text-xs text-text-primary">
+                      {managedStatus?.managedConnectedAt
+                        ? new Date(managedStatus.managedConnectedAt).toLocaleString()
+                        : "Pending"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() =>
+                      void verifyManagedConnection({ workspaceId }).then(() =>
+                        setServiceMessage("Managed connection verified."),
+                      )
+                    }
+                  >
+                    Reconnect / Verify
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {deploymentMode === "managed" ? null : (
+              <>
             <div>
               <Label className="text-text-secondary">Connection method</Label>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -880,7 +986,11 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 ) : null}
               </>
             )}
+              </>
+            )}
 
+            {deploymentMode === "managed" ? null : (
+            <>
             <div className="hidden">
               <Input value="req" readOnly />
               <Input
@@ -963,6 +1073,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 </p>
               </div>
             ) : null}
+            </>
+            )}
           </div>
         </div>
 
