@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,14 +9,16 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
-import { Check, Settings2, Zap } from "lucide-react";
+import { Check, LifeBuoy, Server, Settings2, Zap } from "lucide-react";
 import { setChatDraft } from "@/lib/chatDraft";
 import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 import {
   mapOpenClawSetupError,
   OPENCLAW_METHOD_CARDS,
+  PUBLIC_WSS_SECURITY_CHECKLIST,
   recommendTransportMode,
   type OpenClawTransportMode,
 } from "@/lib/openclawSetupMethods";
@@ -86,10 +88,22 @@ function StepHeader({
 export function OnboardingWizard() {
   const { workspaceId, workspace, canAdmin } = useWorkspace();
   const router = useRouter();
+  const convex = useConvex();
 
   const status = useQuery(api.onboarding.getStatus, { workspaceId });
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
   const upsertOpenClaw = useMutation(api.openclaw.upsertConfig);
+  const confirmSecurityChecklist = useMutation(
+    api.openclaw.confirmSecurityChecklist,
+  );
+  const securityStatus = useQuery(api.openclaw.getSecurityStatus, {
+    workspaceId,
+  });
+  const createProvisioningJob = useMutation(api.provisioning.createJob);
+  const createAssistedSession = useMutation(api.support.createAssistedSession);
+  const provisioningJobs =
+    useQuery(api.provisioning.listJobs, canAdmin ? { workspaceId } : "skip") ??
+    [];
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
@@ -109,6 +123,22 @@ export function OnboardingWizard() {
   const [clientMode, setClientMode] = useState("webchat");
   const [clientPlatform, setClientPlatform] = useState("web");
   const [role, setRole] = useState("operator");
+  const [needsManagedSetup, setNeedsManagedSetup] = useState(false);
+  const [provisioningMode, setProvisioningMode] = useState<
+    "customer_vps" | "sutraha_managed"
+  >("customer_vps");
+  const [serviceTier, setServiceTier] = useState<
+    "self_serve" | "assisted" | "managed"
+  >("self_serve");
+  const [setupStatus, setSetupStatus] = useState<
+    | "not_started"
+    | "infra_ready"
+    | "openclaw_ready"
+    | "agents_ready"
+    | "verified"
+  >("not_started");
+  const [ownerContact, setOwnerContact] = useState("");
+  const [supportNotes, setSupportNotes] = useState("");
   const [scopesCsv, setScopesCsv] = useState(
     "operator.read,operator.write,operator.admin",
   );
@@ -116,6 +146,14 @@ export function OnboardingWizard() {
   const [subscribeMethod, setSubscribeMethod] = useState("chat.subscribe");
   const [includeCron, setIncludeCron] = useState(true);
   const [historyPollMs, setHistoryPollMs] = useState("5000");
+  const [securityHardeningNotes, setSecurityHardeningNotes] = useState("");
+  const [securityChecklistAck, setSecurityChecklistAck] = useState({
+    allowedOrigins: false,
+    deviceApproval: false,
+    minimalScopes: false,
+    testPass: false,
+    dashboardProtection: false,
+  });
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<
@@ -123,6 +161,8 @@ export function OnboardingWizard() {
     | { status: "ok"; message: string }
     | { status: "error"; message: string }
   >({ status: "idle" });
+  const [serviceMessage, setServiceMessage] = useState<string | null>(null);
+  const [serviceError, setServiceError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!summary) return;
@@ -139,6 +179,24 @@ export function OnboardingWizard() {
         ? summary.connectorLastSeenAt
         : null,
     );
+    setProvisioningMode(
+      (summary.provisioningMode as "customer_vps" | "sutraha_managed") ??
+        "customer_vps",
+    );
+    setServiceTier(
+      (summary.serviceTier as "self_serve" | "assisted" | "managed") ??
+        "self_serve",
+    );
+    setSetupStatus(
+      (summary.setupStatus as
+        | "not_started"
+        | "infra_ready"
+        | "openclaw_ready"
+        | "agents_ready"
+        | "verified") ?? "not_started",
+    );
+    setOwnerContact(summary.ownerContact ?? "");
+    setSupportNotes(summary.supportNotes ?? "");
     setWsUrl(summary.wsUrl ?? "");
     setProtocol((summary.protocol as Protocol) ?? "req");
     setClientId(summary.clientId ?? "openclaw-control-ui");
@@ -150,6 +208,7 @@ export function OnboardingWizard() {
     setSubscribeMethod(summary.subscribeMethod ?? "chat.subscribe");
     setIncludeCron(Boolean(summary.includeCron));
     setHistoryPollMs(String(summary.historyPollMs ?? 5000));
+    setSecurityHardeningNotes(summary.publicWssHardeningNotes ?? "");
     setTokenDraft("");
     setPasswordDraft("");
     setTestResult({ status: "idle" });
@@ -157,6 +216,10 @@ export function OnboardingWizard() {
   }, [summary?.updatedAt]);
 
   const scopes = useMemo(() => parseScopesCsv(scopesCsv), [scopesCsv]);
+  const origin = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return window.location.origin;
+  }, []);
   const isHttpsPage =
     typeof window !== "undefined" && window.location.protocol === "https:";
   const recommendedMode = useMemo(
@@ -165,6 +228,9 @@ export function OnboardingWizard() {
   );
   const showMixedContentWarning =
     isHttpsPage && wsUrl.trim().toLowerCase().startsWith("ws://");
+  const allSecurityChecksConfirmed = Object.values(securityChecklistAck).every(
+    Boolean,
+  );
 
   const step1Done = Boolean(status?.openclawConfigured);
   const step2Done = Boolean(status?.mainAgentId);
@@ -223,6 +289,17 @@ export function OnboardingWizard() {
         workspaceId,
         wsUrl: wsUrl.trim(),
         transportMode,
+        recommendedMethod:
+          recommendedMode === "direct_ws"
+            ? "public_wss"
+            : recommendedMode === "connector"
+              ? "connector_advanced"
+              : "self_hosted_local",
+        provisioningMode,
+        serviceTier,
+        setupStatus,
+        ownerContact,
+        supportNotes,
         connectorId: connectorId.trim() || undefined,
         connectorStatus,
         connectorLastSeenAt,
@@ -242,6 +319,36 @@ export function OnboardingWizard() {
 
       setTokenDraft("");
       setPasswordDraft("");
+      if (transportMode === "direct_ws") {
+        const validation = await convex.query(api.openclaw.validatePublicWssConfig, {
+          workspaceId,
+        });
+        if (!validation.ok) {
+          setTestResult({
+            status: "error",
+            message: validation.errors[0] ?? "Public WSS security validation failed.",
+          });
+          return;
+        }
+        if (!allSecurityChecksConfirmed) {
+          setTestResult({
+            status: "error",
+            message:
+              "Connected and saved. Complete the Public WSS security checklist acknowledgement to mark this setup secure.",
+          });
+          return;
+        }
+        await confirmSecurityChecklist({
+          workspaceId,
+          checklistAck: securityChecklistAck,
+          hardeningNotes: securityHardeningNotes.trim() || undefined,
+        });
+        setTestResult({
+          status: "ok",
+          message: "Connected, saved, and Public WSS security checklist confirmed.",
+        });
+        return;
+      }
       setTestResult({
         status: connectorOfflineWarning ? "error" : "ok",
         message:
@@ -259,6 +366,44 @@ export function OnboardingWizard() {
       });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const onCreateProvisioningJob = async () => {
+    setServiceError(null);
+    setServiceMessage(null);
+    try {
+      const result = await createProvisioningJob({
+        workspaceId,
+        provider: "sutraha-control-plane",
+        targetHostType: provisioningMode,
+      });
+      setServiceMessage(`Provisioning job queued (${String(result.jobId)}).`);
+      setSetupStatus("not_started");
+    } catch (e) {
+      setServiceError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const onRequestAssisted = async () => {
+    setServiceError(null);
+    setServiceMessage(null);
+    try {
+      if (!ownerContact.trim()) {
+        setServiceError("Owner contact is required for assisted launch.");
+        return;
+      }
+      const result = await createAssistedSession({
+        workspaceId,
+        ownerContact: ownerContact.trim(),
+        notes: supportNotes.trim() || undefined,
+      });
+      setServiceTier("assisted");
+      setServiceMessage(
+        `Assisted launch requested (${String(result.sessionId)}).`,
+      );
+    } catch (e) {
+      setServiceError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -329,6 +474,146 @@ export function OnboardingWizard() {
 
       <div className="space-y-6">
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Server className="h-4 w-4 text-accent-orange" />
+            <h2 className="text-sm font-semibold text-text-primary">
+              Need OpenClaw setup?
+            </h2>
+          </div>
+          <p className="mt-1 text-xs text-text-muted">
+            Choose this if you don&apos;t already have an OpenClaw stack. We can
+            guide self-serve provisioning or schedule assisted launch.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setNeedsManagedSetup(false)}
+              className={`rounded-lg border p-3 text-left ${
+                !needsManagedSetup
+                  ? "border-accent-orange/50 bg-accent-orange/10"
+                  : "border-border-default bg-bg-primary"
+              }`}
+            >
+              <p className="text-xs font-semibold text-text-primary">
+                I already have OpenClaw
+              </p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Continue with connection settings below.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNeedsManagedSetup(true)}
+              className={`rounded-lg border p-3 text-left ${
+                needsManagedSetup
+                  ? "border-accent-orange/50 bg-accent-orange/10"
+                  : "border-border-default bg-bg-primary"
+              }`}
+            >
+              <p className="text-xs font-semibold text-text-primary">
+                Set up OpenClaw for me
+              </p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Customer VPS or Sutraha-managed cloud provisioning path.
+              </p>
+            </button>
+          </div>
+
+          {needsManagedSetup ? (
+            <div className="mt-4 space-y-3 rounded-lg border border-border-default bg-bg-primary p-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Infra option</Label>
+                  <select
+                    value={provisioningMode}
+                    onChange={(e) =>
+                      setProvisioningMode(
+                        e.target.value as "customer_vps" | "sutraha_managed",
+                      )
+                    }
+                    className="h-10 w-full rounded-md border border-border-default bg-bg-secondary px-3 text-sm text-text-primary"
+                  >
+                    <option value="customer_vps">Customer-owned VPS</option>
+                    <option value="sutraha_managed">
+                      Sutraha-managed cloud
+                    </option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Launch mode</Label>
+                  <select
+                    value={serviceTier}
+                    onChange={(e) =>
+                      setServiceTier(
+                        e.target.value as "self_serve" | "assisted" | "managed",
+                      )
+                    }
+                    className="h-10 w-full rounded-md border border-border-default bg-bg-secondary px-3 text-sm text-text-primary"
+                  >
+                    <option value="self_serve">Guided self-serve</option>
+                    <option value="assisted">Assisted launch</option>
+                    <option value="managed">Managed operations</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Owner contact</Label>
+                <Input
+                  value={ownerContact}
+                  onChange={(e) => setOwnerContact(e.target.value)}
+                  placeholder="name@company.com or +1 phone"
+                  className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Support notes</Label>
+                <Input
+                  value={supportNotes}
+                  onChange={(e) => setSupportNotes(e.target.value)}
+                  placeholder="Region, provider, timeline, tailnet constraints..."
+                  className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => void onCreateProvisioningJob()}
+                >
+                  Queue provisioning job
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  onClick={() => void onRequestAssisted()}
+                >
+                  <LifeBuoy className="mr-1 h-3.5 w-3.5" />
+                  Request assisted launch
+                </Button>
+              </div>
+
+              {serviceMessage ? (
+                <p className="text-xs text-status-active">{serviceMessage}</p>
+              ) : null}
+              {serviceError ? (
+                <p className="text-xs text-status-blocked">{serviceError}</p>
+              ) : null}
+              <p className="text-[11px] text-text-dim">
+                Latest provisioning job:{" "}
+                {provisioningJobs[0]
+                  ? `${provisioningJobs[0].status} · ${provisioningJobs[0].step}`
+                  : "none"}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <StepHeader
             step={1}
             title="Connect OpenClaw"
@@ -340,7 +625,8 @@ export function OnboardingWizard() {
             <div>
               <Label className="text-text-secondary">Connection method</Label>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {OPENCLAW_METHOD_CARDS.map((method) => {
+                {OPENCLAW_METHOD_CARDS.filter((m) => m.mode !== "connector").map(
+                  (method) => {
                   const selected = transportMode === method.mode;
                   const recommended = recommendedMode === method.mode;
                   return (
@@ -358,9 +644,13 @@ export function OnboardingWizard() {
                         <p className="text-xs font-semibold text-text-primary">
                           {method.title}
                         </p>
-                        {recommended ? (
+                        {method.badge ? (
                           <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
-                            Suggested
+                            {method.badge}
+                          </span>
+                        ) : recommended ? (
+                          <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                            Context match
                           </span>
                         ) : null}
                       </div>
@@ -380,6 +670,43 @@ export function OnboardingWizard() {
                   );
                 })}
               </div>
+              <details className="mt-2 rounded-lg border border-border-default bg-bg-primary p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-text-primary">
+                  Advanced methods
+                </summary>
+                {OPENCLAW_METHOD_CARDS.filter((m) => m.mode === "connector").map(
+                  (method) => {
+                    const selected = transportMode === method.mode;
+                    return (
+                      <button
+                        key={method.mode}
+                        type="button"
+                        onClick={() => setTransportMode(method.mode)}
+                        className={`mt-3 w-full rounded-xl border p-3 text-left ${
+                          selected
+                            ? "border-accent-orange/50 bg-accent-orange/10"
+                            : "border-border-default bg-bg-secondary"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-text-primary">
+                            {method.title}
+                          </p>
+                          <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                            {method.badge}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-text-muted">
+                          {method.subtitle}
+                        </p>
+                        <p className="mt-2 text-[11px] text-text-secondary">
+                          Use only if you operate private networking + connector runtime.
+                        </p>
+                      </button>
+                    );
+                  },
+                )}
+              </details>
             </div>
 
             {transportMode === "connector" ? (
@@ -501,6 +828,56 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     />
                   </div>
                 </div>
+                {transportMode === "direct_ws" ? (
+                  <div className="rounded-xl border border-border-default bg-bg-tertiary p-3">
+                    <p className="text-xs font-semibold text-text-primary">
+                      Public WSS Security Checklist
+                    </p>
+                    <p className="mt-1 text-[11px] text-text-muted">
+                      Required baseline before production use. Current Synclaw origin:
+                      <span className="ml-1 font-mono">{origin || "(browser origin unavailable)"}</span>
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {PUBLIC_WSS_SECURITY_CHECKLIST.map((item) => (
+                        <label
+                          key={item.id}
+                          className="flex items-start gap-2 text-xs text-text-secondary"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={securityChecklistAck[item.id]}
+                            onChange={(e) =>
+                              setSecurityChecklistAck((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.checked,
+                              }))
+                            }
+                            className="mt-0.5 h-4 w-4 accent-accent-orange"
+                          />
+                          {item.label}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <Label className="text-text-secondary">
+                        Hardening notes (optional)
+                      </Label>
+                      <Textarea
+                        value={securityHardeningNotes}
+                        onChange={(e) => setSecurityHardeningNotes(e.target.value)}
+                        placeholder="Example: dashboard behind SSO + IP allowlist."
+                        rows={2}
+                        className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                      />
+                    </div>
+                    {securityStatus?.securityConfirmedAt ? (
+                      <p className="mt-2 text-[11px] text-status-active">
+                        Previously confirmed at{" "}
+                        {new Date(securityStatus.securityConfirmedAt).toLocaleString()}.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             )}
 

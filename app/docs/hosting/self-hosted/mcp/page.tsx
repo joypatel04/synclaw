@@ -16,8 +16,9 @@ export default function HostingSelfHostedMcpPage() {
       <PublicDocsCard title="1) OpenClaw gateway setup">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Open <code className="rounded bg-bg-primary px-1 py-0.5">Settings -&gt; OpenClaw</code> in target workspace.</li>
-          <li>Set gateway URL using explicit protocol and no trailing spaces.</li>
+          <li>Default to Public WSS (`wss://`) using explicit protocol and no trailing spaces.</li>
           <li>Set auth token with least required scopes.</li>
+          <li>Add Synclaw origin to OpenClaw <code className="rounded bg-bg-primary px-1 py-0.5">allowedOrigins</code> and approve device.</li>
           <li>Save and re-open settings page to confirm persistence.</li>
         </ol>
         <div className="mt-4">
@@ -29,6 +30,14 @@ Scopes: <required scopes for your runtime>
 Environment: <dev|staging|prod workspace target>`}
           />
         </div>
+      </PublicDocsCard>
+
+      <PublicDocsCard title="Method decision (security-first)">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Public WSS is the recommended default for production.</li>
+          <li>Private Connector is advanced and meant for private-network operators.</li>
+          <li>Self-hosted Local is advanced and best only when app + OpenClaw are in same private environment.</li>
+        </ul>
       </PublicDocsCard>
 
       <PublicDocsCard title="2) MCP server setup">

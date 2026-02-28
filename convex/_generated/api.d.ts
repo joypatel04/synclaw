@@ -31,6 +31,8 @@ import type * as onboarding from "../onboarding.js";
 import type * as openclaw from "../openclaw.js";
 import type * as openclaw_files from "../openclaw_files.js";
 import type * as openclaw_files_internal from "../openclaw_files_internal.js";
+import type * as provisioning from "../provisioning.js";
+import type * as support from "../support.js";
 import type * as tasks from "../tasks.js";
 import type * as webhooks from "../webhooks.js";
 import type * as webhooks_internal from "../webhooks_internal.js";
@@ -66,6 +68,8 @@ declare const fullApi: ApiFromModules<{
   openclaw: typeof openclaw;
   openclaw_files: typeof openclaw_files;
   openclaw_files_internal: typeof openclaw_files_internal;
+  provisioning: typeof provisioning;
+  support: typeof support;
   tasks: typeof tasks;
   webhooks: typeof webhooks;
   webhooks_internal: typeof webhooks_internal;

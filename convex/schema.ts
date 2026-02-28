@@ -195,6 +195,37 @@ export default defineSchema({
       v.union(v.literal("online"), v.literal("offline"), v.literal("degraded")),
     ),
     connectorLastSeenAt: v.optional(v.number()),
+    securityChecklistVersion: v.optional(v.number()),
+    securityConfirmedAt: v.optional(v.number()),
+    publicWssHardeningNotes: v.optional(v.string()),
+    recommendedMethod: v.optional(
+      v.union(
+        v.literal("public_wss"),
+        v.literal("connector_advanced"),
+        v.literal("self_hosted_local"),
+      ),
+    ),
+    provisioningMode: v.optional(
+      v.union(v.literal("customer_vps"), v.literal("sutraha_managed")),
+    ),
+    serviceTier: v.optional(
+      v.union(
+        v.literal("self_serve"),
+        v.literal("assisted"),
+        v.literal("managed"),
+      ),
+    ),
+    setupStatus: v.optional(
+      v.union(
+        v.literal("not_started"),
+        v.literal("infra_ready"),
+        v.literal("openclaw_ready"),
+        v.literal("agents_ready"),
+        v.literal("verified"),
+      ),
+    ),
+    ownerContact: v.optional(v.string()),
+    supportNotes: v.optional(v.string()),
     protocol: v.union(v.literal("req"), v.literal("jsonrpc")),
     clientId: v.string(),
     clientMode: v.string(),
@@ -218,6 +249,63 @@ export default defineSchema({
     updatedAt: v.number(),
     updatedBy: v.id("users"),
   }).index("byWorkspace", ["workspaceId"]),
+
+  // ─── OpenClaw provisioning jobs (workspace-scoped) ─────────────
+  openclawProvisioningJobs: defineTable({
+    workspaceId: v.id("workspaces"),
+    provider: v.string(),
+    targetHostType: v.union(
+      v.literal("customer_vps"),
+      v.literal("sutraha_managed"),
+    ),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("failed"),
+      v.literal("completed"),
+      v.literal("canceled"),
+    ),
+    step: v.union(
+      v.literal("queued"),
+      v.literal("infra_provisioning"),
+      v.literal("openclaw_install"),
+      v.literal("gateway_config"),
+      v.literal("agent_bootstrap"),
+      v.literal("verification"),
+      v.literal("done"),
+    ),
+    logs: v.array(v.string()),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    failureReason: v.optional(v.string()),
+    retryOfJobId: v.optional(v.id("openclawProvisioningJobs")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndCreatedAt", ["workspaceId", "createdAt"])
+    .index("byWorkspaceAndStatus", ["workspaceId", "status"]),
+
+  // ─── Assisted setup sessions (workspace-scoped) ────────────────
+  openclawSupportSessions: defineTable({
+    workspaceId: v.id("workspaces"),
+    type: v.union(v.literal("assisted_launch")),
+    status: v.union(
+      v.literal("requested"),
+      v.literal("scheduled"),
+      v.literal("completed"),
+      v.literal("canceled"),
+    ),
+    ownerContact: v.string(),
+    notes: v.optional(v.string()),
+    preferredTime: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndCreatedAt", ["workspaceId", "createdAt"]),
 
   // ─── Domain tables (all workspace-scoped) ───────────────────────
 

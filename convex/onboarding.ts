@@ -25,6 +25,9 @@ export const getStatus = query({
       openclaw &&
         (transportMode === "connector" ? openclaw.connectorId : openclaw.wsUrl),
     );
+    const setupStatus = openclaw?.setupStatus ?? "not_started";
+    const serviceTier = openclaw?.serviceTier ?? "self_serve";
+    const provisioningMode = openclaw?.provisioningMode ?? "customer_vps";
 
     // We don't have a compound index for (workspaceId, sessionKey), so we scan
     // the workspace agents. This should remain small in normal usage.
@@ -42,6 +45,9 @@ export const getStatus = query({
     return {
       isOwner,
       openclawConfigured,
+      setupStatus,
+      serviceTier,
+      provisioningMode,
       mainAgentId,
       isComplete,
     };

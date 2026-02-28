@@ -169,9 +169,7 @@ function contentErrorsForFile(args: {
       ].filter(Boolean);
     case "SYNCLAW_PROTOCOL.md":
       return [
-        !lower.includes("synclaw")
-          ? "Missing Synclaw backend context"
-          : "",
+        !lower.includes("synclaw") ? "Missing Synclaw backend context" : "",
         !args.content.includes(args.workspaceId)
           ? "Missing workspaceId reference"
           : "",
@@ -665,7 +663,14 @@ export const getWorkspaceSetupOverview = query({
       .filter((s) => !s.isComplete);
 
     let firstBlockingReason: string | null = null;
-    if (!onboarding?.wsUrl) {
+    const transportMode = onboarding?.transportMode ?? "direct_ws";
+    const hasConnectionTarget = Boolean(
+      onboarding &&
+        (transportMode === "connector"
+          ? onboarding.connectorId
+          : onboarding.wsUrl),
+    );
+    if (!hasConnectionTarget) {
       firstBlockingReason = "openclaw_not_configured";
     } else if (!mainAgent) {
       firstBlockingReason = "main_agent_missing";
@@ -674,7 +679,7 @@ export const getWorkspaceSetupOverview = query({
     }
 
     return {
-      openclawConfigured: Boolean(onboarding?.wsUrl),
+      openclawConfigured: hasConnectionTarget,
       mainAgentId: mainAgent?._id ?? null,
       mainAgentReady: mainAgent
         ? !incompleteAgents.some((a) => String(a.id) === String(mainAgent._id))

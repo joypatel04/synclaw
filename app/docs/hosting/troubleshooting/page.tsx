@@ -71,6 +71,31 @@ Check:
         </div>
       </PublicDocsCard>
 
+      <PublicDocsCard title='Why "ws://" from "https://" fails'>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Browsers block insecure WebSocket (<code className="rounded bg-bg-primary px-1 py-0.5">ws://</code>) from secure pages.</li>
+          <li>Use <code className="rounded bg-bg-primary px-1 py-0.5">wss://</code> for Public WSS setups.</li>
+          <li>If OpenClaw must stay private, use Private Connector (advanced).</li>
+        </ul>
+      </PublicDocsCard>
+
+      <PublicDocsCard title="Device approval passes but scopes still fail">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Device approval and role/scope authorization are separate checks.</li>
+          <li>Rotate/re-issue scopes to include required operator scopes for your workflow.</li>
+          <li>Run Test again from Settings -&gt; OpenClaw after scope updates.</li>
+        </ul>
+      </PublicDocsCard>
+
+      <PublicDocsCard title="Hardened endpoint but handshake still failing">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Verify exact origin match in <code className="rounded bg-bg-primary px-1 py-0.5">allowedOrigins</code>.</li>
+          <li>Confirm token/password is valid for target workspace and role.</li>
+          <li>Confirm TLS cert chain and reverse-proxy upgrade headers are correct.</li>
+          <li>Re-run Settings test and inspect diagnostics output.</li>
+        </ul>
+      </PublicDocsCard>
+
       <PublicDocsCard title="Billing not active yet">
         <ul className="list-disc space-y-2 pl-5">
           <li>Keep billing UI in Coming Soon state until provider webhooks are verified.</li>
