@@ -32,14 +32,16 @@ bunx convex dev`}
 NEXT_PUBLIC_CONVEX_SITE_URL=https://<project>.convex.site
 CONVEX_DEPLOYMENT=<deployment-key>
 AUTH_GITHUB_ID=<github-client-id>
-AUTH_GITHUB_SECRET=<github-client-secret>`}
+AUTH_GITHUB_SECRET=<github-client-secret>
+AUTH_GOOGLE_ID=<google-client-id>
+AUTH_GOOGLE_SECRET=<google-client-secret>`}
           />
         </div>
       </PublicDocsCard>
 
       <PublicDocsCard title="2) Configure auth provider">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Create/update GitHub OAuth app and set callback URL to Convex auth route.</li>
+          <li>Create/update GitHub and Google OAuth apps and set callback URLs to Convex auth routes.</li>
           <li>Ensure local callback and production callback are both configured where required.</li>
           <li>Set OAuth client id/secret in both local env and production deployment secrets.</li>
           <li>Verify callback returns to app domain and session persists after refresh.</li>
@@ -47,7 +49,8 @@ AUTH_GITHUB_SECRET=<github-client-secret>`}
         <div className="mt-4">
           <PublicDocsCodeBlock
             title="Callback pattern to verify"
-            code={`https://<your-convex-site>.convex.site/api/auth/signin/github`}
+            code={`https://<your-convex-site>.convex.site/api/auth/callback/github
+https://<your-convex-site>.convex.site/api/auth/callback/google`}
           />
         </div>
       </PublicDocsCard>

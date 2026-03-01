@@ -67,6 +67,8 @@ bunx convex env list --dev
 SITE_URL=https://hq.sutraha.in
 AUTH_GITHUB_ID=<GitHub OAuth App ID>
 AUTH_GITHUB_SECRET=<GitHub OAuth App Secret>
+AUTH_GOOGLE_ID=<Google OAuth Client ID>
+AUTH_GOOGLE_SECRET=<Google OAuth Client Secret>
 JWT_PRIVATE_KEY=<RSA private key>
 JWKS=<JSON Web Key Set>
 OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<64 hex chars (openssl rand -hex 32)>
@@ -129,16 +131,23 @@ npm update -g @synclaw/mcp-server
 
 ---
 
-## 4. GitHub OAuth App
+## 4. OAuth Apps (GitHub + Google)
 
-If you change the Convex deployment or domain, update the GitHub OAuth App:
+If you change the Convex deployment or domain, update both OAuth providers:
 
-1. Go to: https://github.com/settings/developers
-2. Select the OAuth App
-3. Update **Authorization callback URL** to:
+1. GitHub:
+   - Go to: https://github.com/settings/developers
+   - Select the OAuth App
+   - Update **Authorization callback URL** to:
    - Dev: `https://descriptive-perch-695.convex.site/api/auth/callback/github`
    - Prod: `https://confident-ram-83.convex.site/api/auth/callback/github`
-4. Update **Homepage URL** to your app URL
+   - Update **Homepage URL** to your app URL
+2. Google Cloud Console:
+   - Open your OAuth 2.0 Web Client.
+   - Set **Authorized redirect URIs**:
+     - Dev: `https://descriptive-perch-695.convex.site/api/auth/callback/google`
+     - Prod: `https://confident-ram-83.convex.site/api/auth/callback/google`
+   - Set **Authorized JavaScript origins** for local/prod app URLs.
 
 ---
 

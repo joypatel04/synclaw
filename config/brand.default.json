@@ -94,6 +94,7 @@
     "loginTitle": "Synclaw",
     "loginSubtitle": "AI Agent Mission Control",
     "providerLabelGithub": "Continue with GitHub",
+    "providerLabelGoogle": "Continue with Google",
     "footerNote": "Secure authentication powered by Convex Auth"
   },
   "seo": {

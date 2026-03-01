@@ -24,6 +24,8 @@ export default function HostingEnvironmentReferencePage() {
         <ul className="list-disc space-y-2 pl-5">
           <li><code className="rounded bg-bg-primary px-1 py-0.5">AUTH_GITHUB_ID</code>: GitHub OAuth client id.</li>
           <li><code className="rounded bg-bg-primary px-1 py-0.5">AUTH_GITHUB_SECRET</code>: GitHub OAuth client secret.</li>
+          <li><code className="rounded bg-bg-primary px-1 py-0.5">AUTH_GOOGLE_ID</code>: Google OAuth client id.</li>
+          <li><code className="rounded bg-bg-primary px-1 py-0.5">AUTH_GOOGLE_SECRET</code>: Google OAuth client secret.</li>
         </ul>
       </PublicDocsCard>
 
@@ -77,4 +79,3 @@ RAZORPAY_PLAN_PRO_YEARLY_USD=plan_...`}
     </PublicDocsShell>
   );
 }
-

@@ -22,11 +22,12 @@ export default function HostingTroubleshootingPage() {
           <PublicDocsCodeBlock
             title="What to compare exactly"
             code={`Expected callback:
-https://<convex-site>.convex.site/api/auth/signin/github
+https://<convex-site>.convex.site/api/auth/callback/github
+https://<convex-site>.convex.site/api/auth/callback/google
 
 Check:
 1) OAuth app callback URL
-2) .env.local AUTH_GITHUB_ID / AUTH_GITHUB_SECRET
+2) .env.local AUTH_GITHUB_ID / AUTH_GITHUB_SECRET / AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET
 3) runtime restart after env edits`}
           />
         </div>

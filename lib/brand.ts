@@ -64,6 +64,7 @@ export interface BrandConfig {
     loginTitle: BrandString;
     loginSubtitle: BrandString;
     providerLabelGithub: BrandString;
+    providerLabelGoogle: BrandString;
     footerNote: BrandString;
   };
   seo: {
@@ -115,6 +116,7 @@ const REQUIRED_PATHS: Array<[keyof BrandConfig, string]> = [
   ["auth", "loginTitle"],
   ["auth", "loginSubtitle"],
   ["auth", "providerLabelGithub"],
+  ["auth", "providerLabelGoogle"],
   ["auth", "footerNote"],
   ["seo", "titleDefault"],
   ["seo", "descriptionDefault"],

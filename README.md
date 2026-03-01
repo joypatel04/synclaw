@@ -22,7 +22,7 @@ bun install
 cp .env.local.example .env.local
 ```
 
-Update `.env.local` values for your Convex deployment + Convex Auth GitHub OAuth keys.
+Update `.env.local` values for your Convex deployment + Convex Auth GitHub/Google OAuth keys.
 If you want billing enabled, configure Razorpay keys and plan IDs.
 
 ### 3) Start Convex + Next.js
