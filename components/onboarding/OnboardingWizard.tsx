@@ -809,8 +809,16 @@ export function OnboardingWizard() {
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <StepHeader
             step={1}
-            title="Connect OpenClaw"
-            subtitle="Test gateway and save configuration."
+            title={
+              needsManagedSetup
+                ? "Managed setup status"
+                : "Connect OpenClaw"
+            }
+            subtitle={
+              needsManagedSetup
+                ? "Track managed provisioning and verify managed connection."
+                : "Test gateway and save configuration."
+            }
             done={step1Done}
           />
 
