@@ -70,15 +70,6 @@ export const PUBLIC_WSS_SECURITY_CHECKLIST = [
     label: "I approved this browser/device in OpenClaw device approvals.",
   },
   {
-    id: "minimalScopes",
-    label:
-      "I configured minimum scopes (operator.read, operator.write, operator.admin).",
-  },
-  {
-    id: "testPass",
-    label: "I ran Test and confirmed handshake/pairing succeeds.",
-  },
-  {
     id: "dashboardProtection",
     label:
       "I protected OpenClaw dashboard/admin endpoints (auth + network controls).",

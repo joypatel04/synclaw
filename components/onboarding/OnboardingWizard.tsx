@@ -30,12 +30,12 @@ import {
 
 type Protocol = "req";
 
-function parseScopesCsv(input: string): string[] {
-  return input
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+const FIXED_GATEWAY_ROLE = "operator";
+const FIXED_GATEWAY_SCOPES = [
+  "operator.read",
+  "operator.write",
+  "operator.admin",
+];
 
 function isPairingRequiredMessage(message: string): boolean {
   const lower = message.toLowerCase();
@@ -91,11 +91,12 @@ function StepHeader({
 }
 
 export function OnboardingWizard() {
-  const { workspaceId, workspace, canAdmin } = useWorkspace();
+  const { workspaceId, workspace, canAdmin, membershipId } = useWorkspace();
   const router = useRouter();
   const convex = useConvex();
 
   const status = useQuery(api.onboarding.getStatus, { workspaceId });
+  const members = useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
   const upsertOpenClaw = useMutation(api.openclaw.upsertConfig);
   const confirmSecurityChecklist = useMutation(
@@ -136,16 +137,15 @@ export function OnboardingWizard() {
   const [clientId, setClientId] = useState("openclaw-control-ui");
   const [clientMode, setClientMode] = useState("webchat");
   const [clientPlatform, setClientPlatform] = useState("web");
-  const [role, setRole] = useState("operator");
   const [needsManagedSetup, setNeedsManagedSetup] = useState(false);
   const [deploymentMode, setDeploymentMode] = useState<"managed" | "manual">(
     "manual",
   );
   const [requestedRegion, setRequestedRegion] =
     useState<ManagedRegionCode>("eu_central_hil");
-  const [serviceTier, setServiceTier] = useState<
-    "self_serve" | "assisted" | "managed"
-  >("self_serve");
+  const [serviceTier, setServiceTier] = useState<"self_serve" | "assisted">(
+    "self_serve",
+  );
   const [setupStatus, setSetupStatus] = useState<
     | "not_started"
     | "infra_ready"
@@ -155,9 +155,6 @@ export function OnboardingWizard() {
   >("not_started");
   const [ownerContact, setOwnerContact] = useState("");
   const [supportNotes, setSupportNotes] = useState("");
-  const [scopesCsv, setScopesCsv] = useState(
-    "operator.read,operator.write,operator.admin",
-  );
   const [subscribeOnConnect, setSubscribeOnConnect] = useState(false);
   const [subscribeMethod, setSubscribeMethod] = useState("chat.subscribe");
   const [includeCron, setIncludeCron] = useState(true);
@@ -166,8 +163,10 @@ export function OnboardingWizard() {
   const [securityChecklistAck, setSecurityChecklistAck] = useState({
     allowedOrigins: false,
     deviceApproval: false,
-    minimalScopes: false,
-    testPass: false,
+    // Not shown in UI; default true so users only confirm actionable steps.
+    minimalScopes: true,
+    // Not shown in UI; covered by connection probe + Test & Save flow.
+    testPass: true,
     dashboardProtection: false,
   });
 
@@ -179,6 +178,13 @@ export function OnboardingWizard() {
   >({ status: "idle" });
   const [serviceMessage, setServiceMessage] = useState<string | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
+  const [deviceApprovalTesting, setDeviceApprovalTesting] = useState(false);
+  const [deviceApprovalProbeDone, setDeviceApprovalProbeDone] = useState(false);
+  const [deviceApprovalProbeResult, setDeviceApprovalProbeResult] = useState<
+    | { status: "idle" }
+    | { status: "ok"; message: string }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
 
   useEffect(() => {
     if (!summary) return;
@@ -201,10 +207,7 @@ export function OnboardingWizard() {
       ((summary.managedRegionRequested || summary.managedRegionResolved) as ManagedRegionCode) ??
         "eu_central_hil",
     );
-    setServiceTier(
-      (summary.serviceTier as "self_serve" | "assisted" | "managed") ??
-        "self_serve",
-    );
+    setServiceTier(summary.serviceTier === "assisted" ? "assisted" : "self_serve");
     setSetupStatus(
       (summary.setupStatus as
         | "not_started"
@@ -220,8 +223,6 @@ export function OnboardingWizard() {
     setClientId(summary.clientId ?? "openclaw-control-ui");
     setClientMode(summary.clientMode ?? "webchat");
     setClientPlatform(summary.clientPlatform ?? "web");
-    setRole(summary.role ?? "operator");
-    setScopesCsv((summary.scopes ?? []).join(",") || scopesCsv);
     setSubscribeOnConnect(Boolean(summary.subscribeOnConnect));
     setSubscribeMethod(summary.subscribeMethod ?? "chat.subscribe");
     setIncludeCron(Boolean(summary.includeCron));
@@ -230,10 +231,11 @@ export function OnboardingWizard() {
     setTokenDraft("");
     setPasswordDraft("");
     setTestResult({ status: "idle" });
+    setDeviceApprovalProbeDone(false);
+    setDeviceApprovalProbeResult({ status: "idle" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary?.updatedAt]);
 
-  const scopes = useMemo(() => parseScopesCsv(scopesCsv), [scopesCsv]);
   const origin = useMemo(() => {
     if (typeof window === "undefined") return "";
     return window.location.origin;
@@ -258,53 +260,72 @@ export function OnboardingWizard() {
   const latestManagedJobFailed = managedStatus?.latestJob?.status === "failed";
   const managedSetupFailed =
     managedStatus?.managedStatus === "failed" || latestManagedJobFailed;
+  const currentMember = useMemo(
+    () => members.find((m) => m._id === membershipId) ?? null,
+    [members, membershipId],
+  );
+
+  useEffect(() => {
+    // Prefill assisted owner contact from the current signed-in user's email.
+    if (ownerContact.trim()) return;
+    const email = (currentMember?.email ?? "").trim();
+    if (!email) return;
+    setOwnerContact(email);
+  }, [currentMember?.email, ownerContact]);
+
+  const probeGatewayConnection = async () => {
+    let connectorOfflineWarning = false;
+    if (transportMode === "connector") {
+      if (!connectorId.trim()) {
+        throw new Error("Connector ID is required for Private Connector.");
+      }
+      if (connectorStatus !== "online") {
+        connectorOfflineWarning = true;
+      }
+      return { connectorOfflineWarning };
+    }
+
+    if (!wsUrl.trim()) throw new Error("WebSocket URL is required.");
+    const client = new OpenClawBrowserGatewayClient(
+      {
+        wsUrl: wsUrl.trim(),
+        protocol,
+        authToken: tokenDraft.trim() ? tokenDraft.trim() : undefined,
+        password: passwordDraft.trim() ? passwordDraft.trim() : undefined,
+        clientId,
+        clientMode,
+        clientPlatform,
+        role: FIXED_GATEWAY_ROLE,
+        scopes: FIXED_GATEWAY_SCOPES,
+        subscribeOnConnect,
+        subscribeMethod,
+      },
+      async () => {},
+    );
+
+    try {
+      await client.connect();
+      const candidates = ["health.get", "health", "gateway.health"];
+      for (const method of candidates) {
+        try {
+          await client.request(method, {});
+          break;
+        } catch {
+          // try next
+        }
+      }
+    } finally {
+      await client.disconnect().catch(() => {});
+    }
+
+    return { connectorOfflineWarning };
+  };
 
   const onTestAndSave = async () => {
     setTesting(true);
     setTestResult({ status: "idle" });
     try {
-      let connectorOfflineWarning = false;
-      if (transportMode === "connector") {
-        if (!connectorId.trim()) {
-          throw new Error("Connector ID is required for Private Connector.");
-        }
-        if (connectorStatus !== "online") {
-          connectorOfflineWarning = true;
-        }
-      } else {
-        if (!wsUrl.trim()) throw new Error("WebSocket URL is required.");
-        const client = new OpenClawBrowserGatewayClient(
-          {
-            wsUrl: wsUrl.trim(),
-            protocol,
-            authToken: tokenDraft.trim() ? tokenDraft.trim() : undefined,
-            password: passwordDraft.trim() ? passwordDraft.trim() : undefined,
-            clientId,
-            clientMode,
-            clientPlatform,
-            role,
-            scopes,
-            subscribeOnConnect,
-            subscribeMethod,
-          },
-          async () => {},
-        );
-
-        try {
-          await client.connect();
-          const candidates = ["health.get", "health", "gateway.health"];
-          for (const method of candidates) {
-            try {
-              await client.request(method, {});
-              break;
-            } catch {
-              // try next
-            }
-          }
-        } finally {
-          await client.disconnect().catch(() => {});
-        }
-      }
+      const { connectorOfflineWarning } = await probeGatewayConnection();
 
       await upsertOpenClaw({
         workspaceId,
@@ -329,8 +350,8 @@ export function OnboardingWizard() {
         clientId,
         clientMode,
         clientPlatform,
-        role,
-        scopes,
+        role: FIXED_GATEWAY_ROLE,
+        scopes: FIXED_GATEWAY_SCOPES,
         subscribeOnConnect,
         subscribeMethod,
         includeCron,
@@ -391,6 +412,32 @@ export function OnboardingWizard() {
     }
   };
 
+  const onRequestDeviceApproval = async () => {
+    setDeviceApprovalTesting(true);
+    setDeviceApprovalProbeResult({ status: "idle" });
+    try {
+      await probeGatewayConnection();
+      setDeviceApprovalProbeDone(true);
+      setSecurityChecklistAck((prev) => ({ ...prev, deviceApproval: true }));
+      setDeviceApprovalProbeResult({
+        status: "ok",
+        message:
+          "Connection probe succeeded. Device approval is now validated for this browser.",
+      });
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      setDeviceApprovalProbeDone(true);
+      setDeviceApprovalProbeResult({
+        status: "error",
+        message:
+          `${mapOpenClawSetupError(raw, transportMode)} ` +
+          "If pairing is pending, approve this browser/device in OpenClaw and run this probe again.",
+      });
+    } finally {
+      setDeviceApprovalTesting(false);
+    }
+  };
+
   const onCreateProvisioningJob = async () => {
     setServiceError(null);
     setServiceMessage(null);
@@ -439,7 +486,15 @@ export function OnboardingWizard() {
     setServiceError(null);
     setServiceMessage(null);
     try {
-      if (managedStatus?.latestJob?._id) {
+      const regionChanged =
+        Boolean(managedStatus?.requestedRegion) &&
+        managedStatus?.requestedRegion !== requestedRegion;
+      // If user changed region after a failure, start a fresh provisioning job.
+      if (regionChanged || !managedStatus?.latestJob?._id) {
+        await onCreateProvisioningJob();
+        return;
+      }
+      if (managedStatus.latestJob._id) {
         const result = await retryManagedJob({
           workspaceId,
           jobId: managedStatus.latestJob._id,
@@ -600,71 +655,93 @@ export function OnboardingWizard() {
                   <select
                     value={serviceTier}
                     onChange={(e) =>
-                      setServiceTier(
-                        e.target.value as "self_serve" | "assisted" | "managed",
-                      )
+                      setServiceTier(e.target.value as "self_serve" | "assisted")
                     }
                     className="h-10 w-full rounded-md border border-border-default bg-bg-secondary px-3 text-sm text-text-primary"
                   >
                     <option value="self_serve">Guided self-serve</option>
                     <option value="assisted">Assisted launch</option>
-                    <option value="managed">Managed operations</option>
                   </select>
                   <p className="text-[11px] text-text-dim">
                     {serviceTier === "assisted"
                       ? "Assisted launch creates a support request and your team is contacted for hands-on help."
-                      : serviceTier === "managed"
-                        ? "Managed operations means ongoing operational support after setup."
-                        : "Guided self-serve gives you the same managed stack with in-app guidance, without a support request."}
+                      : "Guided self-serve gives you the same managed stack with in-app guidance, without a support request."}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Owner contact</Label>
-                <Input
-                  value={ownerContact}
-                  onChange={(e) => setOwnerContact(e.target.value)}
-                  placeholder="name@company.com or +1 phone"
-                  className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
-                />
-              </div>
+              {serviceTier === "assisted" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Owner contact</Label>
+                    <Input
+                      value={ownerContact}
+                      onChange={(e) => setOwnerContact(e.target.value)}
+                      placeholder="name@company.com or +1 phone"
+                      className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Support notes</Label>
-                <Input
-                  value={supportNotes}
-                  onChange={(e) => setSupportNotes(e.target.value)}
-                  placeholder="Timeline, security/compliance constraints..."
-                  className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Support notes</Label>
+                    <Input
+                      value={supportNotes}
+                      onChange={(e) => setSupportNotes(e.target.value)}
+                      placeholder="Timeline, security/compliance constraints..."
+                      className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                  </div>
+                </>
+              ) : null}
 
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  onClick={() => void onCreateProvisioningJob()}
-                >
-                  Launch managed OpenClaw
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
-                  onClick={() => void onRequestAssisted()}
-                >
-                  <LifeBuoy className="mr-1 h-3.5 w-3.5" />
-                  Request assisted launch
-                </Button>
+                {serviceTier === "assisted" ? (
+                  <Button
+                    size="sm"
+                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    onClick={() => void onRequestAssisted()}
+                  >
+                    <LifeBuoy className="mr-1 h-3.5 w-3.5" />
+                    Request assisted launch
+                  </Button>
+                ) : (
+                  <>
+                    {managedSetupFailed ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => void onRestartManagedSetup()}
+                      >
+                        Restart setup
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => void onCreateProvisioningJob()}
+                      >
+                        Launch managed OpenClaw
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
-              <p className="text-[11px] text-text-dim">
-                Assisted launch does not start infrastructure by itself. Use{" "}
-                <span className="font-semibold text-text-secondary">
-                  Launch managed OpenClaw
-                </span>{" "}
-                to begin provisioning.
-              </p>
+              {serviceTier === "assisted" ? (
+                <p className="text-[11px] text-text-dim">
+                  Assisted launch creates a support request. The team will follow
+                  up using owner contact.
+                </p>
+              ) : managedSetupFailed ? (
+                <p className="text-[11px] text-text-dim">
+                  Previous managed setup failed. Restart setup to recover.
+                  {managedStatus?.requestedRegion &&
+                  managedStatus.requestedRegion !== requestedRegion
+                    ? " You changed region, so restart will run a fresh provisioning job in the selected region."
+                    : ""}
+                </p>
+              ) : null}
 
               {serviceMessage ? (
                 <p className="text-xs text-status-active">{serviceMessage}</p>
@@ -981,7 +1058,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-text-secondary">Auth token</Label>
+                  <Label className="text-text-secondary">
+                    Auth token (optional)
+                  </Label>
                   <Input
                     value={tokenDraft}
                     onChange={(e) => setTokenDraft(e.target.value)}
@@ -989,27 +1068,21 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
                   />
                 </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Role</Label>
-                    <Input
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      placeholder="operator"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Scopes</Label>
-                    <Input
-                      value={scopesCsv}
-                      onChange={(e) => setScopesCsv(e.target.value)}
-                      placeholder="operator.read,operator.write,operator.admin"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">
+                    Auth password (optional)
+                  </Label>
+                  <Input
+                    value={passwordDraft}
+                    onChange={(e) => setPasswordDraft(e.target.value)}
+                    placeholder="Paste your OpenClaw password..."
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-text-dim">
+                    Use either token or password, based on your OpenClaw gateway auth mode.
+                  </p>
                 </div>
+
                 {transportMode === "direct_ws" ? (
                   <div className="rounded-xl border border-border-default bg-bg-tertiary p-3">
                     <p className="text-xs font-semibold text-text-primary">
@@ -1019,6 +1092,34 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                       Required baseline before production use. Current Synclaw origin:
                       <span className="ml-1 font-mono">{origin || "(browser origin unavailable)"}</span>
                     </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => void onRequestDeviceApproval()}
+                        disabled={deviceApprovalTesting}
+                      >
+                        {deviceApprovalTesting
+                          ? "Connecting..."
+                          : "Connect to request device approval"}
+                      </Button>
+                      <p className="text-[11px] text-text-dim">
+                        Run this once before checking device approval.
+                      </p>
+                    </div>
+                    {deviceApprovalProbeResult.status !== "idle" ? (
+                      <p
+                        className={`mt-2 text-[11px] ${
+                          deviceApprovalProbeResult.status === "ok"
+                            ? "text-status-active"
+                            : "text-status-blocked"
+                        }`}
+                      >
+                        {deviceApprovalProbeResult.message}
+                      </p>
+                    ) : null}
                     <div className="mt-2 space-y-2">
                       {PUBLIC_WSS_SECURITY_CHECKLIST.map((item) => (
                         <label
@@ -1034,7 +1135,11 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                                 [item.id]: e.target.checked,
                               }))
                             }
-                            className="mt-0.5 h-4 w-4 accent-accent-orange"
+                            disabled={
+                              item.id === "deviceApproval" &&
+                              !deviceApprovalProbeDone
+                            }
+                            className="mt-0.5 h-4 w-4 accent-accent-orange disabled:opacity-50"
                           />
                           {item.label}
                         </label>

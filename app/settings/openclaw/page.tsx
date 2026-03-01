@@ -67,12 +67,12 @@ const MODEL_PROVIDER_OPTIONS = [
 
 type ModelProviderId = (typeof MODEL_PROVIDER_OPTIONS)[number]["id"];
 
-function parseScopesCsv(input: string): string[] {
-  return input
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+const FIXED_GATEWAY_ROLE = "operator";
+const FIXED_GATEWAY_SCOPES = [
+  "operator.read",
+  "operator.write",
+  "operator.admin",
+];
 
 function SettingsTabs({
   active,
@@ -163,7 +163,6 @@ function OpenClawSettingsContent() {
   const [connectorLastSeenAt, setConnectorLastSeenAt] = useState<number | null>(
     null,
   );
-  const [role, setRole] = useState("operator");
   const [deploymentMode, setDeploymentMode] = useState<"managed" | "manual">(
     "manual",
   );
@@ -181,9 +180,6 @@ function OpenClawSettingsContent() {
   >("not_started");
   const [ownerContact, setOwnerContact] = useState("");
   const [supportNotes, setSupportNotes] = useState("");
-  const [scopesCsv, setScopesCsv] = useState(
-    "operator.read,operator.write,operator.admin",
-  );
   const [includeCron, setIncludeCron] = useState(true);
   const [historyPollMs, setHistoryPollMs] = useState("5000");
 
@@ -223,8 +219,10 @@ function OpenClawSettingsContent() {
   const [securityChecklistAck, setSecurityChecklistAck] = useState({
     allowedOrigins: false,
     deviceApproval: false,
-    minimalScopes: false,
-    testPass: false,
+    // Not shown in UI; default true so users only confirm actionable steps.
+    minimalScopes: true,
+    // Not shown in UI; treated as part of test/probe flow.
+    testPass: true,
     dashboardProtection: false,
   });
   const [securityHardeningNotes, setSecurityHardeningNotes] = useState("");
@@ -284,8 +282,6 @@ function OpenClawSettingsContent() {
     setOwnerContact(summary.ownerContact ?? "");
     setSupportNotes(summary.supportNotes ?? "");
     setWsUrl(summary.wsUrl ?? "");
-    setRole(summary.role ?? "operator");
-    setScopesCsv((summary.scopes ?? []).join(",") || scopesCsv);
     setIncludeCron(Boolean(summary.includeCron));
     setHistoryPollMs(String(summary.historyPollMs ?? 5000));
     setSecurityHardeningNotes(summary.publicWssHardeningNotes ?? "");
@@ -317,8 +313,6 @@ function OpenClawSettingsContent() {
   const hasToken = summary?.hasAuthToken ?? false;
   const hasPassword = summary?.hasPassword ?? false;
 
-  const scopes = useMemo(() => parseScopesCsv(scopesCsv), [scopesCsv]);
-
   const origin = useMemo(() => {
     if (typeof window === "undefined") return "";
     return window.location.origin;
@@ -342,14 +336,14 @@ function OpenClawSettingsContent() {
       );
       const key = openClawDeviceTokenStorageKey(
         wsUrl.trim() || "",
-        role.trim() || "operator",
+        FIXED_GATEWAY_ROLE,
       );
       const hasDeviceToken = Boolean(window.localStorage.getItem(key));
       return { hasDeviceIdentity, hasDeviceToken };
     } catch {
       return { hasDeviceIdentity: false, hasDeviceToken: false };
     }
-  }, [wsUrl, role, localAuthRev]);
+  }, [wsUrl, localAuthRev]);
 
   const localIdentity = useMemo(
     () => readStoredDeviceIdentityV2(),
@@ -482,8 +476,8 @@ function OpenClawSettingsContent() {
           typeof navigator !== "undefined"
             ? navigator.platform || "web"
             : "web",
-        role,
-        scopes,
+        role: FIXED_GATEWAY_ROLE,
+        scopes: FIXED_GATEWAY_SCOPES,
         subscribeOnConnect: false,
         subscribeMethod: "chat.subscribe",
         includeCron,
@@ -1323,37 +1317,16 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Protocol</Label>
-                <Input
-                  value="req"
-                  readOnly
-                  className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Role</Label>
-                <Input
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  placeholder="operator"
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                />
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label className="text-text-secondary">
-                Scopes (comma-separated)
-              </Label>
+              <Label className="text-text-secondary">Protocol</Label>
               <Input
-                value={scopesCsv}
-                onChange={(e) => setScopesCsv(e.target.value)}
-                placeholder="operator.read,operator.write"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                value="req"
+                readOnly
+                className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
               />
+              <p className="text-[11px] text-text-dim">
+                Role/scopes are managed automatically for this workspace.
+              </p>
             </div>
             </>
             )}
@@ -1787,7 +1760,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               onClick={() => {
                 clearOpenClawLocalAuthState(
                   wsUrl.trim() || undefined,
-                  role.trim() || "operator",
+                  FIXED_GATEWAY_ROLE,
                 );
                 setLocalAuthRev((v) => v + 1);
               }}
