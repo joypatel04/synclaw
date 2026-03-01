@@ -27,8 +27,29 @@ import {
   managedRegionLabel,
   type ManagedRegionCode,
 } from "@/lib/managedRegions";
+import {
+  MANAGED_SERVER_PROFILES,
+  managedServerProfileByCode,
+  type ManagedServerProfileCode,
+} from "@/lib/managedServerProfiles";
 
 type Protocol = "req";
+type ModelProviderId =
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "google_antigravity"
+  | "z_ai"
+  | "minimax";
+
+const MODEL_PROVIDER_OPTIONS: Array<{ id: ModelProviderId; label: string }> = [
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "gemini", label: "Gemini" },
+  { id: "google_antigravity", label: "Google Antigravity" },
+  { id: "z_ai", label: "Z.ai" },
+  { id: "minimax", label: "Minimax" },
+];
 
 const FIXED_GATEWAY_ROLE = "operator";
 const FIXED_GATEWAY_SCOPES = [
@@ -119,6 +140,13 @@ export function OnboardingWizard() {
     api.support.listAssistedSessions,
     canAdmin ? { workspaceId } : "skip",
   );
+  const upsertWorkspaceKey = useMutation(api.modelKeys.upsertWorkspaceKey);
+  const validateWorkspaceKeys = useMutation(api.modelKeys.validateWorkspaceKeys);
+  const providerKeyStatuses =
+    useQuery(
+      api.modelKeys.listWorkspaceKeyStatus,
+      canAdmin ? { workspaceId } : "skip",
+    ) ?? [];
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
@@ -143,6 +171,8 @@ export function OnboardingWizard() {
   );
   const [requestedRegion, setRequestedRegion] =
     useState<ManagedRegionCode>("eu_central_hil");
+  const [serverProfile, setServerProfile] =
+    useState<ManagedServerProfileCode>("starter");
   const [serviceTier, setServiceTier] = useState<"self_serve" | "assisted">(
     "self_serve",
   );
@@ -178,6 +208,11 @@ export function OnboardingWizard() {
   >({ status: "idle" });
   const [serviceMessage, setServiceMessage] = useState<string | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
+  const [providerId, setProviderId] = useState<ModelProviderId>("openai");
+  const [providerKeyDraft, setProviderKeyDraft] = useState("");
+  const [providerMessage, setProviderMessage] = useState<string | null>(null);
+  const [providerError, setProviderError] = useState<string | null>(null);
+  const [providerSaving, setProviderSaving] = useState(false);
   const [deviceApprovalTesting, setDeviceApprovalTesting] = useState(false);
   const [deviceApprovalProbeDone, setDeviceApprovalProbeDone] = useState(false);
   const [deviceApprovalProbeResult, setDeviceApprovalProbeResult] = useState<
@@ -206,6 +241,9 @@ export function OnboardingWizard() {
     setRequestedRegion(
       ((summary.managedRegionRequested || summary.managedRegionResolved) as ManagedRegionCode) ??
         "eu_central_hil",
+    );
+    setServerProfile(
+      (summary.managedServerProfile as ManagedServerProfileCode) ?? "starter",
     );
     setServiceTier(summary.serviceTier === "assisted" ? "assisted" : "self_serve");
     setSetupStatus(
@@ -253,7 +291,8 @@ export function OnboardingWizard() {
   );
 
   const step1Done = Boolean(status?.openclawConfigured);
-  const step2Done = Boolean(status?.mainAgentId);
+  const step2Done = Boolean(status?.providerKeyReady);
+  const step3Done = Boolean(status?.mainAgentId);
   const pairingHintVisible =
     testResult.status === "error" &&
     isPairingRequiredMessage(testResult.message);
@@ -340,6 +379,7 @@ export function OnboardingWizard() {
         deploymentMode,
         provisioningMode: "sutraha_managed",
         serviceTier,
+        managedServerProfile: serverProfile,
         setupStatus,
         ownerContact,
         supportNotes,
@@ -446,6 +486,7 @@ export function OnboardingWizard() {
         workspaceId,
         requestedRegion,
         serviceTier,
+        serverProfile,
       });
       setDeploymentMode("managed");
       setNeedsManagedSetup(true);
@@ -509,6 +550,35 @@ export function OnboardingWizard() {
       }
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const onSaveProviderKey = async () => {
+    setProviderError(null);
+    setProviderMessage(null);
+    if (!providerKeyDraft.trim()) {
+      setProviderError("Provider API key is required.");
+      return;
+    }
+    setProviderSaving(true);
+    try {
+      await upsertWorkspaceKey({
+        workspaceId,
+        provider: providerId,
+        key: providerKeyDraft.trim(),
+      });
+      const validation = await validateWorkspaceKeys({ workspaceId });
+      const validCount = validation.results.filter((r) => r.status === "valid").length;
+      setProviderMessage(
+        validCount > 0
+          ? `Provider key saved and validated (${validCount} valid).`
+          : "Provider key saved but validation failed. Check key and retry.",
+      );
+      setProviderKeyDraft("");
+    } catch (e) {
+      setProviderError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setProviderSaving(false);
     }
   };
 
@@ -669,6 +739,39 @@ export function OnboardingWizard() {
                   </p>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Server size</Label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {MANAGED_SERVER_PROFILES.map((profile) => {
+                    const selected = serverProfile === profile.code;
+                    return (
+                      <button
+                        key={profile.code}
+                        type="button"
+                        onClick={() => setServerProfile(profile.code)}
+                        className={`rounded-md border p-2 text-left ${
+                          selected
+                            ? "border-accent-orange/50 bg-accent-orange/10"
+                            : "border-border-default bg-bg-secondary"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold text-text-primary">
+                          {profile.label}
+                        </p>
+                        <p className="mt-1 text-[10px] text-text-muted">
+                          {profile.serverType} · {profile.vcpu} vCPU · {profile.ramGb}GB RAM
+                        </p>
+                        <p className="text-[10px] text-text-muted">
+                          {profile.storageGb}GB {profile.storageType} · {profile.costTier} cost
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-text-dim">
+                  {managedServerProfileByCode(serverProfile).description}
+                </p>
+              </div>
 
               {serviceTier === "assisted" ? (
                 <>
@@ -765,6 +868,11 @@ export function OnboardingWizard() {
                   ? `${managedStatus.latestJob.status} · ${managedStatus.latestJob.step}`
                   : "not started"}
               </p>
+              {managedStatus?.latestJob?.failureCode ? (
+                <p className="text-[11px] text-status-blocked">
+                  Failure code: {managedStatus.latestJob.failureCode}
+                </p>
+              ) : null}
               {managedStatus?.resolvedRegion ? (
                 <p className="text-[11px] text-text-dim">
                   Region: {managedRegionLabel(managedStatus.resolvedRegion)}
@@ -773,20 +881,20 @@ export function OnboardingWizard() {
                     : ""}
                 </p>
               ) : null}
+              <p className="text-[11px] text-text-dim">
+                Server:{" "}
+                {managedStatus?.serverType ||
+                  managedServerProfileByCode(serverProfile).serverType}{" "}
+                ({managedServerProfileByCode(
+                  managedStatus?.serverProfile ?? serverProfile,
+                ).label})
+              </p>
               <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
                 <p>1. Infra provisioning</p>
-                <p>2. Gateway ready</p>
-                <p>3. Security hardened</p>
-                <p>4. Synclaw connected</p>
-                <p>5. Agents verified</p>
-              </div>
-              <div className="rounded-md border border-status-review/40 bg-status-review/10 p-2 text-[11px]">
-                <p className="font-semibold text-status-review">
-                  Provider auth scope: API-key-only
-                </p>
-                <p className="mt-1 text-text-secondary">
-                  Login/session-based provider adapters are not enabled yet.
-                </p>
+                <p>2. OpenClaw bootstrap</p>
+                <p>3. Gateway route config</p>
+                <p>4. Health verification</p>
+                <p>5. Synclaw connected</p>
               </div>
               {managedStatus?.latestJob?.logs?.length ? (
                 <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
@@ -852,6 +960,23 @@ export function OnboardingWizard() {
                       {managedStatus?.managedConnectedAt
                         ? new Date(managedStatus.managedConnectedAt).toLocaleString()
                         : "Pending"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Server profile</p>
+                    <p className="text-xs text-text-primary">
+                      {managedServerProfileByCode(
+                        managedStatus?.serverProfile ?? serverProfile,
+                      ).label}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
+                    <p className="text-[10px] text-text-dim">Server type</p>
+                    <p className="text-xs text-text-primary">
+                      {managedStatus?.serverType ||
+                        managedServerProfileByCode(serverProfile).serverType}
                     </p>
                   </div>
                 </div>
@@ -1274,14 +1399,96 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
         >
           <StepHeader
             step={2}
-            title="Create main agent"
-            subtitle='Canonical sessionKey: "agent:main:main".'
+            title="Provider setup"
+            subtitle="Add and validate at least one model provider API key."
             done={step2Done}
           />
 
           <div className="mt-5 space-y-4">
             {!step1Done ? (
               <p className="text-xs text-text-muted">Complete Step 1 first.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Provider</Label>
+                    <select
+                      value={providerId}
+                      onChange={(e) => setProviderId(e.target.value as ModelProviderId)}
+                      className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
+                    >
+                      {MODEL_PROVIDER_OPTIONS.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">API key</Label>
+                    <Input
+                      type="password"
+                      value={providerKeyDraft}
+                      onChange={(e) => setProviderKeyDraft(e.target.value)}
+                      placeholder="Paste provider key"
+                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    onClick={() => void onSaveProviderKey()}
+                    disabled={providerSaving || !providerKeyDraft.trim()}
+                  >
+                    {providerSaving ? "Saving..." : "Save & Validate"}
+                  </Button>
+                  <p className="text-xs text-text-dim">
+                    Valid keys: {status?.providerKeyValidCount ?? 0}
+                  </p>
+                </div>
+
+                {providerMessage ? (
+                  <p className="text-xs text-status-active">{providerMessage}</p>
+                ) : null}
+                {providerError ? (
+                  <p className="text-xs text-status-blocked">{providerError}</p>
+                ) : null}
+
+                <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
+                  {providerKeyStatuses.length > 0 ? (
+                    providerKeyStatuses.slice(0, 3).map((row) => (
+                      <p key={row.provider}>
+                        {row.provider}: {row.status}
+                      </p>
+                    ))
+                  ) : (
+                    <p>No provider keys configured yet.</p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={`rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6 ${
+            !step1Done || !step2Done ? "opacity-60" : ""
+          }`}
+        >
+          <StepHeader
+            step={3}
+            title="Create main agent"
+            subtitle='Canonical sessionKey: "agent:main:main".'
+            done={step3Done}
+          />
+
+          <div className="mt-5 space-y-4">
+            {!step1Done || !step2Done ? (
+              <p className="text-xs text-text-muted">
+                Complete Step 1 and Step 2 first.
+              </p>
             ) : status?.mainAgentId ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-text-muted">

@@ -211,6 +211,17 @@ export default defineSchema({
     ),
     managedRegionRequested: v.optional(v.string()),
     managedRegionResolved: v.optional(v.string()),
+    managedServerProfile: v.optional(
+      v.union(
+        v.literal("starter"),
+        v.literal("standard"),
+        v.literal("performance"),
+      ),
+    ),
+    managedServerType: v.optional(v.string()),
+    managedUpstreamHost: v.optional(v.string()),
+    managedUpstreamPort: v.optional(v.number()),
+    managedRouteVersion: v.optional(v.number()),
     managedStatus: v.optional(
       v.union(
         v.literal("queued"),
@@ -222,6 +233,8 @@ export default defineSchema({
     ),
     managedInstanceId: v.optional(v.string()),
     managedConnectedAt: v.optional(v.number()),
+    managedBootstrapReadyAt: v.optional(v.number()),
+    managedGatewayReadyAt: v.optional(v.number()),
     managedAutoFallbackUsed: v.optional(v.boolean()),
     serviceTier: v.optional(
       v.union(
@@ -274,8 +287,26 @@ export default defineSchema({
       v.literal("sutraha_managed"),
     ),
     requestedRegion: v.optional(v.string()),
+    requestedServerProfile: v.optional(
+      v.union(
+        v.literal("starter"),
+        v.literal("standard"),
+        v.literal("performance"),
+      ),
+    ),
+    requestedServerType: v.optional(v.string()),
+    resolvedServerType: v.optional(v.string()),
     resolvedRegion: v.optional(v.string()),
     fallbackApplied: v.optional(v.boolean()),
+    bootstrapStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("running"), v.literal("ready"), v.literal("failed")),
+    ),
+    gatewayRouteStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("running"), v.literal("ready"), v.literal("failed")),
+    ),
+    healthcheckStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("running"), v.literal("ready"), v.literal("failed")),
+    ),
     connectionAutoApplied: v.optional(v.boolean()),
     status: v.union(
       v.literal("queued"),
@@ -287,6 +318,9 @@ export default defineSchema({
     step: v.union(
       v.literal("queued"),
       v.literal("infra_provisioning"),
+      v.literal("bootstrap_openclaw"),
+      v.literal("gateway_route_config"),
+      v.literal("health_verification"),
       v.literal("openclaw_install"),
       v.literal("gateway_config"),
       v.literal("security_hardening"),
@@ -298,6 +332,15 @@ export default defineSchema({
     logs: v.array(v.string()),
     startedAt: v.optional(v.number()),
     finishedAt: v.optional(v.number()),
+    failureCode: v.optional(
+      v.union(
+        v.literal("PROVISION_FAILED"),
+        v.literal("BOOTSTRAP_FAILED"),
+        v.literal("GATEWAY_ROUTE_FAILED"),
+        v.literal("HEALTHCHECK_FAILED"),
+        v.literal("CONNECTIVITY_FAILED"),
+      ),
+    ),
     failureReason: v.optional(v.string()),
     retryOfJobId: v.optional(v.id("openclawProvisioningJobs")),
     createdBy: v.id("users"),

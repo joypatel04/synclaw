@@ -21,6 +21,11 @@ const serviceTierValidator = v.union(
   v.literal("assisted"),
   v.literal("managed"),
 );
+const managedServerProfileValidator = v.union(
+  v.literal("starter"),
+  v.literal("standard"),
+  v.literal("performance"),
+);
 const setupStatusValidator = v.union(
   v.literal("not_started"),
   v.literal("infra_ready"),
@@ -37,7 +42,7 @@ const recommendedMethodValidator = v.union(
 type TransportMode = "direct_ws" | "connector" | "self_hosted_local";
 type DeploymentMode = "managed" | "manual";
 type ProvisioningMode = "customer_vps" | "sutraha_managed";
-type ServiceTier = "self_serve" | "assisted" | "managed";
+type ServiceTier = "self_serve" | "assisted";
 type RecommendedMethod =
   | "public_wss"
   | "connector_advanced"
@@ -90,7 +95,7 @@ function normalizeProvisioningMode(input?: string): ProvisioningMode {
 }
 
 function normalizeServiceTier(input?: string): ServiceTier {
-  if (input === "assisted" || input === "managed") return input;
+  if (input === "assisted") return input;
   return "self_serve";
 }
 
@@ -235,9 +240,16 @@ export const getConfigSummary = query({
       provisioningMode: normalizeProvisioningMode(row.provisioningMode),
       managedRegionRequested: row.managedRegionRequested ?? "",
       managedRegionResolved: row.managedRegionResolved ?? "",
+      managedServerProfile: row.managedServerProfile ?? "starter",
+      managedServerType: row.managedServerType ?? "",
+      managedUpstreamHost: row.managedUpstreamHost ?? "",
+      managedUpstreamPort: row.managedUpstreamPort ?? null,
+      managedRouteVersion: row.managedRouteVersion ?? null,
       managedStatus: row.managedStatus ?? "queued",
       managedInstanceId: row.managedInstanceId ?? "",
       managedConnectedAt: row.managedConnectedAt ?? null,
+      managedBootstrapReadyAt: row.managedBootstrapReadyAt ?? null,
+      managedGatewayReadyAt: row.managedGatewayReadyAt ?? null,
       managedAutoFallbackUsed: Boolean(row.managedAutoFallbackUsed),
       serviceTier: normalizeServiceTier(row.serviceTier),
       setupStatus: normalizeSetupStatus(row.setupStatus),
@@ -312,9 +324,16 @@ export const getClientConfig = query({
       provisioningMode: normalizeProvisioningMode(row.provisioningMode),
       managedRegionRequested: row.managedRegionRequested ?? "",
       managedRegionResolved: row.managedRegionResolved ?? "",
+      managedServerProfile: row.managedServerProfile ?? "starter",
+      managedServerType: row.managedServerType ?? "",
+      managedUpstreamHost: row.managedUpstreamHost ?? "",
+      managedUpstreamPort: row.managedUpstreamPort ?? null,
+      managedRouteVersion: row.managedRouteVersion ?? null,
       managedStatus: row.managedStatus ?? "queued",
       managedInstanceId: row.managedInstanceId ?? "",
       managedConnectedAt: row.managedConnectedAt ?? null,
+      managedBootstrapReadyAt: row.managedBootstrapReadyAt ?? null,
+      managedGatewayReadyAt: row.managedGatewayReadyAt ?? null,
       managedAutoFallbackUsed: Boolean(row.managedAutoFallbackUsed),
       serviceTier: normalizeServiceTier(row.serviceTier),
       setupStatus: normalizeSetupStatus(row.setupStatus),
@@ -358,6 +377,11 @@ export const upsertConfig = mutation({
     provisioningMode: v.optional(provisioningModeValidator),
     managedRegionRequested: v.optional(v.string()),
     managedRegionResolved: v.optional(v.string()),
+    managedServerProfile: v.optional(managedServerProfileValidator),
+    managedServerType: v.optional(v.string()),
+    managedUpstreamHost: v.optional(v.string()),
+    managedUpstreamPort: v.optional(v.union(v.number(), v.null())),
+    managedRouteVersion: v.optional(v.union(v.number(), v.null())),
     managedStatus: v.optional(
       v.union(
         v.literal("queued"),
@@ -369,6 +393,8 @@ export const upsertConfig = mutation({
     ),
     managedInstanceId: v.optional(v.string()),
     managedConnectedAt: v.optional(v.union(v.number(), v.null())),
+    managedBootstrapReadyAt: v.optional(v.union(v.number(), v.null())),
+    managedGatewayReadyAt: v.optional(v.union(v.number(), v.null())),
     managedAutoFallbackUsed: v.optional(v.boolean()),
     serviceTier: v.optional(serviceTierValidator),
     setupStatus: v.optional(setupStatusValidator),
@@ -500,6 +526,28 @@ export const upsertConfig = mutation({
         args.managedRegionResolved !== undefined
           ? args.managedRegionResolved.trim()
           : (existing?.managedRegionResolved ?? ""),
+      managedServerProfile:
+        args.managedServerProfile ?? existing?.managedServerProfile ?? "starter",
+      managedServerType:
+        args.managedServerType !== undefined
+          ? args.managedServerType.trim()
+          : (existing?.managedServerType ?? ""),
+      managedUpstreamHost:
+        args.managedUpstreamHost !== undefined
+          ? args.managedUpstreamHost.trim()
+          : (existing?.managedUpstreamHost ?? ""),
+      managedUpstreamPort:
+        args.managedUpstreamPort === null
+          ? undefined
+          : (args.managedUpstreamPort ??
+            existing?.managedUpstreamPort ??
+            undefined),
+      managedRouteVersion:
+        args.managedRouteVersion === null
+          ? undefined
+          : (args.managedRouteVersion ??
+            existing?.managedRouteVersion ??
+            undefined),
       managedStatus:
         args.managedStatus ?? existing?.managedStatus ?? "queued",
       managedInstanceId:
@@ -511,6 +559,18 @@ export const upsertConfig = mutation({
           ? undefined
           : (args.managedConnectedAt ??
             existing?.managedConnectedAt ??
+            undefined),
+      managedBootstrapReadyAt:
+        args.managedBootstrapReadyAt === null
+          ? undefined
+          : (args.managedBootstrapReadyAt ??
+            existing?.managedBootstrapReadyAt ??
+            undefined),
+      managedGatewayReadyAt:
+        args.managedGatewayReadyAt === null
+          ? undefined
+          : (args.managedGatewayReadyAt ??
+            existing?.managedGatewayReadyAt ??
             undefined),
       managedAutoFallbackUsed:
         args.managedAutoFallbackUsed ??

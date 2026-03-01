@@ -55,6 +55,11 @@ import {
   managedRegionLabel,
   type ManagedRegionCode,
 } from "@/lib/managedRegions";
+import {
+  MANAGED_SERVER_PROFILES,
+  managedServerProfileByCode,
+  type ManagedServerProfileCode,
+} from "@/lib/managedServerProfiles";
 
 const MODEL_PROVIDER_OPTIONS = [
   { id: "openai", label: "OpenAI" },
@@ -168,9 +173,11 @@ function OpenClawSettingsContent() {
   );
   const [requestedRegion, setRequestedRegion] =
     useState<ManagedRegionCode>("eu_central_hil");
-  const [serviceTier, setServiceTier] = useState<
-    "self_serve" | "assisted" | "managed"
-  >("self_serve");
+  const [serverProfile, setServerProfile] =
+    useState<ManagedServerProfileCode>("starter");
+  const [serviceTier, setServiceTier] = useState<"self_serve" | "assisted">(
+    "self_serve",
+  );
   const [setupStatus, setSetupStatus] = useState<
     | "not_started"
     | "infra_ready"
@@ -267,10 +274,10 @@ function OpenClawSettingsContent() {
         summary.managedRegionResolved) as ManagedRegionCode) ??
         "eu_central_hil",
     );
-    setServiceTier(
-      (summary.serviceTier as "self_serve" | "assisted" | "managed") ??
-        "self_serve",
+    setServerProfile(
+      (summary.managedServerProfile as ManagedServerProfileCode) ?? "starter",
     );
+    setServiceTier(summary.serviceTier === "assisted" ? "assisted" : "self_serve");
     setSetupStatus(
       (summary.setupStatus as
         | "not_started"
@@ -462,6 +469,7 @@ function OpenClawSettingsContent() {
               : "self_hosted_local",
         provisioningMode: "sutraha_managed",
         managedRegionRequested: requestedRegion,
+        managedServerProfile: serverProfile,
         serviceTier,
         setupStatus,
         ownerContact,
@@ -635,6 +643,7 @@ function OpenClawSettingsContent() {
         workspaceId,
         requestedRegion,
         serviceTier,
+        serverProfile,
       });
       setDeploymentMode("managed");
       setSetupStatus("verified");
@@ -934,36 +943,56 @@ function OpenClawSettingsContent() {
               <select
                 value={serviceTier}
                 onChange={(e) =>
-                  setServiceTier(
-                    e.target.value as "self_serve" | "assisted" | "managed",
-                  )
+                  setServiceTier(e.target.value as "self_serve" | "assisted")
                 }
                 className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
               >
                 <option value="self_serve">Guided self-serve</option>
                 <option value="assisted">Assisted launch</option>
-                <option value="managed">Managed operations</option>
               </select>
               <p className="text-[11px] text-text-dim">
                 {serviceTier === "assisted"
                   ? "Assisted launch creates a support request; status appears below in Latest assisted session."
-                  : serviceTier === "managed"
-                    ? "Managed operations indicates ongoing operational support after setup."
-                    : "Guided self-serve means no support ticket is created unless you explicitly request it."}
+                  : "Guided self-serve means no support ticket is created unless you explicitly request it."}
               </p>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Owner contact</Label>
-              <Input
-                value={ownerContact}
-                onChange={(e) => setOwnerContact(e.target.value)}
-                placeholder="name@company.com or +1 phone"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              />
+          <div className="mt-4 space-y-2">
+            <Label className="text-text-secondary">Server size</Label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {MANAGED_SERVER_PROFILES.map((profile) => {
+                const selected = serverProfile === profile.code;
+                return (
+                  <button
+                    key={profile.code}
+                    type="button"
+                    onClick={() => setServerProfile(profile.code)}
+                    className={`rounded-md border p-2 text-left ${
+                      selected
+                        ? "border-accent-orange/50 bg-accent-orange/10"
+                        : "border-border-default bg-bg-primary"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-text-primary">
+                      {profile.label}
+                    </p>
+                    <p className="mt-1 text-[10px] text-text-muted">
+                      {profile.serverType} · {profile.vcpu} vCPU · {profile.ramGb}GB RAM
+                    </p>
+                    <p className="text-[10px] text-text-muted">
+                      {profile.storageGb}GB {profile.storageType} · {profile.costTier} cost
+                    </p>
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-[11px] text-text-dim">
+              {managedServerProfileByCode(serverProfile).description}
+            </p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-text-secondary">Setup status</Label>
               <select
@@ -987,28 +1016,52 @@ function OpenClawSettingsContent() {
                 <option value="verified">Verified</option>
               </select>
             </div>
+            {serviceTier === "assisted" ? (
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Owner contact</Label>
+                <Input
+                  value={ownerContact}
+                  onChange={(e) => setOwnerContact(e.target.value)}
+                  placeholder="name@company.com or +1 phone"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                />
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-4 space-y-2">
-            <Label className="text-text-secondary">Support notes</Label>
-            <Textarea
-              value={supportNotes}
-              onChange={(e) => setSupportNotes(e.target.value)}
-              placeholder="Deployment preferences, tailnet notes, constraints, preferred regions..."
-              className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-              rows={3}
-            />
-          </div>
+          {serviceTier === "assisted" ? (
+            <div className="mt-4 space-y-2">
+              <Label className="text-text-secondary">Support notes</Label>
+              <Textarea
+                value={supportNotes}
+                onChange={(e) => setSupportNotes(e.target.value)}
+                placeholder="Deployment preferences, tailnet notes, constraints, preferred regions..."
+                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                rows={3}
+              />
+            </div>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8"
-              onClick={() => void onCreateProvisioningJob()}
-            >
-              Launch managed OpenClaw
-            </Button>
+            {serviceTier === "assisted" ? (
+              <Button
+                type="button"
+                className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                onClick={() => void onRequestAssistedLaunch()}
+              >
+                <LifeBuoy className="mr-1 h-3.5 w-3.5" />
+                Request assisted launch
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8"
+                onClick={() => void onCreateProvisioningJob()}
+              >
+                Launch managed OpenClaw
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -1025,22 +1078,12 @@ function OpenClawSettingsContent() {
             >
               Retry latest job
             </Button>
-            <Button
-              type="button"
-              className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
-              onClick={() => void onRequestAssistedLaunch()}
-            >
-              <LifeBuoy className="mr-1 h-3.5 w-3.5" />
-              Request assisted launch
-            </Button>
           </div>
-          <p className="mt-2 text-[11px] text-text-dim">
-            Note: requesting assisted launch does not start provisioning. Use{" "}
-            <span className="font-semibold text-text-secondary">
-              Launch managed OpenClaw
-            </span>{" "}
-            to start infra creation.
-          </p>
+          {serviceTier === "assisted" ? (
+            <p className="mt-2 text-[11px] text-text-dim">
+              Assisted launch creates a support request only. Infra provisioning starts when support triggers setup.
+            </p>
+          ) : null}
 
           {serviceMessage ? (
             <p className="mt-3 text-xs text-status-active">{serviceMessage}</p>
@@ -1058,6 +1101,19 @@ function OpenClawSettingsContent() {
                 {managedStatus?.latestJob
                   ? `${managedStatus.latestJob.status} · ${managedStatus.latestJob.step}`
                   : "No job yet"}
+              </p>
+              {managedStatus?.latestJob?.failureCode ? (
+                <p className="mt-1 text-[11px] text-status-blocked">
+                  Failure code: {managedStatus.latestJob.failureCode}
+                </p>
+              ) : null}
+              <p className="mt-1 text-[11px] text-text-dim">
+                Server:{" "}
+                {managedStatus?.serverType ||
+                  managedServerProfileByCode(serverProfile).serverType}{" "}
+                ({managedServerProfileByCode(
+                  managedStatus?.serverProfile ?? serverProfile,
+                ).label})
               </p>
             </div>
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
@@ -1084,11 +1140,11 @@ function OpenClawSettingsContent() {
           </p>
           <div className="mt-3 rounded-md border border-status-review/40 bg-status-review/10 px-3 py-2">
             <p className="text-[11px] font-semibold text-status-review">
-              API-key-only adapters currently supported
+              Model providers currently use API keys
             </p>
             <p className="mt-1 text-[11px] text-text-secondary">
-              If a provider requires login/session auth, integration is pending.
-              OAuth/session adapters are not enabled yet.
+              For managed OpenClaw runtime, provider logins are not connected here yet.
+              Add provider keys below to enable inference.
             </p>
           </div>
           <div className="mt-4 space-y-4">

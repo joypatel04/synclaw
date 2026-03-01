@@ -7,6 +7,7 @@ import { requireMember } from "./lib/permissions";
  *
  * "Complete" means:
  * - OpenClaw Gateway config exists (mode-specific connection target saved)
+ * - At least one model provider key is valid
  * - Canonical main agent exists (sessionKey: agent:main:main)
  */
 export const getStatus = query({
@@ -30,6 +31,16 @@ export const getStatus = query({
     const provisioningMode = openclaw?.provisioningMode ?? "sutraha_managed";
     const deploymentMode = openclaw?.deploymentMode ?? "manual";
 
+    const providerKeys = await ctx.db
+      .query("workspaceModelProviderKeys")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+    const providerKeyCount = providerKeys.length;
+    const providerKeyValidCount = providerKeys.filter(
+      (key) => key.status === "valid",
+    ).length;
+    const providerKeyReady = providerKeyValidCount > 0;
+
     // We don't have a compound index for (workspaceId, sessionKey), so we scan
     // the workspace agents. This should remain small in normal usage.
     const agents = await ctx.db
@@ -41,11 +52,15 @@ export const getStatus = query({
       agents.find((a) => a.sessionKey === "agent:main:main") ?? null;
     const mainAgentId = mainAgent ? mainAgent._id : null;
 
-    const isComplete = openclawConfigured && mainAgentId !== null;
+    const isComplete =
+      openclawConfigured && providerKeyReady && mainAgentId !== null;
 
     return {
       isOwner,
       openclawConfigured,
+      providerKeyReady,
+      providerKeyCount,
+      providerKeyValidCount,
       setupStatus,
       serviceTier,
       provisioningMode,

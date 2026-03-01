@@ -9,6 +9,11 @@ import {
 import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
 import { encryptSecretToHex } from "./lib/secretCrypto";
+import {
+  DEFAULT_MANAGED_SERVER_PROFILE,
+  managedServerProfileByCode,
+  type ManagedServerProfileCode,
+} from "../lib/managedServerProfiles";
 
 const managedRegionValidator = v.union(
   v.literal("eu_central_hil"),
@@ -18,7 +23,12 @@ const managedRegionValidator = v.union(
 const serviceTierValidator = v.union(
   v.literal("self_serve"),
   v.literal("assisted"),
-  v.literal("managed"),
+);
+
+const managedServerProfileValidator = v.union(
+  v.literal("starter"),
+  v.literal("standard"),
+  v.literal("performance"),
 );
 
 const fallbackOrder: Record<string, string[]> = {
@@ -26,13 +36,28 @@ const fallbackOrder: Record<string, string[]> = {
   eu_central_nbg: ["eu_central_nbg", "eu_central_hil"],
 };
 
-type ServiceTier = "self_serve" | "assisted" | "managed";
+type ServiceTier = "self_serve" | "assisted";
 
 type ManagedCloudProvisioning = {
   provider: "hetzner" | "aws";
   instanceId: string;
   host: string;
+  serverTypeUsed?: string;
 };
+
+type ManagedFailureCode =
+  | "PROVISION_FAILED"
+  | "BOOTSTRAP_FAILED"
+  | "GATEWAY_ROUTE_FAILED"
+  | "HEALTHCHECK_FAILED"
+  | "CONNECTIVITY_FAILED";
+
+type ManagedStep =
+  | "infra_provisioning"
+  | "bootstrap_openclaw"
+  | "gateway_route_config"
+  | "health_verification"
+  | "synclaw_connected";
 
 function isRegionAvailable(region: string): boolean {
   return region === "eu_central_hil" || region === "eu_central_nbg";
@@ -55,6 +80,33 @@ function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
+}
+
+function optionalEnv(name: string): string | null {
+  const value = process.env[name]?.trim();
+  return value ? value : null;
+}
+
+function timeoutMsFromEnv(name: string, fallbackMs: number): number {
+  const value = optionalEnv(name);
+  if (!value) return fallbackMs;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallbackMs;
+  return Math.floor(parsed);
+}
+
+function normalizedBaseUrl(value: string | null): string | null {
+  if (!value) return null;
+  return value.replace(/\/+$/, "");
+}
+
+function controlPlaneBaseUrl(kind: "bootstrap" | "gateway"): string | null {
+  const canonical = normalizedBaseUrl(optionalEnv("MANAGED_CONTROL_PLANE_BASE_URL"));
+  if (canonical) return canonical;
+  if (kind === "bootstrap") {
+    return normalizedBaseUrl(optionalEnv("MANAGED_BOOTSTRAP_API_BASE_URL"));
+  }
+  return normalizedBaseUrl(optionalEnv("MANAGED_GATEWAY_API_BASE_URL"));
 }
 
 function providerForManagedCloud(): "hetzner" | "aws" {
@@ -248,33 +300,78 @@ async function provisionWithAws(region: string): Promise<ManagedCloudProvisionin
   };
 }
 
-async function provisionWithHetzner(region: string): Promise<ManagedCloudProvisioning> {
+async function provisionWithHetzner(
+  region: string,
+  requestedServerProfile?: string,
+): Promise<ManagedCloudProvisioning> {
   const token = requireEnv("HETZNER_API_TOKEN");
-  const serverType = process.env.MANAGED_HETZNER_SERVER_TYPE?.trim() || "cx22";
+  const configuredServerTypeRaw = process.env.MANAGED_HETZNER_SERVER_TYPE?.trim();
+  const fallbackServerTypeRaw =
+    process.env.MANAGED_HETZNER_FALLBACK_SERVER_TYPE?.trim();
   const image = process.env.MANAGED_HETZNER_IMAGE?.trim() || "ubuntu-24.04";
   const userData = process.env.MANAGED_HETZNER_CLOUD_INIT?.trim();
   const location = hetznerLocationForRegion(region);
 
-  const response = await fetch("https://api.hetzner.cloud/v1/servers", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: `synclaw-managed-${Date.now()}`,
-      server_type: serverType,
-      image,
-      location,
-      user_data: userData,
-      start_after_create: true,
-    }),
-  });
+  const isLegacyServerTypeId = (value: string | undefined) =>
+    Boolean(value && /^\d+$/.test(value));
+  const selectedProfile = managedServerProfileByCode(
+    requestedServerProfile ??
+      process.env.MANAGED_DEFAULT_SERVER_PROFILE?.trim() ??
+      DEFAULT_MANAGED_SERVER_PROFILE,
+  );
+  const configuredServerType =
+    configuredServerTypeRaw && !isLegacyServerTypeId(configuredServerTypeRaw)
+      ? configuredServerTypeRaw
+      : selectedProfile.serverType;
+  const fallbackServerType =
+    fallbackServerTypeRaw && !isLegacyServerTypeId(fallbackServerTypeRaw)
+      ? fallbackServerTypeRaw
+      : selectedProfile.serverType;
+  const serverTypeCandidates = Array.from(
+    new Set([configuredServerType, fallbackServerType]),
+  );
+  const createServer = async (serverType: string) => {
+    const response = await fetch("https://api.hetzner.cloud/v1/servers", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: `synclaw-managed-${Date.now()}`,
+        server_type: serverType,
+        image,
+        location,
+        user_data: userData,
+        start_after_create: true,
+      }),
+    });
+    const payload = await response.json().catch(() => null);
+    return { response, payload };
+  };
 
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
+  let attemptedServerType = serverTypeCandidates[0]!;
+  let response: Response | null = null;
+  let payload: any = null;
+
+  for (const candidate of serverTypeCandidates) {
+    attemptedServerType = candidate;
+    ({ response, payload } = await createServer(candidate));
+    if (response.ok) break;
+    const message = String(payload?.error?.message ?? "").toLowerCase();
+    const hasServerTypeError =
+      response.status === 422 &&
+      (message.includes("server type") ||
+        message.includes("deprecated") ||
+        message.includes("invalid"));
+    if (!hasServerTypeError) {
+      break;
+    }
+  }
+
+  if (!response || !response.ok) {
     throw new Error(
-      `Hetzner API error (${response.status}): ${JSON.stringify(payload)}`,
+      `Hetzner API error (${response?.status ?? "unknown"}): ${JSON.stringify(payload)}`,
     );
   }
 
@@ -289,19 +386,208 @@ async function provisionWithHetzner(region: string): Promise<ManagedCloudProvisi
     provider: "hetzner",
     instanceId,
     host,
+    serverTypeUsed: attemptedServerType,
   };
 }
 
 async function provisionManagedInstance(
   region: string,
+  requestedServerProfile?: string,
 ): Promise<ManagedCloudProvisioning> {
   const provider = providerForManagedCloud();
   if (provider === "aws") {
     const awsRegion = awsRegionForFriendlyRegion(region);
     return await provisionWithAws(awsRegion);
   }
-  return await provisionWithHetzner(region);
+  return await provisionWithHetzner(region, requestedServerProfile);
 }
+
+async function fetchJsonWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${JSON.stringify(payload)}`);
+    }
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export const _bootstrapOpenClawInstance = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+    provider: v.union(v.literal("hetzner"), v.literal("aws")),
+    instanceId: v.string(),
+    host: v.string(),
+    resolvedRegion: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const apiBase = controlPlaneBaseUrl("bootstrap");
+    const timeoutMs = timeoutMsFromEnv("MANAGED_BOOTSTRAP_TIMEOUT_MS", 120000);
+    const strict = optionalEnv("MANAGED_BOOTSTRAP_STRICT") === "true";
+    if (!apiBase) {
+      if (strict) {
+        throw new Error(
+          "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_BOOTSTRAP_API_BASE_URL) is required when MANAGED_BOOTSTRAP_STRICT=true.",
+        );
+      }
+      await sleep(1200);
+      return { ok: true, simulated: true };
+    }
+
+    const token =
+      optionalEnv("MANAGED_BOOTSTRAP_API_TOKEN") ??
+      optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/bootstrap`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          jobId: String(args.jobId),
+          provider: args.provider,
+          instanceId: args.instanceId,
+          host: args.host,
+          region: args.resolvedRegion,
+          bootstrapUser: optionalEnv("MANAGED_BOOTSTRAP_USER") ?? "root",
+          sshPrivateKey: optionalEnv("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY"),
+        }),
+      },
+      timeoutMs,
+    );
+    return { ok: true, simulated: false, payload };
+  },
+});
+
+export const _configureGatewayRoute = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+    host: v.string(),
+    resolvedRegion: v.string(),
+    managedWsUrl: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const apiBase = controlPlaneBaseUrl("gateway");
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    const strict = optionalEnv("MANAGED_GATEWAY_STRICT") === "true";
+    if (!apiBase) {
+      if (strict) {
+        throw new Error(
+          "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required when MANAGED_GATEWAY_STRICT=true.",
+        );
+      }
+      await sleep(900);
+      return { ok: true, simulated: true };
+    }
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    if (!token && strict) {
+      throw new Error("MANAGED_GATEWAY_API_TOKEN is required for strict mode.");
+    }
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/routes`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          jobId: String(args.jobId),
+          upstreamHost: args.host,
+          upstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765"),
+          region: args.resolvedRegion,
+          wsUrl: args.managedWsUrl,
+        }),
+      },
+      timeoutMs,
+    );
+    return { ok: true, simulated: false, payload };
+  },
+});
+
+export const _deleteGatewayRoute = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+  },
+  handler: async (_ctx, args) => {
+    const apiBase = controlPlaneBaseUrl("gateway");
+    if (!apiBase) return { ok: true, skipped: true };
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/routes/delete`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          jobId: String(args.jobId),
+        }),
+      },
+      timeoutMs,
+    );
+    return { ok: true, payload };
+  },
+});
+
+export const _runManagedHealthChecks = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+    host: v.string(),
+    managedWsUrl: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    if (!args.managedWsUrl.startsWith("wss://")) {
+      throw new Error("Managed wsUrl must use wss://");
+    }
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    const apiBase = controlPlaneBaseUrl("gateway");
+    if (!apiBase) {
+      await sleep(1000);
+      return { ok: true, checks: { wsUrlTls: true, hostPresent: Boolean(args.host) } };
+    }
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/routes/verify?workspaceId=${encodeURIComponent(String(args.workspaceId))}`,
+      {
+        method: "GET",
+        headers,
+      },
+      timeoutMs,
+    );
+    return {
+      ok: true,
+      checks: { wsUrlTls: true, hostPresent: Boolean(args.host), gatewayRoute: true },
+      payload,
+    };
+  },
+});
 
 export const _appendManagedJobLog = internalMutation({
   args: {
@@ -347,22 +633,101 @@ export const _appendManagedJobLog = internalMutation({
   },
 });
 
+export const _markStepStatus = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+    step: v.union(
+      v.literal("infra_provisioning"),
+      v.literal("bootstrap_openclaw"),
+      v.literal("gateway_route_config"),
+      v.literal("health_verification"),
+      v.literal("synclaw_connected"),
+    ),
+    status: v.union(v.literal("running"), v.literal("ready"), v.literal("failed")),
+    log: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.workspaceId !== args.workspaceId) return;
+    const now = Date.now();
+    const patch: Record<string, any> = {
+      step: args.step,
+      logs: [...(job.logs ?? []), `[${isoNow()}] ${args.log}`],
+      updatedAt: now,
+    };
+    if (args.status === "running") patch.status = "running";
+
+    if (args.step === "bootstrap_openclaw") {
+      patch.bootstrapStatus =
+        args.status === "running" ? "running" : args.status === "ready" ? "ready" : "failed";
+    }
+    if (args.step === "gateway_route_config") {
+      patch.gatewayRouteStatus =
+        args.status === "running" ? "running" : args.status === "ready" ? "ready" : "failed";
+    }
+    if (args.step === "health_verification") {
+      patch.healthcheckStatus =
+        args.status === "running" ? "running" : args.status === "ready" ? "ready" : "failed";
+    }
+    await ctx.db.patch(job._id, patch as any);
+
+    const cfg = await ctx.db
+      .query("openclawGatewayConfigs")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .first();
+    if (!cfg) return;
+    const cfgPatch: Record<string, any> = { updatedAt: now };
+    if (args.step === "bootstrap_openclaw" && args.status === "ready") {
+      cfgPatch.managedBootstrapReadyAt = now;
+    }
+    if (args.step === "gateway_route_config" && args.status === "ready") {
+      cfgPatch.managedGatewayReadyAt = now;
+    }
+    if (args.status === "failed") {
+      cfgPatch.managedStatus = "failed";
+    } else if (args.status === "running") {
+      cfgPatch.managedStatus = "provisioning";
+    }
+    await ctx.db.patch(cfg._id, cfgPatch as any);
+  },
+});
+
 export const _markManagedJobFailed = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
     jobId: v.id("openclawProvisioningJobs"),
+    failureCode: v.optional(
+      v.union(
+        v.literal("PROVISION_FAILED"),
+        v.literal("BOOTSTRAP_FAILED"),
+        v.literal("GATEWAY_ROUTE_FAILED"),
+        v.literal("HEALTHCHECK_FAILED"),
+        v.literal("CONNECTIVITY_FAILED"),
+      ),
+    ),
     reason: v.string(),
   },
   handler: async (ctx, args) => {
     const job = await ctx.db.get(args.jobId);
     if (!job || job.workspaceId !== args.workspaceId) return;
     const now = Date.now();
+    const statusPatch: Record<string, any> = {};
+    if (args.failureCode === "BOOTSTRAP_FAILED") {
+      statusPatch.bootstrapStatus = "failed";
+    } else if (args.failureCode === "GATEWAY_ROUTE_FAILED") {
+      statusPatch.gatewayRouteStatus = "failed";
+    } else if (args.failureCode === "HEALTHCHECK_FAILED") {
+      statusPatch.healthcheckStatus = "failed";
+    }
     await ctx.db.patch(job._id, {
       status: "failed",
+      failureCode: args.failureCode,
       failureReason: args.reason,
       finishedAt: now,
       updatedAt: now,
       logs: [...(job.logs ?? []), `[${isoNow()}] Provisioning failed: ${args.reason}`],
+      ...statusPatch,
     } as any);
     const cfg = await ctx.db
       .query("openclawGatewayConfigs")
@@ -386,6 +751,10 @@ export const _finalizeManagedConnection = internalMutation({
     instanceId: v.string(),
     host: v.string(),
     provider: v.union(v.literal("hetzner"), v.literal("aws")),
+    serverTypeUsed: v.optional(v.string()),
+    upstreamHost: v.optional(v.string()),
+    upstreamPort: v.optional(v.number()),
+    routeVersion: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -412,7 +781,14 @@ export const _finalizeManagedConnection = internalMutation({
       managedStatus: "ready",
       managedRegionResolved: args.resolvedRegion,
       managedConnectedAt: now,
+      managedBootstrapReadyAt: cfg.managedBootstrapReadyAt ?? now,
+      managedGatewayReadyAt: cfg.managedGatewayReadyAt ?? now,
       managedInstanceId: `${args.provider}:${args.instanceId}`,
+      managedServerType: args.serverTypeUsed ?? cfg.managedServerType,
+      managedUpstreamHost: args.upstreamHost ?? cfg.managedUpstreamHost ?? args.host,
+      managedUpstreamPort:
+        args.upstreamPort ?? cfg.managedUpstreamPort ?? Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765"),
+      managedRouteVersion: args.routeVersion ?? cfg.managedRouteVersion,
       setupStatus: "verified",
       securityChecklistVersion: 1,
       securityConfirmedAt: now,
@@ -429,6 +805,11 @@ export const _finalizeManagedConnection = internalMutation({
         status: "completed",
         step: "done",
         connectionAutoApplied: true,
+        resolvedServerType:
+          args.serverTypeUsed ?? job.resolvedServerType ?? job.requestedServerType,
+        bootstrapStatus: "ready",
+        gatewayRouteStatus: "ready",
+        healthcheckStatus: "ready",
         finishedAt: now,
         updatedAt: now,
         logs: [
@@ -449,6 +830,29 @@ export const executeManagedProvisioning = internalAction({
     jobId: v.id("openclawProvisioningJobs"),
   },
   handler: async (ctx, args) => {
+    const fail = async (
+      failureCode: ManagedFailureCode,
+      reason: string,
+      step?: ManagedStep,
+    ) => {
+      if (step) {
+        await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step,
+          status: "failed",
+          log: reason,
+        });
+      }
+      await ctx.runMutation(internal.managedProvisioning._markManagedJobFailed, {
+        workspaceId: args.workspaceId,
+        jobId: args.jobId,
+        failureCode,
+        reason,
+      });
+      return { ok: false, error: reason, failureCode };
+    };
+
     try {
       const job = await ctx.runQuery(internal.managedProvisioning.getJobStatus, {
         workspaceId: args.workspaceId,
@@ -456,61 +860,187 @@ export const executeManagedProvisioning = internalAction({
       });
       if (!job) return { ok: false };
 
-      await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
+      await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
         step: "infra_provisioning",
         status: "running",
         log: "Provisioning isolated infrastructure host.",
       });
-      await sleep(1000);
+
+      let provisioned: ManagedCloudProvisioning;
+      try {
+        provisioned = await provisionManagedInstance(
+          job.resolvedRegion || "eu_central_hil",
+          job.requestedServerProfile,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return await fail("PROVISION_FAILED", message, "infra_provisioning");
+      }
 
       await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "openclaw_install",
+        step: "infra_provisioning",
         status: "running",
-        log: "Calling cloud provider API to create instance.",
+        log:
+          `Instance ready (${provisioned.provider}:${provisioned.instanceId}` +
+          `${provisioned.serverTypeUsed ? ` / ${provisioned.serverTypeUsed}` : ""}).`,
       });
 
-      const provisioned = await provisionManagedInstance(
+      await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+        workspaceId: args.workspaceId,
+        jobId: args.jobId,
+        step: "bootstrap_openclaw",
+        status: "running",
+        log: "Bootstrapping OpenClaw runtime on provisioned instance.",
+      });
+      try {
+        await ctx.runAction(internal.managedProvisioning._bootstrapOpenClawInstance, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          provider: provisioned.provider,
+          instanceId: provisioned.instanceId,
+          host: provisioned.host,
+          resolvedRegion: job.resolvedRegion || "eu_central_hil",
+        });
+        await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step: "bootstrap_openclaw",
+          status: "ready",
+          log: "OpenClaw bootstrap completed.",
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return await fail("BOOTSTRAP_FAILED", message, "bootstrap_openclaw");
+      }
+
+      const managedWsUrl = managedWsUrlFor(
         job.resolvedRegion || "eu_central_hil",
+        String(args.workspaceId),
+        provisioned.host,
       );
+      let routedUpstreamHost = provisioned.host;
+      let routedUpstreamPort = Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765");
+      let routedVersion: number | undefined = undefined;
 
       await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "gateway_config",
+        step: "gateway_route_config",
         status: "running",
-        log: `Instance ready (${provisioned.provider}:${provisioned.instanceId}). Bootstrapping OpenClaw runtime.`,
+        log: "Removing any stale workspace route before re-registering.",
       });
-      await sleep(1000);
-
-      await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
+      await ctx.runAction(internal.managedProvisioning._deleteGatewayRoute, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "security_hardening",
-        status: "running",
-        log: "Applying gateway security baseline and access controls.",
-      });
-      await sleep(1000);
+      }).catch(() => null);
 
-      await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
+      await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+        workspaceId: args.workspaceId,
+        jobId: args.jobId,
+        step: "gateway_route_config",
+        status: "running",
+        log: "Configuring central gateway workspace route.",
+      });
+      try {
+        const routeResult = await ctx.runAction(
+          internal.managedProvisioning._configureGatewayRoute,
+          {
+            workspaceId: args.workspaceId,
+            jobId: args.jobId,
+            host: provisioned.host,
+            resolvedRegion: job.resolvedRegion || "eu_central_hil",
+            managedWsUrl,
+          },
+        );
+        const routePayload = (routeResult as any)?.payload ?? {};
+        const upstreamHost = String(
+          routePayload.upstreamHost ?? routePayload.host ?? provisioned.host,
+        );
+        const upstreamPortRaw = routePayload.upstreamPort ?? routePayload.port;
+        const upstreamPort =
+          typeof upstreamPortRaw === "number"
+            ? upstreamPortRaw
+            : Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765");
+        const routeVersionRaw = routePayload.routeVersion ?? routePayload.version;
+        const routeVersion =
+          typeof routeVersionRaw === "number" ? routeVersionRaw : undefined;
+        routedUpstreamHost = upstreamHost;
+        routedUpstreamPort = upstreamPort;
+        routedVersion = routeVersion;
+
+        await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step: "gateway_route_config",
+          status: "running",
+          log: `Workspace route active -> ${upstreamHost}:${upstreamPort}.`,
+        });
+        await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step: "gateway_route_config",
+          status: "ready",
+          log: `Gateway route configured (${managedWsUrl}).`,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return await fail("GATEWAY_ROUTE_FAILED", message, "gateway_route_config");
+      }
+
+      await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+        workspaceId: args.workspaceId,
+        jobId: args.jobId,
+        step: "health_verification",
+        status: "running",
+        log: "Running managed OpenClaw health and connectivity checks.",
+      });
+      try {
+        await ctx.runAction(internal.managedProvisioning._runManagedHealthChecks, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          host: routedUpstreamHost,
+          managedWsUrl,
+        });
+        await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step: "health_verification",
+          status: "ready",
+          log: "Health verification passed.",
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return await fail("HEALTHCHECK_FAILED", message, "health_verification");
+      }
+
+      await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
         step: "synclaw_connected",
         status: "running",
-        log: "Connecting workspace to managed OpenClaw gateway.",
+        log: "Applying connection details and finalizing Synclaw integration.",
       });
-
-      await ctx.runMutation(internal.managedProvisioning._finalizeManagedConnection, {
-        workspaceId: args.workspaceId,
-        jobId: args.jobId,
-        resolvedRegion: job.resolvedRegion || "eu_central_hil",
-        instanceId: provisioned.instanceId,
-        host: provisioned.host,
-        provider: provisioned.provider,
-      });
+      try {
+        await ctx.runMutation(internal.managedProvisioning._finalizeManagedConnection, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          resolvedRegion: job.resolvedRegion || "eu_central_hil",
+          instanceId: provisioned.instanceId,
+          host: provisioned.host,
+          provider: provisioned.provider,
+          serverTypeUsed: provisioned.serverTypeUsed,
+          upstreamHost: routedUpstreamHost,
+          upstreamPort: routedUpstreamPort,
+          routeVersion: routedVersion,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return await fail("CONNECTIVITY_FAILED", message, "synclaw_connected");
+      }
 
       return {
         ok: true,
@@ -519,12 +1049,7 @@ export const executeManagedProvisioning = internalAction({
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await ctx.runMutation(internal.managedProvisioning._markManagedJobFailed, {
-        workspaceId: args.workspaceId,
-        jobId: args.jobId,
-        reason: message,
-      });
-      return { ok: false, error: message };
+      return await fail("CONNECTIVITY_FAILED", message);
     }
   },
 });
@@ -534,6 +1059,7 @@ export const createManagedJob = mutation({
     workspaceId: v.id("workspaces"),
     requestedRegion: managedRegionValidator,
     serviceTier: serviceTierValidator,
+    serverProfile: v.optional(managedServerProfileValidator),
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "owner");
@@ -542,6 +1068,7 @@ export const createManagedJob = mutation({
       args.workspaceId,
       args.requestedRegion,
       args.serviceTier,
+      args.serverProfile ?? DEFAULT_MANAGED_SERVER_PROFILE,
       membership.userId,
     );
   },
@@ -552,19 +1079,26 @@ async function createManagedJobInternal(
   workspaceId: any,
   requestedRegion: string,
   serviceTier: ServiceTier,
+  serverProfile: ManagedServerProfileCode,
   userId: any,
 ) {
   const now = Date.now();
   const { resolvedRegion, fallbackApplied } =
     resolveRegionWithFallback(requestedRegion);
+  const requestedServerType = managedServerProfileByCode(serverProfile).serverType;
 
   const jobId = await ctx.db.insert("openclawProvisioningJobs", {
     workspaceId,
     provider: "sutraha-managed",
     targetHostType: "sutraha_managed",
     requestedRegion,
+    requestedServerProfile: serverProfile,
+    requestedServerType,
     resolvedRegion,
     fallbackApplied,
+    bootstrapStatus: "pending",
+    gatewayRouteStatus: "pending",
+    healthcheckStatus: "pending",
     connectionAutoApplied: false,
     status: "queued",
     step: "queued",
@@ -573,6 +1107,7 @@ async function createManagedJobInternal(
       fallbackApplied
         ? `[${isoNow()}] Requested region ${requestedRegion} unavailable, auto-fallback to ${resolvedRegion}.`
         : `[${isoNow()}] Region selected: ${resolvedRegion}.`,
+      `[${isoNow()}] Server profile selected: ${serverProfile} (${requestedServerType}).`,
     ],
     startedAt: now,
     createdBy: userId,
@@ -594,6 +1129,10 @@ async function createManagedJobInternal(
       managedStatus: "queued",
       managedRegionRequested: requestedRegion,
       managedRegionResolved: resolvedRegion,
+      managedServerProfile: serverProfile,
+      managedUpstreamHost: undefined,
+      managedUpstreamPort: undefined,
+      managedRouteVersion: undefined,
       managedAutoFallbackUsed: fallbackApplied,
       managedInstanceId: existing.managedInstanceId || `mc-${String(workspaceId)}-${now}`,
       updatedAt: now,
@@ -608,6 +1147,10 @@ async function createManagedJobInternal(
       provisioningMode: "sutraha_managed",
       managedRegionRequested: requestedRegion,
       managedRegionResolved: resolvedRegion,
+      managedServerProfile: serverProfile,
+      managedUpstreamHost: "",
+      managedUpstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765"),
+      managedRouteVersion: 0,
       managedStatus: "queued",
       managedInstanceId: `mc-${String(workspaceId)}-${now}`,
       managedAutoFallbackUsed: fallbackApplied,
@@ -646,6 +1189,7 @@ async function createManagedJobInternal(
     requestedRegion,
     resolvedRegion,
     fallbackApplied,
+    serverProfile,
     connected: { ok: false, pending: true },
   };
 }
@@ -673,7 +1217,15 @@ export const autoConnectWorkspace = mutation({
             cfg.managedRegionResolved ??
             cfg.managedRegionRequested ??
             "eu_central_hil",
+          requestedServerProfile:
+            cfg.managedServerProfile ?? DEFAULT_MANAGED_SERVER_PROFILE,
+          requestedServerType: managedServerProfileByCode(
+            cfg.managedServerProfile ?? DEFAULT_MANAGED_SERVER_PROFILE,
+          ).serverType,
           fallbackApplied: Boolean(cfg.managedAutoFallbackUsed),
+          bootstrapStatus: "pending",
+          gatewayRouteStatus: "pending",
+          healthcheckStatus: "pending",
           connectionAutoApplied: false,
           status: "queued",
           step: "queued",
@@ -708,6 +1260,18 @@ export const getManagedStatus = query({
       managedStatus: cfg.managedStatus ?? "queued",
       requestedRegion: cfg.managedRegionRequested ?? "",
       resolvedRegion: cfg.managedRegionResolved ?? "",
+      serverProfile:
+        cfg.managedServerProfile ?? DEFAULT_MANAGED_SERVER_PROFILE,
+      serverType:
+        cfg.managedServerType ??
+        managedServerProfileByCode(
+          cfg.managedServerProfile ?? DEFAULT_MANAGED_SERVER_PROFILE,
+        ).serverType,
+      upstreamHost: cfg.managedUpstreamHost ?? "",
+      upstreamPort: cfg.managedUpstreamPort ?? null,
+      routeVersion: cfg.managedRouteVersion ?? null,
+      managedBootstrapReadyAt: cfg.managedBootstrapReadyAt ?? null,
+      managedGatewayReadyAt: cfg.managedGatewayReadyAt ?? null,
       fallbackApplied: Boolean(cfg.managedAutoFallbackUsed),
       managedConnectedAt: cfg.managedConnectedAt ?? null,
       setupStatus: cfg.setupStatus ?? "not_started",
@@ -743,16 +1307,21 @@ export const retryJob = mutation({
       .query("openclawGatewayConfigs")
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .first();
-    const serviceTier = (cfg?.serviceTier ?? "self_serve") as ServiceTier;
+    const serviceTier: ServiceTier =
+      cfg?.serviceTier === "assisted" ? "assisted" : "self_serve";
     const requestedRegion = (job.requestedRegion ?? "eu_central_hil") as
       | "eu_central_hil"
       | "eu_central_nbg";
+    const requestedServerProfile = (job.requestedServerProfile ??
+      cfg?.managedServerProfile ??
+      DEFAULT_MANAGED_SERVER_PROFILE) as ManagedServerProfileCode;
 
     const result = await createManagedJobInternal(
       ctx,
       args.workspaceId,
       requestedRegion,
       serviceTier,
+      requestedServerProfile,
       membership.userId,
     );
 
