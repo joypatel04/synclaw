@@ -700,7 +700,7 @@ function OpenClawSettingsContent() {
       });
       setServiceTier("assisted");
       setServiceMessage(
-        `Assisted launch requested (${String(result.sessionId)}). Team will follow up.`,
+        `Assisted launch requested (${String(result.sessionId)}). Team will follow up via owner contact.`,
       );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
@@ -950,6 +950,13 @@ function OpenClawSettingsContent() {
                 <option value="assisted">Assisted launch</option>
                 <option value="managed">Managed operations</option>
               </select>
+              <p className="text-[11px] text-text-dim">
+                {serviceTier === "assisted"
+                  ? "Assisted launch creates a support request; status appears below in Latest assisted session."
+                  : serviceTier === "managed"
+                    ? "Managed operations indicates ongoing operational support after setup."
+                    : "Guided self-serve means no support ticket is created unless you explicitly request it."}
+              </p>
             </div>
           </div>
 
@@ -1033,6 +1040,13 @@ function OpenClawSettingsContent() {
               Request assisted launch
             </Button>
           </div>
+          <p className="mt-2 text-[11px] text-text-dim">
+            Note: requesting assisted launch does not start provisioning. Use{" "}
+            <span className="font-semibold text-text-secondary">
+              Launch managed OpenClaw
+            </span>{" "}
+            to start infra creation.
+          </p>
 
           {serviceMessage ? (
             <p className="mt-3 text-xs text-status-active">{serviceMessage}</p>

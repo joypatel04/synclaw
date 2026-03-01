@@ -113,6 +113,10 @@ export function OnboardingWizard() {
     canAdmin ? { workspaceId } : "skip",
   );
   const createAssistedSession = useMutation(api.support.createAssistedSession);
+  const assistedSessions = useQuery(
+    api.support.listAssistedSessions,
+    canAdmin ? { workspaceId } : "skip",
+  );
   const createAgent = useMutation(api.agents.create);
 
   const [wsUrl, setWsUrl] = useState("");
@@ -420,7 +424,7 @@ export function OnboardingWizard() {
       });
       setServiceTier("assisted");
       setServiceMessage(
-        `Assisted launch requested (${String(result.sessionId)}).`,
+        `Assisted launch requested (${String(result.sessionId)}). Team follow-up will happen via owner contact.`,
       );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
@@ -574,6 +578,13 @@ export function OnboardingWizard() {
                     <option value="assisted">Assisted launch</option>
                     <option value="managed">Managed operations</option>
                   </select>
+                  <p className="text-[11px] text-text-dim">
+                    {serviceTier === "assisted"
+                      ? "Assisted launch creates a support request and your team is contacted for hands-on help."
+                      : serviceTier === "managed"
+                        ? "Managed operations means ongoing operational support after setup."
+                        : "Guided self-serve gives you the same managed stack with in-app guidance, without a support request."}
+                  </p>
                 </div>
               </div>
 
@@ -615,6 +626,13 @@ export function OnboardingWizard() {
                   Request assisted launch
                 </Button>
               </div>
+              <p className="text-[11px] text-text-dim">
+                Assisted launch does not start infrastructure by itself. Use{" "}
+                <span className="font-semibold text-text-secondary">
+                  Launch managed OpenClaw
+                </span>{" "}
+                to begin provisioning.
+              </p>
 
               {serviceMessage ? (
                 <p className="text-xs text-status-active">{serviceMessage}</p>
@@ -622,6 +640,16 @@ export function OnboardingWizard() {
               {serviceError ? (
                 <p className="text-xs text-status-blocked">{serviceError}</p>
               ) : null}
+              <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
+                <p className="text-text-dim">Latest assisted request</p>
+                <p className="mt-1 text-text-primary">
+                  {assistedSessions?.[0]
+                    ? `${assistedSessions[0].status} · ${new Date(
+                        assistedSessions[0].createdAt,
+                      ).toLocaleString()}`
+                    : "No request yet"}
+                </p>
+              </div>
               <p className="text-[11px] text-text-dim">
                 Setup progress:{" "}
                 {managedStatus?.latestJob
