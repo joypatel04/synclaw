@@ -105,6 +105,7 @@ export function OnboardingWizard() {
     workspaceId,
   });
   const createManagedJob = useMutation(api.managedProvisioning.createManagedJob);
+  const retryManagedJob = useMutation(api.managedProvisioning.retryJob);
   const verifyManagedConnection = useMutation(
     api.managedProvisioning.verifyManagedConnection,
   );
@@ -254,6 +255,9 @@ export function OnboardingWizard() {
   const pairingHintVisible =
     testResult.status === "error" &&
     isPairingRequiredMessage(testResult.message);
+  const latestManagedJobFailed = managedStatus?.latestJob?.status === "failed";
+  const managedSetupFailed =
+    managedStatus?.managedStatus === "failed" || latestManagedJobFailed;
 
   const onTestAndSave = async () => {
     setTesting(true);
@@ -431,6 +435,28 @@ export function OnboardingWizard() {
     }
   };
 
+  const onRestartManagedSetup = async () => {
+    setServiceError(null);
+    setServiceMessage(null);
+    try {
+      if (managedStatus?.latestJob?._id) {
+        const result = await retryManagedJob({
+          workspaceId,
+          jobId: managedStatus.latestJob._id,
+        });
+        setServiceMessage(
+          result.fallbackApplied
+            ? `Setup restarted. Requested region unavailable; retrying in nearest available region: ${managedRegionLabel(result.resolvedRegion)}.`
+            : `Setup restarted in ${managedRegionLabel(result.resolvedRegion)}.`,
+        );
+      } else {
+        await onCreateProvisioningJob();
+      }
+    } catch (e) {
+      setServiceError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const [mainName, setMainName] = useState("Jarvis");
   const [mainEmoji, setMainEmoji] = useState("🦊");
   const [mainRole, setMainRole] = useState("Squad Lead");
@@ -512,7 +538,10 @@ export function OnboardingWizard() {
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
-              onClick={() => setNeedsManagedSetup(false)}
+              onClick={() => {
+                setNeedsManagedSetup(false);
+                setDeploymentMode("manual");
+              }}
               className={`rounded-lg border p-3 text-left ${
                 !needsManagedSetup
                   ? "border-accent-orange/50 bg-accent-orange/10"
@@ -528,7 +557,10 @@ export function OnboardingWizard() {
             </button>
             <button
               type="button"
-              onClick={() => setNeedsManagedSetup(true)}
+              onClick={() => {
+                setNeedsManagedSetup(true);
+                setDeploymentMode("managed");
+              }}
               className={`rounded-lg border p-3 text-left ${
                 needsManagedSetup
                   ? "border-accent-orange/50 bg-accent-orange/10"
@@ -706,7 +738,7 @@ export function OnboardingWizard() {
           />
 
           <div className="mt-5 space-y-4">
-            {deploymentMode === "managed" ? (
+            {needsManagedSetup ? (
               <div className="rounded-xl border border-border-default bg-bg-primary p-3">
                 <p className="text-xs font-semibold text-text-primary">
                   Managed OpenClaw connection
@@ -738,23 +770,39 @@ export function OnboardingWizard() {
                     </p>
                   </div>
                 </div>
+                {managedSetupFailed ? (
+                  <p className="mt-2 text-[11px] text-status-blocked">
+                    Managed setup failed. Restart provisioning to recover this workspace.
+                  </p>
+                ) : null}
                 <div className="mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() =>
-                      void verifyManagedConnection({ workspaceId }).then(() =>
-                        setServiceMessage("Managed connection verified."),
-                      )
-                    }
-                  >
-                    Reconnect / Verify
-                  </Button>
+                  {managedSetupFailed ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => void onRestartManagedSetup()}
+                    >
+                      Restart setup
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() =>
+                        void verifyManagedConnection({ workspaceId }).then(() =>
+                          setServiceMessage("Managed connection verified."),
+                        )
+                      }
+                    >
+                      Reconnect / Verify
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : null}
-            {deploymentMode === "managed" ? null : (
+            {needsManagedSetup ? null : (
               <>
             <div>
               <Label className="text-text-secondary">Connection method</Label>
@@ -1017,7 +1065,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               </>
             )}
 
-            {deploymentMode === "managed" ? null : (
+            {needsManagedSetup ? null : (
             <>
             <div className="hidden">
               <Input value="req" readOnly />
