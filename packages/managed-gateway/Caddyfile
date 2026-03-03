@@ -7,6 +7,6 @@ synclaw.in {
 
   # Frontend continues on Vercel for all non-gateway routes.
   reverse_proxy https://managed.synclaw.in {
-    header_up Host synclaw.in
+    header_up Host managed.synclaw.in
   }
 }
