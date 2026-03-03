@@ -235,6 +235,15 @@ export default defineSchema({
     managedConnectedAt: v.optional(v.number()),
     managedBootstrapReadyAt: v.optional(v.number()),
     managedGatewayReadyAt: v.optional(v.number()),
+    providerRuntimeStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("ready"), v.literal("failed")),
+    ),
+    defaultProvider: v.optional(
+      v.union(v.literal("openai"), v.literal("anthropic"), v.literal("gemini")),
+    ),
+    defaultModel: v.optional(v.string()),
+    lastProviderApplyAt: v.optional(v.number()),
+    lastProviderApplyError: v.optional(v.string()),
     managedAutoFallbackUsed: v.optional(v.boolean()),
     serviceTier: v.optional(
       v.union(
@@ -389,6 +398,15 @@ export default defineSchema({
       v.literal("untested"),
       v.literal("valid"),
       v.literal("invalid"),
+    ),
+    lastAppliedAt: v.optional(v.number()),
+    lastAppliedStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("applied"), v.literal("failed")),
+    ),
+    lastAppliedError: v.optional(v.string()),
+    lastRuntimeValidatedAt: v.optional(v.number()),
+    lastRuntimeValidationStatus: v.optional(
+      v.union(v.literal("valid"), v.literal("invalid")),
     ),
     lastValidatedAt: v.optional(v.number()),
     updatedAt: v.number(),

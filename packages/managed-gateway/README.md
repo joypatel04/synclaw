@@ -6,6 +6,8 @@ Single-domain managed control plane + WebSocket gateway for path-based workspace
 
 - `GET /control/health`
 - `POST /control/bootstrap`
+- `POST /control/openclaw/provider/apply`
+- `POST /control/openclaw/provider/verify`
 - `POST /control/routes`
 - `POST /control/routes/delete`
 - `GET /control/routes/verify?workspaceId=...`

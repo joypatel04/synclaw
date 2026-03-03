@@ -44,7 +44,13 @@ export const getStatus = query({
     const providerKeyValidCount = providerKeys.filter(
       (key) => key.status === "valid",
     ).length;
-    const providerKeyReady = providerKeyValidCount > 0;
+    const managedProviderRuntimeReady =
+      openclaw?.providerRuntimeStatus === "ready" &&
+      Boolean(openclaw?.defaultProvider) &&
+      Boolean(openclaw?.defaultModel);
+    const providerKeyReady = requiresProviderKey
+      ? managedProviderRuntimeReady
+      : providerKeyValidCount > 0;
 
     // We don't have a compound index for (workspaceId, sessionKey), so we scan
     // the workspace agents. This should remain small in normal usage.
@@ -72,6 +78,7 @@ export const getStatus = query({
       providerKeyReady,
       providerKeyCount,
       providerKeyValidCount,
+      managedProviderRuntimeReady,
       setupStatus,
       serviceTier,
       provisioningMode,

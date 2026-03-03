@@ -1,5 +1,6 @@
 import { internal } from "./_generated/api";
 import {
+  action,
   internalAction,
   internalMutation,
   internalQuery,
@@ -8,7 +9,7 @@ import {
 } from "./_generated/server";
 import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
-import { encryptSecretToHex } from "./lib/secretCrypto";
+import { decryptSecretFromHex, encryptSecretToHex } from "./lib/secretCrypto";
 import {
   isCommercialCapabilityEnabled,
   requireEnabledCapability,
@@ -63,6 +64,20 @@ type ManagedStep =
   | "health_verification"
   | "synclaw_connected";
 
+type ManagedProviderId = "openai" | "anthropic" | "gemini";
+
+const managedProviderValidator = v.union(
+  v.literal("openai"),
+  v.literal("anthropic"),
+  v.literal("gemini"),
+);
+
+const MANAGED_PROVIDER_DEFAULT_MODEL: Record<ManagedProviderId, string> = {
+  openai: "gpt-5.1-codex",
+  anthropic: "claude-sonnet-4.5",
+  gemini: "gemini-2.5-pro",
+};
+
 function isRegionAvailable(region: string): boolean {
   return region === "eu_central_hil" || region === "eu_central_nbg";
 }
@@ -99,6 +114,19 @@ function timeoutMsFromEnv(name: string, fallbackMs: number): number {
   return Math.floor(parsed);
 }
 
+function boolEnv(name: string, fallback: boolean): boolean {
+  const value = optionalEnv(name);
+  if (!value) return fallback;
+  const normalized = value.toLowerCase();
+  if (normalized === "1" || normalized === "true" || normalized === "yes") {
+    return true;
+  }
+  if (normalized === "0" || normalized === "false" || normalized === "no") {
+    return false;
+  }
+  return fallback;
+}
+
 function normalizedBaseUrl(value: string | null): string | null {
   if (!value) return null;
   return value.replace(/\/+$/, "");
@@ -119,6 +147,15 @@ function controlPlaneBaseUrl(kind: "bootstrap" | "gateway"): string | null {
     return normalizedBaseUrl(optionalEnv("MANAGED_BOOTSTRAP_API_BASE_URL"));
   }
   return normalizedBaseUrl(optionalEnv("MANAGED_GATEWAY_API_BASE_URL"));
+}
+
+function managedControlUiAllowedOrigins(): string[] {
+  const siteUrl = optionalEnv("SITE_URL") ?? optionalEnv("NEXT_PUBLIC_APP_URL");
+  const defaults = ["https://synclaw.in", "https://managed.synclaw.in"];
+  if (siteUrl && !defaults.includes(siteUrl)) {
+    defaults.unshift(siteUrl);
+  }
+  return defaults;
 }
 
 function providerForManagedCloud(): "hetzner" | "aws" {
@@ -481,6 +518,7 @@ export const _bootstrapOpenClawInstance = internalAction({
           bootstrapUser: optionalEnv("MANAGED_BOOTSTRAP_USER") ?? "root",
           sshPrivateKey: optionalEnv("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY"),
           openclawGatewayToken: args.openclawGatewayToken,
+          controlUiAllowedOrigins: managedControlUiAllowedOrigins(),
         }),
       },
       timeoutMs,
@@ -604,6 +642,106 @@ export const _runManagedHealthChecks = internalAction({
       checks: { wsUrlTls: true, hostPresent: Boolean(args.host), gatewayRoute: true },
       payload,
     };
+  },
+});
+
+export const _applyManagedProviderConfig = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.string(),
+    host: v.string(),
+    provider: managedProviderValidator,
+    apiKey: v.string(),
+    defaultModel: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const apiBase = controlPlaneBaseUrl("gateway");
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 120000);
+    if (!apiBase) {
+      throw new Error(
+        "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required for provider autoconfig.",
+      );
+    }
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    if (!token) {
+      throw new Error("MANAGED_GATEWAY_API_TOKEN is required for provider autoconfig.");
+    }
+    const sshPrivateKey = optionalEnv("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY");
+    if (!sshPrivateKey) {
+      throw new Error("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY is required for provider autoconfig.");
+    }
+
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/openclaw/provider/apply`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          jobId: args.jobId,
+          host: args.host,
+          bootstrapUser: optionalEnv("MANAGED_BOOTSTRAP_USER") ?? "root",
+          sshPrivateKey,
+          provider: args.provider,
+          apiKey: args.apiKey,
+          defaultModel: args.defaultModel,
+          controlUiAllowedOrigins: managedControlUiAllowedOrigins(),
+        }),
+      },
+      timeoutMs,
+    );
+    return payload;
+  },
+});
+
+export const _verifyManagedProviderRuntime = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    host: v.string(),
+    provider: managedProviderValidator,
+    defaultModel: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const apiBase = controlPlaneBaseUrl("gateway");
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    if (!apiBase) {
+      throw new Error(
+        "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required for provider verify.",
+      );
+    }
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    if (!token) {
+      throw new Error("MANAGED_GATEWAY_API_TOKEN is required for provider verify.");
+    }
+    const sshPrivateKey = optionalEnv("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY");
+    if (!sshPrivateKey) {
+      throw new Error("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY is required for provider verify.");
+    }
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/openclaw/provider/verify`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          host: args.host,
+          bootstrapUser: optionalEnv("MANAGED_BOOTSTRAP_USER") ?? "root",
+          sshPrivateKey,
+          provider: args.provider,
+          defaultModel: args.defaultModel,
+        }),
+      },
+      timeoutMs,
+    );
+    return payload;
   },
 });
 
@@ -804,6 +942,11 @@ export const _finalizeManagedConnection = internalMutation({
       managedConnectedAt: now,
       managedBootstrapReadyAt: cfg.managedBootstrapReadyAt ?? now,
       managedGatewayReadyAt: cfg.managedGatewayReadyAt ?? now,
+      providerRuntimeStatus: "pending",
+      defaultProvider: undefined,
+      defaultModel: undefined,
+      lastProviderApplyAt: undefined,
+      lastProviderApplyError: undefined,
       managedInstanceId: `${args.provider}:${args.instanceId}`,
       managedServerType: args.serverTypeUsed ?? cfg.managedServerType,
       managedUpstreamHost: args.upstreamHost ?? cfg.managedUpstreamHost ?? args.host,
@@ -1153,6 +1296,11 @@ async function createManagedJobInternal(
       serviceTier,
       setupStatus: "infra_ready",
       managedStatus: "queued",
+      providerRuntimeStatus: "pending",
+      defaultProvider: undefined,
+      defaultModel: undefined,
+      lastProviderApplyAt: undefined,
+      lastProviderApplyError: undefined,
       managedRegionRequested: requestedRegion,
       managedRegionResolved: resolvedRegion,
       managedServerProfile: serverProfile,
@@ -1178,8 +1326,13 @@ async function createManagedJobInternal(
       managedUpstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789"),
       managedRouteVersion: 0,
       managedStatus: "queued",
+      providerRuntimeStatus: "pending",
       managedInstanceId: `mc-${String(workspaceId)}-${now}`,
       managedAutoFallbackUsed: fallbackApplied,
+      defaultProvider: undefined,
+      defaultModel: undefined,
+      lastProviderApplyAt: undefined,
+      lastProviderApplyError: undefined,
       serviceTier,
       setupStatus: "infra_ready",
       protocol: "req",
@@ -1304,6 +1457,11 @@ export const getManagedStatus = query({
       routeVersion: cfg.managedRouteVersion ?? null,
       managedBootstrapReadyAt: cfg.managedBootstrapReadyAt ?? null,
       managedGatewayReadyAt: cfg.managedGatewayReadyAt ?? null,
+      providerRuntimeStatus: cfg.providerRuntimeStatus ?? "pending",
+      defaultProvider: cfg.defaultProvider ?? null,
+      defaultModel: cfg.defaultModel ?? null,
+      lastProviderApplyAt: cfg.lastProviderApplyAt ?? null,
+      lastProviderApplyError: cfg.lastProviderApplyError ?? null,
       fallbackApplied: Boolean(cfg.managedAutoFallbackUsed),
       managedConnectedAt: cfg.managedConnectedAt ?? null,
       setupStatus: cfg.setupStatus ?? "not_started",
@@ -1364,6 +1522,226 @@ export const retryJob = mutation({
       triggeredBy: membership.userId,
       ...result,
     };
+  },
+});
+
+export const _getManagedProviderApplyContext = internalQuery({
+  args: {
+    workspaceId: v.id("workspaces"),
+    provider: managedProviderValidator,
+  },
+  handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const membership = await requireRole(ctx, args.workspaceId, "owner");
+    const cfg = await ctx.db
+      .query("openclawGatewayConfigs")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .first();
+    if (!cfg) {
+      throw new Error("OpenClaw config not found for workspace.");
+    }
+    if (
+      (cfg.deploymentMode ?? "manual") !== "managed" ||
+      (cfg.provisioningMode ?? "customer_vps") !== "sutraha_managed"
+    ) {
+      throw new Error("Provider autoconfig is only supported for managed workspaces.");
+    }
+    const keyRow = await ctx.db
+      .query("workspaceModelProviderKeys")
+      .withIndex("byWorkspaceAndProvider", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("provider", args.provider),
+      )
+      .first();
+    if (!keyRow) {
+      throw new Error(`No provider key found for ${args.provider}.`);
+    }
+    const latestJob = await ctx.db
+      .query("openclawProvisioningJobs")
+      .withIndex("byWorkspaceAndCreatedAt", (q) =>
+        q.eq("workspaceId", args.workspaceId),
+      )
+      .order("desc")
+      .first();
+
+    return {
+      userId: membership.userId,
+      configId: cfg._id,
+      keyId: keyRow._id,
+      host: cfg.managedUpstreamHost ?? "",
+      keyCiphertextHex: keyRow.keyCiphertextHex,
+      keyIvHex: keyRow.keyIvHex,
+      latestJobId: latestJob?._id ? String(latestJob._id) : "",
+    };
+  },
+});
+
+export const _recordManagedProviderApplyResult = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    provider: managedProviderValidator,
+    defaultModel: v.string(),
+    ok: v.boolean(),
+    error: v.optional(v.string()),
+    checks: v.optional(v.any()),
+    updatedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const now = Date.now();
+    const cfg = await ctx.db
+      .query("openclawGatewayConfigs")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .first();
+    const keyRow = await ctx.db
+      .query("workspaceModelProviderKeys")
+      .withIndex("byWorkspaceAndProvider", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("provider", args.provider),
+      )
+      .first();
+
+    if (cfg) {
+      await ctx.db.patch(cfg._id, {
+        providerRuntimeStatus: args.ok ? "ready" : "failed",
+        defaultProvider: args.provider,
+        defaultModel: args.defaultModel,
+        lastProviderApplyAt: now,
+        lastProviderApplyError: args.ok ? undefined : (args.error ?? "Provider apply failed."),
+        updatedAt: now,
+        updatedBy: args.updatedBy,
+      } as any);
+    }
+
+    if (keyRow) {
+      await ctx.db.patch(keyRow._id, {
+        status: args.ok ? "valid" : "invalid",
+        lastAppliedAt: now,
+        lastAppliedStatus: args.ok ? "applied" : "failed",
+        lastAppliedError: args.ok ? undefined : args.error,
+        lastValidatedAt: now,
+        lastRuntimeValidatedAt: now,
+        lastRuntimeValidationStatus: args.ok ? "valid" : "invalid",
+        updatedAt: now,
+        updatedBy: args.updatedBy,
+      } as any);
+    }
+  },
+});
+
+export const applyManagedProviderConfig: any = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    provider: managedProviderValidator,
+  },
+  handler: async (ctx, args): Promise<any> => {
+    requireEnabledCapability("managedProvisioning");
+    if (!boolEnv("MANAGED_PROVIDER_AUTOCONFIG_ENABLED", true)) {
+      throw new Error(
+        "Managed provider autoconfig is disabled. Set MANAGED_PROVIDER_AUTOCONFIG_ENABLED=true.",
+      );
+    }
+    const context: any = await ctx.runQuery(
+      internal.managedProvisioning._getManagedProviderApplyContext,
+      {
+        workspaceId: args.workspaceId,
+        provider: args.provider,
+      },
+    );
+    if (!context.host) {
+      throw new Error("Managed upstream host is missing. Provision managed OpenClaw first.");
+    }
+    const apiKey = await decryptSecretFromHex(
+      context.keyCiphertextHex,
+      context.keyIvHex,
+    );
+    const defaultModel = MANAGED_PROVIDER_DEFAULT_MODEL[args.provider];
+    let checks: any = undefined;
+    let errorText: string | undefined;
+    try {
+      const applyResult: any = await ctx.runAction(
+        internal.managedProvisioning._applyManagedProviderConfig,
+        {
+          workspaceId: args.workspaceId,
+          jobId: context.latestJobId || `provider-${Date.now()}`,
+          host: context.host,
+          provider: args.provider,
+          apiKey,
+          defaultModel,
+        },
+      );
+      const verifyResult: any = await ctx.runAction(
+        internal.managedProvisioning._verifyManagedProviderRuntime,
+        {
+          workspaceId: args.workspaceId,
+          host: context.host,
+          provider: args.provider,
+          defaultModel,
+        },
+      );
+      checks = {
+        keyStored: true,
+        ...(applyResult?.checks ?? {}),
+        ...(verifyResult?.checks ?? {}),
+      };
+      const ok = Boolean(
+        checks.keyStored &&
+          checks.appliedToManagedHost &&
+          checks.serviceRestarted &&
+          checks.portListening &&
+          checks.modelRuntimeReady,
+      );
+      if (!ok) {
+        errorText =
+          verifyResult?.error ??
+          applyResult?.error ??
+          "Managed provider runtime checks failed.";
+      }
+      await ctx.runMutation(internal.managedProvisioning._recordManagedProviderApplyResult, {
+        workspaceId: args.workspaceId,
+        provider: args.provider,
+        defaultModel,
+        ok,
+        error: errorText,
+        checks,
+        updatedBy: context.userId,
+      });
+      return {
+        ok,
+        provider: args.provider,
+        defaultModel,
+        checks,
+        error: errorText ?? null,
+      };
+    } catch (error) {
+      errorText = error instanceof Error ? error.message : String(error);
+      await ctx.runMutation(internal.managedProvisioning._recordManagedProviderApplyResult, {
+        workspaceId: args.workspaceId,
+        provider: args.provider,
+        defaultModel,
+        ok: false,
+        error: errorText,
+        checks: {
+          keyStored: true,
+          appliedToManagedHost: false,
+          serviceRestarted: false,
+          portListening: false,
+          modelRuntimeReady: false,
+        },
+        updatedBy: context.userId,
+      });
+      return {
+        ok: false,
+        provider: args.provider,
+        defaultModel,
+        checks: {
+          keyStored: true,
+          appliedToManagedHost: false,
+          serviceRestarted: false,
+          portListening: false,
+          modelRuntimeReady: false,
+        },
+        error: errorText,
+      };
+    }
   },
 });
 

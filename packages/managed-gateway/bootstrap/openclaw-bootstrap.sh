@@ -12,11 +12,13 @@ INSTANCE_ID="{{INSTANCE_ID}}"
 REGION="{{REGION}}"
 OPENCLAW_PORT="{{UPSTREAM_PORT}}"
 OPENCLAW_TOKEN="{{OPENCLAW_GATEWAY_TOKEN}}"
+CONTROL_UI_ALLOWED_ORIGINS_JSON='{{CONTROL_UI_ALLOWED_ORIGINS_JSON}}'
 OPENCLAW_USER="openclaw"
 OPENCLAW_GROUP="openclaw"
 OPENCLAW_STATE_DIR="/var/lib/openclaw"
 OPENCLAW_ETC_DIR="/etc/openclaw"
 OPENCLAW_ENV_FILE="${OPENCLAW_ETC_DIR}/managed.env"
+OPENCLAW_PROVIDERS_ENV_FILE="${OPENCLAW_ETC_DIR}/providers.env"
 OPENCLAW_UNIT_FILE="/etc/systemd/system/openclaw-gateway.service"
 
 if [[ -z "${OPENCLAW_TOKEN}" ]]; then
@@ -66,6 +68,27 @@ OPENCLAW_MANAGED_INSTANCE_ID=${INSTANCE_ID}
 EOF
 chmod 0640 "${OPENCLAW_ENV_FILE}"
 chown root:"${OPENCLAW_GROUP}" "${OPENCLAW_ENV_FILE}"
+touch "${OPENCLAW_PROVIDERS_ENV_FILE}"
+chmod 0600 "${OPENCLAW_PROVIDERS_ENV_FILE}"
+chown root:root "${OPENCLAW_PROVIDERS_ENV_FILE}"
+
+cat > "${OPENCLAW_STATE_DIR}/openclaw.json" <<EOF
+{
+  "gateway": {
+    "port": ${OPENCLAW_PORT},
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_TOKEN}"
+    },
+    "controlUi": {
+      "allowedOrigins": ${CONTROL_UI_ALLOWED_ORIGINS_JSON}
+    }
+  }
+}
+EOF
+chown "${OPENCLAW_USER}:${OPENCLAW_GROUP}" "${OPENCLAW_STATE_DIR}/openclaw.json"
+chmod 0640 "${OPENCLAW_STATE_DIR}/openclaw.json"
 
 OPENCLAW_BIN="$(command -v openclaw)"
 if [[ -z "${OPENCLAW_BIN}" ]]; then
@@ -84,8 +107,9 @@ Type=simple
 User=openclaw
 Group=openclaw
 EnvironmentFile=/etc/openclaw/managed.env
+EnvironmentFile=-/etc/openclaw/providers.env
 WorkingDirectory=/var/lib/openclaw
-ExecStart=/usr/local/bin/openclaw gateway --port ${OPENCLAW_GATEWAY_PORT} --bind ${OPENCLAW_GATEWAY_BIND} --auth token --token ${OPENCLAW_GATEWAY_TOKEN} --allow-unconfigured
+ExecStart=/usr/local/bin/openclaw gateway --config ${OPENCLAW_CONFIG_PATH} --allow-unconfigured
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useAction, useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -152,6 +152,10 @@ export function OnboardingWizard() {
   );
   const upsertWorkspaceKey = useMutation(api.modelKeys.upsertWorkspaceKey);
   const validateWorkspaceKeys = useMutation(api.modelKeys.validateWorkspaceKeys);
+  const applyManagedProviderConfig = useAction(
+    (api.managedProvisioning as Record<string, unknown>)
+      .applyManagedProviderConfig as any,
+  );
   const providerKeyStatuses =
     useQuery(
       api.modelKeys.listWorkspaceKeyStatus,
@@ -223,6 +227,13 @@ export function OnboardingWizard() {
   const [providerMessage, setProviderMessage] = useState<string | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [providerSaving, setProviderSaving] = useState(false);
+  const [providerChecks, setProviderChecks] = useState<{
+    keyStored: boolean;
+    appliedToManagedHost: boolean;
+    serviceRestarted: boolean;
+    portListening: boolean;
+    modelRuntimeReady: boolean;
+  } | null>(null);
   const [deviceApprovalTesting, setDeviceApprovalTesting] = useState(false);
   const [deviceApprovalProbeDone, setDeviceApprovalProbeDone] = useState(false);
   const [deviceApprovalProbeResult, setDeviceApprovalProbeResult] = useState<
@@ -597,18 +608,41 @@ export function OnboardingWizard() {
     }
     setProviderSaving(true);
     try {
+      setProviderChecks(null);
       await upsertWorkspaceKey({
         workspaceId,
         provider: providerId,
         key: providerKeyDraft.trim(),
       });
-      const validation = await validateWorkspaceKeys({ workspaceId });
-      const validCount = validation.results.filter((r) => r.status === "valid").length;
-      setProviderMessage(
-        validCount > 0
-          ? `Provider key saved and validated (${validCount} valid).`
-          : "Provider key saved but validation failed. Check key and retry.",
-      );
+      if (
+        requiresProviderKey &&
+        deploymentMode === "managed" &&
+        (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed"
+      ) {
+        const result = await applyManagedProviderConfig({
+          workspaceId,
+          provider: providerId,
+        });
+        setProviderChecks(result.checks ?? null);
+        setProviderMessage(
+          result.ok
+            ? `Provider key saved, applied, and runtime-validated (${providerId} / ${result.defaultModel}).`
+            : `Provider saved but managed runtime validation failed: ${result.error ?? "Unknown error"}`,
+        );
+        if (!result.ok) {
+          setProviderError(result.error ?? "Managed provider apply failed.");
+        }
+      } else {
+        const validation = await validateWorkspaceKeys({ workspaceId });
+        const validCount = validation.results.filter(
+          (r) => r.status === "valid",
+        ).length;
+        setProviderMessage(
+          validCount > 0
+            ? `Provider key saved and validated (${validCount} valid).`
+            : "Provider key saved but validation failed. Check key and retry.",
+        );
+      }
       setProviderKeyDraft("");
     } catch (e) {
       setProviderError(e instanceof Error ? e.message : String(e));
@@ -1501,7 +1535,14 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                       onClick={() => void onSaveProviderKey()}
                       disabled={providerSaving || !providerKeyDraft.trim()}
                     >
-                      {providerSaving ? "Saving..." : "Save & Validate"}
+                      {providerSaving
+                        ? "Saving..."
+                        : requiresProviderKey &&
+                            deploymentMode === "managed" &&
+                            (summary?.provisioningMode ?? "customer_vps") ===
+                              "sutraha_managed"
+                          ? "Save, Apply & Validate"
+                          : "Save & Validate"}
                     </Button>
                     <p className="text-xs text-text-dim">
                       Valid keys: {status?.providerKeyValidCount ?? 0}
@@ -1516,6 +1557,27 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                   ) : null}
 
                   <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
+                    {providerChecks ? (
+                      <div className="mb-2 space-y-1">
+                        <p>keyStored: {providerChecks.keyStored ? "ok" : "fail"}</p>
+                        <p>
+                          appliedToManagedHost:{" "}
+                          {providerChecks.appliedToManagedHost ? "ok" : "fail"}
+                        </p>
+                        <p>
+                          serviceRestarted:{" "}
+                          {providerChecks.serviceRestarted ? "ok" : "fail"}
+                        </p>
+                        <p>
+                          portListening:{" "}
+                          {providerChecks.portListening ? "ok" : "fail"}
+                        </p>
+                        <p>
+                          modelRuntimeReady:{" "}
+                          {providerChecks.modelRuntimeReady ? "ok" : "fail"}
+                        </p>
+                      </div>
+                    ) : null}
                     {providerKeyStatuses.length > 0 ? (
                       providerKeyStatuses.slice(0, 3).map((row) => (
                         <p key={row.provider}>

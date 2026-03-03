@@ -28,6 +28,7 @@ type BootstrapBody = {
   bootstrapUser?: string;
   sshPrivateKey?: string;
   openclawGatewayToken?: string;
+  controlUiAllowedOrigins?: string[];
 };
 
 type UpsertRouteBody = {
@@ -37,6 +38,29 @@ type UpsertRouteBody = {
   upstreamPort?: number;
   region: string;
   wsUrl: string;
+};
+
+type ManagedProvider = "openai" | "anthropic" | "gemini";
+
+type ApplyProviderBody = {
+  workspaceId: string;
+  jobId: string;
+  host: string;
+  bootstrapUser?: string;
+  sshPrivateKey?: string;
+  provider: ManagedProvider;
+  apiKey: string;
+  defaultModel: string;
+  controlUiAllowedOrigins?: string[];
+};
+
+type VerifyProviderBody = {
+  workspaceId: string;
+  host: string;
+  bootstrapUser?: string;
+  sshPrivateKey?: string;
+  provider: ManagedProvider;
+  defaultModel: string;
 };
 
 const PORT = Number(process.env.PORT ?? "8788");
@@ -292,6 +316,148 @@ function renderBootstrapScript(
   return out;
 }
 
+function providerEnvKey(provider: ManagedProvider): string {
+  if (provider === "openai") return "OPENAI_API_KEY";
+  if (provider === "anthropic") return "ANTHROPIC_API_KEY";
+  return "GEMINI_API_KEY";
+}
+
+function boolFromText(value: string | undefined): boolean {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
+function parseResultJsonFromStdout(stdout: string): Record<string, unknown> | null {
+  const marker = "__RESULT__";
+  const idx = stdout.lastIndexOf(marker);
+  if (idx < 0) return null;
+  const raw = stdout.slice(idx + marker.length).trim();
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function buildProviderApplyScript(input: {
+  provider: ManagedProvider;
+  apiKey: string;
+  defaultModel: string;
+  targetPort: number;
+  controlUiAllowedOrigins: string[];
+}) {
+  const apiKeyB64 = Buffer.from(input.apiKey, "utf8").toString("base64");
+  const providerEnv = providerEnvKey(input.provider);
+  const allowedOriginsJson = JSON.stringify(input.controlUiAllowedOrigins);
+  return `set -euo pipefail
+PROVIDER="${input.provider}"
+PROVIDER_ENV_KEY="${providerEnv}"
+DEFAULT_MODEL="${input.defaultModel}"
+TARGET_PORT="${input.targetPort}"
+API_KEY="$(printf '%s' '${apiKeyB64}' | base64 -d)"
+CONFIG_PATH="/var/lib/openclaw/openclaw.json"
+PROVIDERS_ENV="/etc/openclaw/providers.env"
+
+mkdir -p /etc/openclaw
+touch "$PROVIDERS_ENV"
+chmod 0600 "$PROVIDERS_ENV"
+grep -vE '^(OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY)=' "$PROVIDERS_ENV" > "$PROVIDERS_ENV.tmp" || true
+mv "$PROVIDERS_ENV.tmp" "$PROVIDERS_ENV"
+printf '%s=%s\\n' "$PROVIDER_ENV_KEY" "$API_KEY" >> "$PROVIDERS_ENV"
+unset API_KEY
+
+node <<'NODE'
+const fs = require("node:fs");
+const path = "/var/lib/openclaw/openclaw.json";
+let cfg = {};
+try {
+  cfg = JSON.parse(fs.readFileSync(path, "utf8"));
+} catch {
+  cfg = {};
+}
+cfg.gateway = cfg.gateway || {};
+cfg.gateway.port = Number("${input.targetPort}");
+cfg.gateway.bind = cfg.gateway.bind || "lan";
+cfg.gateway.controlUi = cfg.gateway.controlUi || {};
+cfg.gateway.controlUi.allowedOrigins = ${allowedOriginsJson};
+cfg.agents = cfg.agents || {};
+cfg.agents.defaults = cfg.agents.defaults || {};
+cfg.agents.defaults.model = {
+  provider: "${input.provider}",
+  primary: "${input.defaultModel}"
+};
+fs.writeFileSync(path, JSON.stringify(cfg, null, 2), "utf8");
+NODE
+
+systemctl daemon-reload
+systemctl restart openclaw-gateway.service
+SERVICE_RESTARTED=false
+if systemctl is-active --quiet openclaw-gateway.service; then
+  SERVICE_RESTARTED=true
+fi
+PORT_LISTENING=false
+for _ in $(seq 1 45); do
+  if ss -ltn | grep -Eq ":${input.targetPort}\\\\b"; then
+    PORT_LISTENING=true
+    break
+  fi
+  sleep 2
+done
+SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" node <<'NODE'
+const fs = require("node:fs");
+const cfg = JSON.parse(fs.readFileSync("/var/lib/openclaw/openclaw.json", "utf8"));
+const model = (((cfg || {}).agents || {}).defaults || {}).model || {};
+const providersEnv = fs.readFileSync("/etc/openclaw/providers.env", "utf8");
+const checks = {
+  appliedToManagedHost: providersEnv.includes("${providerEnv}="),
+  serviceRestarted: process.env.SERVICE_RESTARTED === "true",
+  portListening: process.env.PORT_LISTENING === "true",
+  modelRuntimeReady: model.provider === "${input.provider}" && model.primary === "${input.defaultModel}"
+};
+process.stdout.write("__RESULT__" + JSON.stringify({checks}));
+NODE`;
+}
+
+function buildProviderVerifyScript(input: {
+  provider: ManagedProvider;
+  defaultModel: string;
+  targetPort: number;
+}) {
+  const providerEnv = providerEnvKey(input.provider);
+  return `set -euo pipefail
+SERVICE_RESTARTED=false
+if systemctl is-active --quiet openclaw-gateway.service; then
+  SERVICE_RESTARTED=true
+fi
+PORT_LISTENING=false
+if ss -ltn | grep -Eq ":${input.targetPort}\\\\b"; then
+  PORT_LISTENING=true
+fi
+SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" node <<'NODE'
+const fs = require("node:fs");
+let cfg = {};
+try {
+  cfg = JSON.parse(fs.readFileSync("/var/lib/openclaw/openclaw.json", "utf8"));
+} catch {
+  cfg = {};
+}
+let providersEnv = "";
+try {
+  providersEnv = fs.readFileSync("/etc/openclaw/providers.env", "utf8");
+} catch {
+  providersEnv = "";
+}
+const model = (((cfg || {}).agents || {}).defaults || {}).model || {};
+const checks = {
+  appliedToManagedHost: providersEnv.includes("${providerEnv}="),
+  serviceRestarted: process.env.SERVICE_RESTARTED === "true",
+  portListening: process.env.PORT_LISTENING === "true",
+  modelRuntimeReady: model.provider === "${input.provider}" && model.primary === "${input.defaultModel}"
+};
+process.stdout.write("__RESULT__" + JSON.stringify({checks}));
+NODE`;
+}
+
 app.get("/control/health", (_req, res) => {
   res.json({ ok: true, service: "managed-gateway", wsPathPrefix: WORKSPACE_WS_PATH_PREFIX });
 });
@@ -351,6 +517,11 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
     REGION: body.region,
     UPSTREAM_PORT: String(targetPort),
     OPENCLAW_GATEWAY_TOKEN: openclawGatewayToken,
+    CONTROL_UI_ALLOWED_ORIGINS_JSON: JSON.stringify(
+      Array.isArray(body.controlUiAllowedOrigins)
+        ? body.controlUiAllowedOrigins.filter((v) => typeof v === "string" && v.trim().length > 0)
+        : [],
+    ),
   });
 
   try {
@@ -419,6 +590,158 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
       host: body.host,
       error: error instanceof Error ? error.message : String(error),
     });
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post("/control/openclaw/provider/apply", requireAuth, async (req, res) => {
+  const body = req.body as ApplyProviderBody;
+  if (!body?.workspaceId || !body?.host || !body?.provider || !body?.defaultModel) {
+    res.status(400).json({
+      error: "workspaceId, host, provider, defaultModel are required.",
+    });
+    return;
+  }
+  if (!["openai", "anthropic", "gemini"].includes(body.provider)) {
+    res.status(400).json({ error: "Unsupported provider." });
+    return;
+  }
+  const privateKey = (body.sshPrivateKey || "").trim();
+  if (!privateKey) {
+    res.status(400).json({ error: "sshPrivateKey is required." });
+    return;
+  }
+  const apiKey = (body.apiKey || "").trim();
+  if (!apiKey) {
+    res.status(400).json({ error: "apiKey is required." });
+    return;
+  }
+
+  const username = (body.bootstrapUser || "root").trim();
+  const targetPort = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
+  const script = buildProviderApplyScript({
+    provider: body.provider,
+    apiKey,
+    defaultModel: body.defaultModel.trim(),
+    targetPort,
+    controlUiAllowedOrigins: Array.isArray(body.controlUiAllowedOrigins)
+      ? body.controlUiAllowedOrigins.filter((v) => typeof v === "string" && v.trim().length > 0)
+      : [],
+  });
+
+  try {
+    const sshReady = await waitForTcpReachable({
+      host: body.host,
+      port: 22,
+      timeoutMs: Math.min(BOOTSTRAP_TIMEOUT_MS, 120000),
+      pollIntervalMs: 3000,
+    });
+    if (!sshReady) {
+      res.status(502).json({
+        ok: false,
+        error: `SSH is not reachable yet on ${body.host}:22`,
+      });
+      return;
+    }
+    const result = await runSshCommand(body.host, username, privateKey, script);
+    if (result.code !== 0) {
+      res.status(500).json({
+        ok: false,
+        error: "Managed provider apply script failed.",
+        code: result.code,
+        stderr: result.stderr.slice(-6000),
+      });
+      return;
+    }
+    const parsed = parseResultJsonFromStdout(result.stdout);
+    const checks = (parsed?.checks as Record<string, unknown> | undefined) ?? {
+      appliedToManagedHost: false,
+      serviceRestarted: false,
+      portListening: false,
+      modelRuntimeReady: false,
+    };
+    const ok =
+      boolFromText(String(checks.appliedToManagedHost)) &&
+      boolFromText(String(checks.serviceRestarted)) &&
+      boolFromText(String(checks.portListening)) &&
+      boolFromText(String(checks.modelRuntimeReady));
+    if (!ok) {
+      res.status(500).json({
+        ok: false,
+        checks,
+        error: "Managed provider apply checks failed.",
+      });
+      return;
+    }
+    res.json({ ok: true, checks });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post("/control/openclaw/provider/verify", requireAuth, async (req, res) => {
+  const body = req.body as VerifyProviderBody;
+  const workspaceId = String(body.workspaceId ?? "").trim();
+  const host = String(body.host ?? "").trim();
+  const provider = String(body.provider ?? "").trim() as ManagedProvider;
+  const defaultModel = String(body.defaultModel ?? "").trim();
+  if (!workspaceId || !host || !provider || !defaultModel) {
+    res.status(400).json({
+      error: "workspaceId, host, provider, defaultModel are required.",
+    });
+    return;
+  }
+  if (!["openai", "anthropic", "gemini"].includes(provider)) {
+    res.status(400).json({ error: "Unsupported provider." });
+    return;
+  }
+  const privateKey = (body.sshPrivateKey ?? "").trim();
+  if (!privateKey) {
+    res.status(400).json({ error: "sshPrivateKey is required." });
+    return;
+  }
+  const username = (body.bootstrapUser || "root").trim();
+  const targetPort = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
+  const script = buildProviderVerifyScript({
+    provider,
+    defaultModel,
+    targetPort,
+  });
+  try {
+    const result = await runSshCommand(host, username, privateKey, script);
+    if (result.code !== 0) {
+      res.status(500).json({
+        ok: false,
+        error: "Managed provider verify script failed.",
+        code: result.code,
+        stderr: result.stderr.slice(-6000),
+      });
+      return;
+    }
+    const parsed = parseResultJsonFromStdout(result.stdout);
+    const checks = (parsed?.checks as Record<string, unknown> | undefined) ?? {
+      appliedToManagedHost: false,
+      serviceRestarted: false,
+      portListening: false,
+      modelRuntimeReady: false,
+    };
+    const ok =
+      boolFromText(String(checks.appliedToManagedHost)) &&
+      boolFromText(String(checks.serviceRestarted)) &&
+      boolFromText(String(checks.portListening)) &&
+      boolFromText(String(checks.modelRuntimeReady));
+    res.status(ok ? 200 : 422).json({
+      ok,
+      checks,
+      error: ok ? undefined : "Managed provider runtime checks failed.",
+    });
+  } catch (error) {
     res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : String(error),
