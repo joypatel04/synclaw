@@ -16,12 +16,13 @@ CONTROL_UI_ALLOWED_ORIGINS_JSON='{{CONTROL_UI_ALLOWED_ORIGINS_JSON}}'
 OPENCLAW_USER="openclaw"
 OPENCLAW_GROUP="openclaw"
 OPENCLAW_STATE_DIR="/var/lib/openclaw"
+OPENCLAW_HOME_DIR="/root"
 OPENCLAW_ETC_DIR="/etc/openclaw"
 OPENCLAW_ENV_FILE="${OPENCLAW_ETC_DIR}/managed.env"
 OPENCLAW_PROVIDERS_ENV_FILE="${OPENCLAW_ETC_DIR}/providers.env"
 OPENCLAW_GATEWAY_UNIT="openclaw-gateway.service"
 OPENCLAW_GATEWAY_DROPIN_DIR="/etc/systemd/system/${OPENCLAW_GATEWAY_UNIT}.d"
-OPENCLAW_CONFIG_DIR="${OPENCLAW_STATE_DIR}/.openclaw"
+OPENCLAW_CONFIG_DIR="${OPENCLAW_HOME_DIR}/.openclaw"
 OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_DIR}/openclaw.json"
 
 if [[ -z "${OPENCLAW_TOKEN}" ]]; then
@@ -58,7 +59,7 @@ fi
 
 install -d -m 0750 -o "${OPENCLAW_USER}" -g "${OPENCLAW_GROUP}" "${OPENCLAW_STATE_DIR}"
 install -d -m 0750 -o root -g "${OPENCLAW_GROUP}" "${OPENCLAW_ETC_DIR}"
-install -d -m 0750 -o "${OPENCLAW_USER}" -g "${OPENCLAW_GROUP}" "${OPENCLAW_CONFIG_DIR}"
+install -d -m 0700 -o root -g root "${OPENCLAW_CONFIG_DIR}"
 
 cat > "${OPENCLAW_ENV_FILE}" <<EOF
 OPENCLAW_GATEWAY_PORT=${OPENCLAW_PORT}
@@ -83,8 +84,7 @@ fi
 
 # OpenClaw-managed setup path: let OpenClaw install/manage its own service.
 # This avoids brittle custom unit args across OpenClaw versions.
-sudo -u "${OPENCLAW_USER}" HOME="${OPENCLAW_STATE_DIR}" \
-  "${OPENCLAW_BIN}" onboard \
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" onboard \
     --gateway-port "${OPENCLAW_PORT}" \
     --gateway-bind lan \
     --gateway-auth token \
@@ -96,7 +96,7 @@ sudo -u "${OPENCLAW_USER}" HOME="${OPENCLAW_STATE_DIR}" \
     --skip-skills
 
 # Ensure managed defaults are set in the OpenClaw config file.
-sudo -u "${OPENCLAW_USER}" HOME="${OPENCLAW_STATE_DIR}" node <<NODE
+HOME="${OPENCLAW_HOME_DIR}" node <<NODE
 const fs = require("node:fs");
 const path = "${OPENCLAW_CONFIG_PATH}";
 let cfg = {};

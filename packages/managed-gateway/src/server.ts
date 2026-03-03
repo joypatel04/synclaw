@@ -358,7 +358,7 @@ PROVIDER_ENV_KEY="${providerEnv}"
 DEFAULT_MODEL="${input.defaultModel}"
 TARGET_PORT="${input.targetPort}"
 API_KEY="$(printf '%s' '${apiKeyB64}' | base64 -d)"
-CONFIG_PATH_PRIMARY="/var/lib/openclaw/.openclaw/openclaw.json"
+CONFIG_PATH_PRIMARY="/root/.openclaw/openclaw.json"
 CONFIG_PATH_FALLBACK="/var/lib/openclaw/openclaw.json"
 if [ -f "$CONFIG_PATH_PRIMARY" ]; then
   CONFIG_PATH="$CONFIG_PATH_PRIMARY"
@@ -377,7 +377,7 @@ unset API_KEY
 
 CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
 const fs = require("node:fs");
-const path = process.env.CONFIG_PATH || "/var/lib/openclaw/.openclaw/openclaw.json";
+const path = process.env.CONFIG_PATH || "/root/.openclaw/openclaw.json";
 let cfg = {};
 try {
   cfg = JSON.parse(fs.readFileSync(path, "utf8"));
@@ -436,7 +436,7 @@ function buildProviderVerifyScript(input: {
 }) {
   const providerEnv = providerEnvKey(input.provider);
   return `set -euo pipefail
-CONFIG_PATH_PRIMARY="/var/lib/openclaw/.openclaw/openclaw.json"
+CONFIG_PATH_PRIMARY="/root/.openclaw/openclaw.json"
 CONFIG_PATH_FALLBACK="/var/lib/openclaw/openclaw.json"
 if [ -f "$CONFIG_PATH_PRIMARY" ]; then
   CONFIG_PATH="$CONFIG_PATH_PRIMARY"
@@ -456,7 +456,7 @@ const fs = require("node:fs");
 let cfg = {};
 try {
   cfg = JSON.parse(
-    fs.readFileSync(process.env.CONFIG_PATH || "/var/lib/openclaw/.openclaw/openclaw.json", "utf8"),
+    fs.readFileSync(process.env.CONFIG_PATH || "/root/.openclaw/openclaw.json", "utf8"),
   );
 } catch {
   cfg = {};
