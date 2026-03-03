@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
 import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { canUseCapability } from "@/lib/edition";
 
 type Currency = "INR" | "USD";
 type Cadence = "monthly" | "yearly";
@@ -24,10 +25,15 @@ type Tier = "starter" | "pro";
 
 function BillingContent() {
   const { workspaceId, canManage } = useWorkspace();
-  const billing = useQuery(api.billing_razorpay.getWorkspacePlan, {
-    workspaceId,
-  });
-  const catalog = useQuery(api.billing_razorpay.getPriceCatalog, {});
+  const billingCapabilityEnabled = canUseCapability("billing");
+  const billing = useQuery(
+    api.billing_razorpay.getWorkspacePlan,
+    billingCapabilityEnabled ? { workspaceId } : "skip",
+  );
+  const catalog = useQuery(
+    api.billing_razorpay.getPriceCatalog,
+    billingCapabilityEnabled ? {} : "skip",
+  );
   const checkout = useAction(api.billing_razorpay.createSubscriptionCheckout);
   const cancel = useAction(api.billing_razorpay.cancelSubscription);
 
@@ -80,6 +86,19 @@ function BillingContent() {
       setIsBusy(false);
     }
   };
+
+  if (!billingCapabilityEnabled) {
+    return (
+      <div className="mx-auto max-w-2xl p-3 sm:p-6">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border-default bg-bg-secondary py-16">
+          <ShieldAlert className="h-10 w-10 text-text-dim mb-3" />
+          <p className="text-sm text-text-muted">
+            Billing is not available in this edition.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!canManage) {
     return (

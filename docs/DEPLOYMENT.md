@@ -22,6 +22,9 @@
 ```
 NEXT_PUBLIC_CONVEX_URL=https://confident-ram-83.convex.cloud
 NEXT_PUBLIC_CONVEX_SITE_URL=https://confident-ram-83.convex.site
+NEXT_PUBLIC_SYNCLAW_EDITION=commercial
+NEXT_PUBLIC_MANAGED_BETA_ENABLED=false
+NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED=false
 NEXT_PUBLIC_APP_NAME=Synclaw
 NEXT_PUBLIC_APP_URL=https://hq.sutraha.in
 ```
@@ -65,6 +68,9 @@ bunx convex env list --dev
 
 ```
 SITE_URL=https://hq.sutraha.in
+SYNCLAW_EDITION=commercial
+SYNCLAW_MANAGED_BETA_ENABLED=false
+SYNCLAW_ASSISTED_LAUNCH_ENABLED=false
 AUTH_GITHUB_ID=<GitHub OAuth App ID>
 AUTH_GITHUB_SECRET=<GitHub OAuth App Secret>
 AUTH_GOOGLE_ID=<Google OAuth Client ID>

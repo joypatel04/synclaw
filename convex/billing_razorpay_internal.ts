@@ -1,5 +1,6 @@
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireCapability } from "./lib/edition";
 import {
   defaultGraceEndsAt,
   mapRazorpayStatus,
@@ -91,6 +92,7 @@ export const upsertProviderBillingLink = internalMutation({
     billingCurrency: v.optional(v.union(v.literal("INR"), v.literal("USD"))),
   },
   handler: async (ctx, args) => {
+    requireCapability("billing");
     const patch: Record<string, unknown> = {};
     if (args.providerCustomerId)
       patch.providerCustomerId = args.providerCustomerId;
@@ -109,6 +111,7 @@ export const processWebhookEvent = internalMutation({
     payload: v.any(),
   },
   handler: async (ctx, args) => {
+    requireCapability("billing");
     const duplicate = await ctx.db
       .query("razorpayEvents")
       .withIndex("byProviderEventId", (q) =>

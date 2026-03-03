@@ -2,7 +2,7 @@
 
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -15,6 +15,11 @@ import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
 import { Check, LifeBuoy, Server, Settings2, Zap } from "lucide-react";
 import { setChatDraft } from "@/lib/chatDraft";
 import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
+import { canUseCapability } from "@/lib/edition";
+import {
+  ASSISTED_LAUNCH_BETA_ENABLED,
+  MANAGED_BETA_ENABLED,
+} from "@/lib/features";
 import {
   mapOpenClawSetupError,
   OPENCLAW_METHOD_CARDS,
@@ -114,7 +119,12 @@ function StepHeader({
 export function OnboardingWizard() {
   const { workspaceId, workspace, canAdmin, membershipId } = useWorkspace();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const convex = useConvex();
+  const managedProvisioningEnabled =
+    canUseCapability("managedProvisioning") && MANAGED_BETA_ENABLED;
+  const assistedLaunchEnabled =
+    canUseCapability("assistedLaunch") && ASSISTED_LAUNCH_BETA_ENABLED;
 
   const status = useQuery(api.onboarding.getStatus, { workspaceId });
   const members = useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
@@ -133,12 +143,12 @@ export function OnboardingWizard() {
   );
   const managedStatus = useQuery(
     api.managedProvisioning.getManagedStatus,
-    canAdmin ? { workspaceId } : "skip",
+    canAdmin && managedProvisioningEnabled ? { workspaceId } : "skip",
   );
   const createAssistedSession = useMutation(api.support.createAssistedSession);
   const assistedSessions = useQuery(
     api.support.listAssistedSessions,
-    canAdmin ? { workspaceId } : "skip",
+    canAdmin && assistedLaunchEnabled ? { workspaceId } : "skip",
   );
   const upsertWorkspaceKey = useMutation(api.modelKeys.upsertWorkspaceKey);
   const validateWorkspaceKeys = useMutation(api.modelKeys.validateWorkspaceKeys);
@@ -237,7 +247,10 @@ export function OnboardingWizard() {
         : null,
     );
     setDeploymentMode((summary.deploymentMode as "managed" | "manual") ?? "manual");
-    setNeedsManagedSetup((summary.deploymentMode ?? "manual") === "managed");
+    setNeedsManagedSetup(
+      managedProvisioningEnabled &&
+        (summary.deploymentMode ?? "manual") === "managed",
+    );
     setRequestedRegion(
       ((summary.managedRegionRequested || summary.managedRegionResolved) as ManagedRegionCode) ??
         "eu_central_hil",
@@ -245,7 +258,11 @@ export function OnboardingWizard() {
     setServerProfile(
       (summary.managedServerProfile as ManagedServerProfileCode) ?? "starter",
     );
-    setServiceTier(summary.serviceTier === "assisted" ? "assisted" : "self_serve");
+    setServiceTier(
+      assistedLaunchEnabled && summary.serviceTier === "assisted"
+        ? "assisted"
+        : "self_serve",
+    );
     setSetupStatus(
       (summary.setupStatus as
         | "not_started"
@@ -272,7 +289,18 @@ export function OnboardingWizard() {
     setDeviceApprovalProbeDone(false);
     setDeviceApprovalProbeResult({ status: "idle" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summary?.updatedAt]);
+  }, [assistedLaunchEnabled, managedProvisioningEnabled, summary?.updatedAt]);
+
+  useEffect(() => {
+    if (!securityStatus?.securityConfirmedAt) return;
+    setSecurityChecklistAck({
+      allowedOrigins: true,
+      deviceApproval: true,
+      minimalScopes: true,
+      testPass: true,
+      dashboardProtection: true,
+    });
+  }, [securityStatus?.securityConfirmedAt]);
 
   const origin = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -299,7 +327,8 @@ export function OnboardingWizard() {
     isPairingRequiredMessage(testResult.message);
   const latestManagedJobFailed = managedStatus?.latestJob?.status === "failed";
   const managedSetupFailed =
-    managedStatus?.managedStatus === "failed" || latestManagedJobFailed;
+    managedProvisioningEnabled &&
+    (managedStatus?.managedStatus === "failed" || latestManagedJobFailed);
   const currentMember = useMemo(
     () => members.find((m) => m._id === membershipId) ?? null,
     [members, membershipId],
@@ -505,6 +534,10 @@ export function OnboardingWizard() {
   const onRequestAssisted = async () => {
     setServiceError(null);
     setServiceMessage(null);
+    if (!assistedLaunchEnabled) {
+      setServiceError("Assisted launch is not available in this edition.");
+      return;
+    }
     try {
       if (!ownerContact.trim()) {
         setServiceError("Owner contact is required for assisted launch.");
@@ -607,12 +640,21 @@ export function OnboardingWizard() {
     router.replace(`/agents/${mainAgentId}/setup`);
   };
 
+  const continueAfterOnboarding = (mainAgentId: string) => {
+    const next = searchParams.get("next")?.trim();
+    if (next && next.startsWith("/") && !next.startsWith("/onboarding")) {
+      router.replace(next);
+      return;
+    }
+    goChatSetup(mainAgentId);
+  };
+
   useEffect(() => {
     if (!canAdmin) return;
     if (!status || !status.isComplete || !status.mainAgentId) return;
-    goChatSetup(String(status.mainAgentId));
+    continueAfterOnboarding(String(status.mainAgentId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAdmin, status?.isComplete, status?.mainAgentId]);
+  }, [canAdmin, status?.isComplete, status?.mainAgentId, searchParams]);
 
   if (!canAdmin) {
     return (
@@ -681,28 +723,30 @@ export function OnboardingWizard() {
                 Continue with connection settings below.
               </p>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setNeedsManagedSetup(true);
-                setDeploymentMode("managed");
-              }}
-              className={`rounded-lg border p-3 text-left ${
-                needsManagedSetup
-                  ? "border-accent-orange/50 bg-accent-orange/10"
-                  : "border-border-default bg-bg-primary"
-              }`}
-            >
-              <p className="text-xs font-semibold text-text-primary">
-                Set up OpenClaw for me
-              </p>
-              <p className="mt-1 text-[11px] text-text-muted">
-                Managed cloud only. You choose region, we handle the rest.
-              </p>
-            </button>
+            {managedProvisioningEnabled ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setNeedsManagedSetup(true);
+                  setDeploymentMode("managed");
+                }}
+                className={`rounded-lg border p-3 text-left ${
+                  needsManagedSetup
+                    ? "border-accent-orange/50 bg-accent-orange/10"
+                    : "border-border-default bg-bg-primary"
+                }`}
+              >
+                <p className="text-xs font-semibold text-text-primary">
+                  Set up OpenClaw for me
+                </p>
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Managed cloud only. You choose region, we handle the rest.
+                </p>
+              </button>
+            ) : null}
           </div>
 
-          {needsManagedSetup ? (
+          {managedProvisioningEnabled && needsManagedSetup ? (
             <div className="mt-4 space-y-3 rounded-lg border border-border-default bg-bg-primary p-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -731,7 +775,9 @@ export function OnboardingWizard() {
                     className="h-10 w-full rounded-md border border-border-default bg-bg-secondary px-3 text-sm text-text-primary"
                   >
                     <option value="self_serve">Guided self-serve</option>
-                    <option value="assisted">Assisted launch</option>
+                    {assistedLaunchEnabled ? (
+                      <option value="assisted">Assisted launch</option>
+                    ) : null}
                   </select>
                   <p className="text-[11px] text-text-dim">
                     {serviceTier === "assisted"
@@ -774,7 +820,7 @@ export function OnboardingWizard() {
                 </p>
               </div>
 
-              {serviceTier === "assisted" ? (
+              {assistedLaunchEnabled && serviceTier === "assisted" ? (
                 <>
                   <div className="space-y-2">
                     <Label className="text-text-secondary">Owner contact</Label>
@@ -799,7 +845,7 @@ export function OnboardingWizard() {
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                {serviceTier === "assisted" ? (
+                {assistedLaunchEnabled && serviceTier === "assisted" ? (
                   <Button
                     size="sm"
                     className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
@@ -832,7 +878,7 @@ export function OnboardingWizard() {
                   </>
                 )}
               </div>
-              {serviceTier === "assisted" ? (
+              {assistedLaunchEnabled && serviceTier === "assisted" ? (
                 <p className="text-[11px] text-text-dim">
                   Assisted launch creates a support request. The team will follow
                   up using owner contact.
@@ -853,16 +899,18 @@ export function OnboardingWizard() {
               {serviceError ? (
                 <p className="text-xs text-status-blocked">{serviceError}</p>
               ) : null}
-              <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
-                <p className="text-text-dim">Latest assisted request</p>
-                <p className="mt-1 text-text-primary">
-                  {assistedSessions?.[0]
-                    ? `${assistedSessions[0].status} · ${new Date(
-                        assistedSessions[0].createdAt,
-                      ).toLocaleString()}`
-                    : "No request yet"}
-                </p>
-              </div>
+              {assistedLaunchEnabled ? (
+                <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
+                  <p className="text-text-dim">Latest assisted request</p>
+                  <p className="mt-1 text-text-primary">
+                    {assistedSessions?.[0]
+                      ? `${assistedSessions[0].status} · ${new Date(
+                          assistedSessions[0].createdAt,
+                        ).toLocaleString()}`
+                      : "No request yet"}
+                  </p>
+                </div>
+              ) : null}
               <p className="text-[11px] text-text-dim">
                 Setup progress:{" "}
                 {managedStatus?.latestJob
@@ -932,7 +980,7 @@ export function OnboardingWizard() {
           />
 
           <div className="mt-5 space-y-4">
-            {needsManagedSetup ? (
+            {managedProvisioningEnabled && needsManagedSetup ? (
               <div className="rounded-xl border border-border-default bg-bg-primary p-3">
                 <p className="text-xs font-semibold text-text-primary">
                   Managed OpenClaw connection
@@ -1013,7 +1061,7 @@ export function OnboardingWizard() {
                 </div>
               </div>
             ) : null}
-            {needsManagedSetup ? null : (
+            {managedProvisioningEnabled && needsManagedSetup ? null : (
               <>
             <div>
               <Label className="text-text-secondary">Connection method</Label>
@@ -1201,6 +1249,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     placeholder="Paste your OpenClaw token..."
                     className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
                   />
+                  <p className="text-[11px] text-text-dim">
+                    Saved token: {summary?.hasAuthToken ? "set" : "not set"}.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-text-secondary">
@@ -1214,6 +1265,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                   />
                   <p className="text-[11px] text-text-dim">
                     Use either token or password, based on your OpenClaw gateway auth mode.
+                  </p>
+                  <p className="text-[11px] text-text-dim">
+                    Saved password: {summary?.hasPassword ? "set" : "not set"}.
                   </p>
                 </div>
 
@@ -1304,7 +1358,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               </>
             )}
 
-            {needsManagedSetup ? null : (
+            {managedProvisioningEnabled && needsManagedSetup ? null : (
             <>
             <div className="hidden">
               <Input value="req" readOnly />

@@ -2,6 +2,7 @@ import { action, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireMember } from "./lib/permissions";
+import { requireCapability } from "./lib/edition";
 import {
   canUseFeature as workspaceCanUseFeature,
   normalizeWorkspaceBilling,
@@ -38,6 +39,7 @@ async function razorpayRequest(path: string, body?: Record<string, unknown>) {
 export const getWorkspacePlan = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
+    requireCapability("billing");
     await requireMember(ctx, args.workspaceId);
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace not found");
@@ -72,6 +74,7 @@ export const canUseFeature = query({
     ),
   },
   handler: async (ctx, args) => {
+    requireCapability("billing");
     await requireMember(ctx, args.workspaceId);
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace not found");
@@ -82,6 +85,7 @@ export const canUseFeature = query({
 export const getPriceCatalog = query({
   args: {},
   handler: async () => {
+    requireCapability("billing");
     const monthly = {
       starter: {
         INR: 1499,
@@ -138,6 +142,7 @@ export const createSubscriptionCheckout = action({
     cancelUrl: v.string(),
   },
   handler: async (ctx, args) => {
+    requireCapability("billing");
     const workspace = await ctx.runQuery(api.workspaces.getById, {
       workspaceId: args.workspaceId,
     });
@@ -207,6 +212,7 @@ export const cancelSubscription = action({
     workspaceId: v.id("workspaces"),
   },
   handler: async (ctx, args) => {
+    requireCapability("billing");
     const workspace = await ctx.runQuery(api.workspaces.getById, {
       workspaceId: args.workspaceId,
     });

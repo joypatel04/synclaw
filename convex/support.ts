@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
+import { requireEnabledCapability } from "./lib/edition";
 
 export const createAssistedSession = mutation({
   args: {
@@ -10,6 +11,7 @@ export const createAssistedSession = mutation({
     preferredTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("assistedLaunch");
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     const now = Date.now();
     const sessionId = await ctx.db.insert("openclawSupportSessions", {
@@ -45,6 +47,7 @@ export const createAssistedSession = mutation({
 export const listAssistedSessions = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
+    requireEnabledCapability("assistedLaunch");
     await requireMember(ctx, args.workspaceId);
     return await ctx.db
       .query("openclawSupportSessions")

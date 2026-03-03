@@ -1,3 +1,5 @@
+import { canUseCapability } from "@/lib/edition";
+
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean) {
   if (value === undefined) return defaultValue;
   const normalized = value.trim().toLowerCase();
@@ -12,6 +14,16 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean) {
 
 export const BILLING_ENABLED = parseBooleanEnv(
   process.env.NEXT_PUBLIC_BILLING_ENABLED,
+  false,
+) && canUseCapability("billing");
+
+export const MANAGED_BETA_ENABLED = parseBooleanEnv(
+  process.env.NEXT_PUBLIC_MANAGED_BETA_ENABLED,
+  false,
+);
+
+export const ASSISTED_LAUNCH_BETA_ENABLED = parseBooleanEnv(
+  process.env.NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED,
   false,
 );
 

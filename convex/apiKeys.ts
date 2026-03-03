@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireRole } from "./lib/permissions";
 import { hashApiKey, generateApiKey, getKeyPrefix } from "./lib/apiAuth";
 import { canUseFeature } from "./lib/billing";
+import { isCommercialCapabilityEnabled } from "./lib/edition";
 
 // ─── Queries ──────────────────────────────────────────────────────
 
@@ -40,7 +41,8 @@ export const create = mutation({
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     const workspace = await ctx.db.get(args.workspaceId);
     if (!workspace) throw new Error("Workspace not found");
-    if (!canUseFeature(workspace, "api_keys")) {
+    const billingEnabled = isCommercialCapabilityEnabled("billing");
+    if (billingEnabled && !canUseFeature(workspace, "api_keys")) {
       throw new Error(
         "API keys are available on Starter/Pro plans. Upgrade in Settings -> Billing.",
       );

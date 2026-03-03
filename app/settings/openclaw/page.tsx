@@ -40,9 +40,15 @@ import {
   SYNCLAW_PROTOCOL_FILENAME,
 } from "@/lib/synclawProtocol";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
-import { setChatDraft } from "@/lib/chatDraft";
+// import { setChatDraft } from "@/lib/chatDraft";
 import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import {
+  ASSISTED_LAUNCH_BETA_ENABLED,
+  BILLING_ENABLED,
+  MANAGED_BETA_ENABLED,
+  WEBHOOKS_ENABLED,
+} from "@/lib/features";
+import { canUseCapability } from "@/lib/edition";
 import {
   mapOpenClawSetupError,
   OPENCLAW_METHOD_CARDS,
@@ -130,6 +136,10 @@ function OpenClawSettingsContent() {
   const { workspaceId, canAdmin, workspace } = useWorkspace();
   const convex = useConvex();
   const router = useRouter();
+  const managedProvisioningEnabled =
+    canUseCapability("managedProvisioning") && MANAGED_BETA_ENABLED;
+  const assistedLaunchEnabled =
+    canUseCapability("assistedLaunch") && ASSISTED_LAUNCH_BETA_ENABLED;
 
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
   const agents =
@@ -146,18 +156,21 @@ function OpenClawSettingsContent() {
   const verifyManagedConnection = useMutation(
     api.managedProvisioning.verifyManagedConnection,
   );
-  const managedStatus = useQuery(api.managedProvisioning.getManagedStatus, {
-    workspaceId,
-  });
+  const managedStatus = useQuery(
+    api.managedProvisioning.getManagedStatus,
+    managedProvisioningEnabled ? { workspaceId } : "skip",
+  );
   const createAssistedSession = useMutation(api.support.createAssistedSession);
   const upsertWorkspaceKey = useMutation(api.modelKeys.upsertWorkspaceKey);
   const validateWorkspaceKeys = useMutation(api.modelKeys.validateWorkspaceKeys);
   const createAgent = useMutation(api.agents.create);
   const assistedSessions =
-    useQuery(api.support.listAssistedSessions, { workspaceId }) ?? [];
+    useQuery(
+      api.support.listAssistedSessions,
+      assistedLaunchEnabled ? { workspaceId } : "skip",
+    ) ?? [];
   const providerKeyStatuses =
     useQuery(api.modelKeys.listWorkspaceKeyStatus, { workspaceId }) ?? [];
-
   const [wsUrl, setWsUrl] = useState("");
   const [transportMode, setTransportMode] =
     useState<OpenClawTransportMode>("direct_ws");
@@ -247,6 +260,8 @@ function OpenClawSettingsContent() {
     null,
   );
   const [providerKeyError, setProviderKeyError] = useState<string | null>(null);
+  const managedModeActive =
+    managedProvisioningEnabled && deploymentMode === "managed";
   const copy = async (id: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopiedId(id);
@@ -268,7 +283,11 @@ function OpenClawSettingsContent() {
         ? summary.connectorLastSeenAt
         : null,
     );
-    setDeploymentMode((summary.deploymentMode as "managed" | "manual") ?? "manual");
+    setDeploymentMode(
+      managedProvisioningEnabled
+        ? ((summary.deploymentMode as "managed" | "manual") ?? "manual")
+        : "manual",
+    );
     setRequestedRegion(
       ((summary.managedRegionRequested ||
         summary.managedRegionResolved) as ManagedRegionCode) ??
@@ -277,7 +296,11 @@ function OpenClawSettingsContent() {
     setServerProfile(
       (summary.managedServerProfile as ManagedServerProfileCode) ?? "starter",
     );
-    setServiceTier(summary.serviceTier === "assisted" ? "assisted" : "self_serve");
+    setServiceTier(
+      assistedLaunchEnabled && summary.serviceTier === "assisted"
+        ? "assisted"
+        : "self_serve",
+    );
     setSetupStatus(
       (summary.setupStatus as
         | "not_started"
@@ -298,7 +321,7 @@ function OpenClawSettingsContent() {
     setPasswordDraft("");
     setPasswordClear(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summary?.updatedAt]);
+  }, [assistedLaunchEnabled, managedProvisioningEnabled, summary?.updatedAt]);
 
   useEffect(() => {
     if (!securityStatus) return;
@@ -691,6 +714,10 @@ function OpenClawSettingsContent() {
   const onRequestAssistedLaunch = async () => {
     setServiceError(null);
     setServiceMessage(null);
+    if (!assistedLaunchEnabled) {
+      setServiceError("Assisted launch is not available in this edition.");
+      return;
+    }
     try {
       if (!ownerContact.trim()) {
         setServiceError("Owner contact is required for assisted launch.");
@@ -813,7 +840,9 @@ function OpenClawSettingsContent() {
       <SettingsTabs active="openclaw" />
 
       <div className="space-y-8">
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+        {managedProvisioningEnabled ? (
+          <>
+            <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-1">
             Connection Method
           </h2>
@@ -834,14 +863,14 @@ function OpenClawSettingsContent() {
                     key={method.mode}
                     type="button"
                     onClick={() => {
-                      if (deploymentMode === "managed") return;
+                      if (managedModeActive) return;
                       setTransportMode(method.mode);
                     }}
                     className={`rounded-xl border p-3 text-left ${
                       active
                         ? "border-accent-orange/50 bg-accent-orange/10"
                         : "border-border-default bg-bg-primary"
-                    } ${deploymentMode === "managed" ? "opacity-60 cursor-not-allowed" : ""}`}
+                    } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-text-primary">
@@ -883,14 +912,14 @@ function OpenClawSettingsContent() {
                     key={method.mode}
                     type="button"
                     onClick={() => {
-                      if (deploymentMode === "managed") return;
+                      if (managedModeActive) return;
                       setTransportMode(method.mode);
                     }}
                     className={`mt-2 w-full rounded-xl border p-3 text-left ${
                       active
                         ? "border-accent-orange/50 bg-accent-orange/10"
                         : "border-border-default bg-bg-secondary"
-                    } ${deploymentMode === "managed" ? "opacity-60 cursor-not-allowed" : ""}`}
+                    } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-text-primary">
@@ -948,7 +977,9 @@ function OpenClawSettingsContent() {
                 className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
               >
                 <option value="self_serve">Guided self-serve</option>
-                <option value="assisted">Assisted launch</option>
+                {assistedLaunchEnabled ? (
+                  <option value="assisted">Assisted launch</option>
+                ) : null}
               </select>
               <p className="text-[11px] text-text-dim">
                 {serviceTier === "assisted"
@@ -1016,7 +1047,7 @@ function OpenClawSettingsContent() {
                 <option value="verified">Verified</option>
               </select>
             </div>
-            {serviceTier === "assisted" ? (
+            {assistedLaunchEnabled && serviceTier === "assisted" ? (
               <div className="space-y-2">
                 <Label className="text-text-secondary">Owner contact</Label>
                 <Input
@@ -1029,7 +1060,7 @@ function OpenClawSettingsContent() {
             ) : null}
           </div>
 
-          {serviceTier === "assisted" ? (
+          {assistedLaunchEnabled && serviceTier === "assisted" ? (
             <div className="mt-4 space-y-2">
               <Label className="text-text-secondary">Support notes</Label>
               <Textarea
@@ -1043,7 +1074,7 @@ function OpenClawSettingsContent() {
           ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {serviceTier === "assisted" ? (
+            {assistedLaunchEnabled && serviceTier === "assisted" ? (
               <Button
                 type="button"
                 className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
@@ -1079,7 +1110,7 @@ function OpenClawSettingsContent() {
               Retry latest job
             </Button>
           </div>
-          {serviceTier === "assisted" ? (
+          {assistedLaunchEnabled && serviceTier === "assisted" ? (
             <p className="mt-2 text-[11px] text-text-dim">
               Assisted launch creates a support request only. Infra provisioning starts when support triggers setup.
             </p>
@@ -1116,20 +1147,24 @@ function OpenClawSettingsContent() {
                 ).label})
               </p>
             </div>
-            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">
-                Latest assisted session
-              </p>
-              <p className="mt-1 text-xs text-text-primary">
-                {assistedSessions[0]
-                  ? `${assistedSessions[0].status} · ${new Date(
-                      assistedSessions[0].createdAt,
-                    ).toLocaleString()}`
-                  : "No request yet"}
-              </p>
+            {assistedLaunchEnabled ? (
+              <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                <p className="text-[11px] text-text-dim">
+                  Latest assisted session
+                </p>
+                <p className="mt-1 text-xs text-text-primary">
+                  {assistedSessions[0]
+                    ? `${assistedSessions[0].status} · ${new Date(
+                        assistedSessions[0].createdAt,
+                      ).toLocaleString()}`
+                    : "No request yet"}
+                </p>
+              </div>
+            ) : null}
             </div>
-          </div>
-        </div>
+            </div>
+          </>
+        ) : null}
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary">
@@ -1212,7 +1247,7 @@ function OpenClawSettingsContent() {
             Connection
           </h2>
           <div className="space-y-4">
-            {deploymentMode === "managed" ? (
+            {managedModeActive ? (
               <div className="rounded-lg border border-border-default bg-bg-primary p-3">
                 <p className="text-xs font-semibold text-text-primary">
                   Managed instance
@@ -1281,7 +1316,7 @@ function OpenClawSettingsContent() {
                 ) : null}
               </div>
             ) : null}
-            {deploymentMode === "managed" ? null : (
+            {managedModeActive ? null : (
             <>
             {transportMode === "connector" ? (
               <>
@@ -1434,7 +1469,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Secrets
           </h2>
-          {deploymentMode === "managed" ? (
+          {managedModeActive ? (
             <p className="text-[11px] text-text-dim">
               Managed mode handles gateway credentials automatically. No manual token/password entry is required.
             </p>

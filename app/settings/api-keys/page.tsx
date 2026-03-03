@@ -26,14 +26,21 @@ import { Check, Copy, Key, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
+import { canUseCapability } from "@/lib/edition";
 
 function ApiKeysContent() {
   const { workspaceId, canAdmin } = useWorkspace();
+  const billingEnabled = canUseCapability("billing");
   const canUseApiKeys =
-    useQuery(api.billing_razorpay.canUseFeature, {
-      workspaceId,
-      featureKey: "api_keys",
-    }) ?? false;
+    useQuery(
+      api.billing_razorpay.canUseFeature,
+      billingEnabled
+        ? {
+            workspaceId,
+            featureKey: "api_keys",
+          }
+        : "skip",
+    ) ?? !billingEnabled;
   const keys = useQuery(api.apiKeys.list, { workspaceId }) ?? [];
   const createKey = useMutation(api.apiKeys.create);
   const revokeKey = useMutation(api.apiKeys.revoke);

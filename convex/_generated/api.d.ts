@@ -22,6 +22,7 @@ import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as lib_apiAuth from "../lib/apiAuth.js";
 import type * as lib_billing from "../lib/billing.js";
+import type * as lib_edition from "../lib/edition.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_secretCrypto from "../lib/secretCrypto.js";
 import type * as lib_webhooks from "../lib/webhooks.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/apiAuth": typeof lib_apiAuth;
   "lib/billing": typeof lib_billing;
+  "lib/edition": typeof lib_edition;
   "lib/permissions": typeof lib_permissions;
   "lib/secretCrypto": typeof lib_secretCrypto;
   "lib/webhooks": typeof lib_webhooks;

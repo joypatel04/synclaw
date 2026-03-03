@@ -8,6 +8,40 @@ Synclaw is a Next.js + Convex dashboard for managing an OpenClaw-powered agent w
 - Razorpay per-workspace billing (`/settings/billing`)
 - MCP server package (see `packages/mcp-server`)
 
+## Editions
+
+- `core` (OSS): manual/BYO OpenClaw workflows and core product surfaces.
+- `commercial`: managed provisioning, assisted launch/support, billing, and managed gateway ops.
+
+Set edition using:
+
+```bash
+SYNCLAW_EDITION=core|commercial
+NEXT_PUBLIC_SYNCLAW_EDITION=core|commercial
+```
+
+## Public OSS Beta Profile
+
+For open-source beta launch (Public WSS/BYO OpenClaw only), use:
+
+```bash
+SYNCLAW_EDITION=core
+NEXT_PUBLIC_SYNCLAW_EDITION=core
+SYNCLAW_MANAGED_BETA_ENABLED=false
+SYNCLAW_ASSISTED_LAUNCH_ENABLED=false
+NEXT_PUBLIC_MANAGED_BETA_ENABLED=false
+NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED=false
+NEXT_PUBLIC_BILLING_ENABLED=false
+```
+
+For internal managed-flow testing, switch to `commercial` and enable the two managed flags.
+
+To prepare an OSS beta bundle quickly:
+
+```bash
+bun run export:oss-beta
+```
+
 ## Local Dev
 
 ### 1) Install deps
@@ -23,7 +57,7 @@ cp .env.local.example .env.local
 ```
 
 Update `.env.local` values for your Convex deployment + Convex Auth GitHub/Google OAuth keys.
-If you want billing enabled, configure Razorpay keys and plan IDs.
+If you run `commercial`, configure billing and managed-ops env vars as needed.
 
 ### 3) Start Convex + Next.js
 
@@ -59,6 +93,8 @@ OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 ## Docs
 
 - Deployment: `docs/DEPLOYMENT.md`
+- OSS edition track: `docs/oss/README.md`
+- Commercial edition track: `docs/commercial/README.md`
 - OpenClaw chat: `docs/OPENCLAW_CHAT.md`
 - Product overview: `docs/product/OVERVIEW.md`
 - Hosting guide: `docs/product/HOSTING_GUIDE.md`

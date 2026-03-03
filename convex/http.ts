@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { importPKCS8, SignJWT } from "jose";
 import { auth } from "./auth";
+import { isCommercialCapabilityEnabled } from "./lib/edition";
 import {
   parseWebhookPayload,
   sanitizeWebhookHeaders,
@@ -301,6 +302,12 @@ http.route({
   path: "/api/v1/billing/razorpay/webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    if (!isCommercialCapabilityEnabled("billing")) {
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     if (!secret) {
       return new Response(

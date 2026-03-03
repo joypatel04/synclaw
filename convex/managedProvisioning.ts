@@ -9,6 +9,7 @@ import {
 import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
 import { encryptSecretToHex } from "./lib/secretCrypto";
+import { requireEnabledCapability } from "./lib/edition";
 import {
   DEFAULT_MANAGED_SERVER_PROFILE,
   managedServerProfileByCode,
@@ -431,6 +432,7 @@ export const _bootstrapOpenClawInstance = internalAction({
     resolvedRegion: v.string(),
   },
   handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const apiBase = controlPlaneBaseUrl("bootstrap");
     const timeoutMs = timeoutMsFromEnv("MANAGED_BOOTSTRAP_TIMEOUT_MS", 120000);
     const strict = optionalEnv("MANAGED_BOOTSTRAP_STRICT") === "true";
@@ -483,6 +485,7 @@ export const _configureGatewayRoute = internalAction({
     managedWsUrl: v.string(),
   },
   handler: async (_ctx, args) => {
+    requireEnabledCapability("managedGatewayAutomation");
     const apiBase = controlPlaneBaseUrl("gateway");
     const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
     const strict = optionalEnv("MANAGED_GATEWAY_STRICT") === "true";
@@ -530,6 +533,7 @@ export const _deleteGatewayRoute = internalAction({
     jobId: v.id("openclawProvisioningJobs"),
   },
   handler: async (_ctx, args) => {
+    requireEnabledCapability("managedGatewayAutomation");
     const apiBase = controlPlaneBaseUrl("gateway");
     if (!apiBase) return { ok: true, skipped: true };
     const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
@@ -560,6 +564,7 @@ export const _runManagedHealthChecks = internalAction({
     managedWsUrl: v.string(),
   },
   handler: async (_ctx, args) => {
+    requireEnabledCapability("managedGatewayAutomation");
     if (!args.managedWsUrl.startsWith("wss://")) {
       throw new Error("Managed wsUrl must use wss://");
     }
@@ -606,6 +611,7 @@ export const _appendManagedJobLog = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const job = await ctx.db.get(args.jobId);
     if (!job || job.workspaceId !== args.workspaceId) return;
     const cfg = await ctx.db
@@ -648,6 +654,7 @@ export const _markStepStatus = internalMutation({
     log: v.string(),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const job = await ctx.db.get(args.jobId);
     if (!job || job.workspaceId !== args.workspaceId) return;
     const now = Date.now();
@@ -709,6 +716,7 @@ export const _markManagedJobFailed = internalMutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const job = await ctx.db.get(args.jobId);
     if (!job || job.workspaceId !== args.workspaceId) return;
     const now = Date.now();
@@ -757,6 +765,7 @@ export const _finalizeManagedConnection = internalMutation({
     routeVersion: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const now = Date.now();
     const cfg = await ctx.db
       .query("openclawGatewayConfigs")
@@ -830,6 +839,7 @@ export const executeManagedProvisioning = internalAction({
     jobId: v.id("openclawProvisioningJobs"),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const fail = async (
       failureCode: ManagedFailureCode,
       reason: string,
@@ -1062,6 +1072,7 @@ export const createManagedJob = mutation({
     serverProfile: v.optional(managedServerProfileValidator),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     return await createManagedJobInternal(
       ctx,
@@ -1197,6 +1208,7 @@ async function createManagedJobInternal(
 export const autoConnectWorkspace = mutation({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     const cfg = await ctx.db
       .query("openclawGatewayConfigs")
@@ -1244,6 +1256,7 @@ export const autoConnectWorkspace = mutation({
 export const getManagedStatus = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     await requireMember(ctx, args.workspaceId);
     const cfg = await ctx.db
       .query("openclawGatewayConfigs")
@@ -1286,6 +1299,7 @@ export const getJobStatus = internalQuery({
     jobId: v.id("openclawProvisioningJobs"),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const job = await ctx.db.get(args.jobId);
     if (!job || job.workspaceId !== args.workspaceId) return null;
     return job;
@@ -1298,6 +1312,7 @@ export const retryJob = mutation({
     jobId: v.id("openclawProvisioningJobs"),
   },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     const job = await ctx.db.get(args.jobId);
     if (!job || job.workspaceId !== args.workspaceId) {

@@ -1,6 +1,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireMember } from "./lib/permissions";
+import { isCommercialCapabilityEnabled } from "./lib/edition";
 
 /**
  * Workspace onboarding status.
@@ -31,7 +32,9 @@ export const getStatus = query({
     const provisioningMode = openclaw?.provisioningMode ?? "sutraha_managed";
     const deploymentMode = openclaw?.deploymentMode ?? "manual";
     const requiresProviderKey =
-      deploymentMode === "managed" && provisioningMode === "sutraha_managed";
+      isCommercialCapabilityEnabled("managedProvisioning") &&
+      deploymentMode === "managed" &&
+      provisioningMode === "sutraha_managed";
 
     const providerKeys = await ctx.db
       .query("workspaceModelProviderKeys")
@@ -50,9 +53,12 @@ export const getStatus = query({
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
 
-    const mainAgent =
-      agents.find((a) => a.sessionKey === "agent:main:main") ?? null;
-    const mainAgentId = mainAgent ? mainAgent._id : null;
+    const activeAgents = agents.filter((a) => !a.isArchived);
+    const canonicalMainAgent =
+      activeAgents.find((a) => a.sessionKey === "agent:main:main") ?? null;
+    const fallbackAgent = canonicalMainAgent ?? activeAgents[0] ?? null;
+    const mainAgentId = fallbackAgent ? fallbackAgent._id : null;
+    const hasCanonicalMainAgent = canonicalMainAgent !== null;
 
     const isComplete =
       openclawConfigured &&
@@ -71,6 +77,7 @@ export const getStatus = query({
       provisioningMode,
       deploymentMode,
       mainAgentId,
+      hasCanonicalMainAgent,
       isComplete,
     };
   },
