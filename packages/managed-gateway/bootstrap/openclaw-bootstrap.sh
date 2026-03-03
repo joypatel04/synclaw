@@ -127,9 +127,19 @@ fi
 
 # Service verification.
 systemctl is-active --quiet openclaw-gateway.service
-sleep 2
-if ! ss -ltnp | grep -q ":${OPENCLAW_PORT}"; then
+# Give gateway process time to initialize and bind.
+BOUND=0
+for _ in $(seq 1 60); do
+  if ss -ltn | grep -q ":${OPENCLAW_PORT}\\b"; then
+    BOUND=1
+    break
+  fi
+  sleep 2
+done
+
+if [[ "${BOUND}" -ne 1 ]]; then
   echo "OpenClaw service started but port ${OPENCLAW_PORT} is not listening." >&2
+  systemctl status openclaw-gateway.service --no-pager >&2 || true
   journalctl -u openclaw-gateway.service -n 120 --no-pager >&2 || true
   exit 1
 fi

@@ -382,7 +382,7 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
         ok: false,
         error: "Bootstrap script failed.",
         code: result.code,
-        stderr: result.stderr.slice(-1200),
+        stderr: result.stderr.slice(-6000),
       });
       return;
     }
