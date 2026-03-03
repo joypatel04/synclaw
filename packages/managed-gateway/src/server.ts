@@ -358,7 +358,13 @@ PROVIDER_ENV_KEY="${providerEnv}"
 DEFAULT_MODEL="${input.defaultModel}"
 TARGET_PORT="${input.targetPort}"
 API_KEY="$(printf '%s' '${apiKeyB64}' | base64 -d)"
-CONFIG_PATH="/var/lib/openclaw/openclaw.json"
+CONFIG_PATH_PRIMARY="/var/lib/openclaw/.openclaw/openclaw.json"
+CONFIG_PATH_FALLBACK="/var/lib/openclaw/openclaw.json"
+if [ -f "$CONFIG_PATH_PRIMARY" ]; then
+  CONFIG_PATH="$CONFIG_PATH_PRIMARY"
+else
+  CONFIG_PATH="$CONFIG_PATH_FALLBACK"
+fi
 PROVIDERS_ENV="/etc/openclaw/providers.env"
 
 mkdir -p /etc/openclaw
@@ -369,9 +375,9 @@ mv "$PROVIDERS_ENV.tmp" "$PROVIDERS_ENV"
 printf '%s=%s\\n' "$PROVIDER_ENV_KEY" "$API_KEY" >> "$PROVIDERS_ENV"
 unset API_KEY
 
-node <<'NODE'
+CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
 const fs = require("node:fs");
-const path = "/var/lib/openclaw/openclaw.json";
+const path = process.env.CONFIG_PATH || "/var/lib/openclaw/.openclaw/openclaw.json";
 let cfg = {};
 try {
   cfg = JSON.parse(fs.readFileSync(path, "utf8"));
@@ -406,9 +412,11 @@ for _ in $(seq 1 ${Math.max(5, Math.floor(PROVIDER_PORT_WAIT_SECONDS))}); do
   fi
   sleep 2
 done
-SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" node <<'NODE'
+SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
 const fs = require("node:fs");
-const cfg = JSON.parse(fs.readFileSync("/var/lib/openclaw/openclaw.json", "utf8"));
+const cfg = JSON.parse(
+  fs.readFileSync(process.env.CONFIG_PATH || "/var/lib/openclaw/.openclaw/openclaw.json", "utf8"),
+);
 const model = (((cfg || {}).agents || {}).defaults || {}).model || {};
 const providersEnv = fs.readFileSync("/etc/openclaw/providers.env", "utf8");
 const checks = {
@@ -428,6 +436,13 @@ function buildProviderVerifyScript(input: {
 }) {
   const providerEnv = providerEnvKey(input.provider);
   return `set -euo pipefail
+CONFIG_PATH_PRIMARY="/var/lib/openclaw/.openclaw/openclaw.json"
+CONFIG_PATH_FALLBACK="/var/lib/openclaw/openclaw.json"
+if [ -f "$CONFIG_PATH_PRIMARY" ]; then
+  CONFIG_PATH="$CONFIG_PATH_PRIMARY"
+else
+  CONFIG_PATH="$CONFIG_PATH_FALLBACK"
+fi
 SERVICE_RESTARTED=false
 if systemctl is-active --quiet openclaw-gateway.service; then
   SERVICE_RESTARTED=true
@@ -436,11 +451,13 @@ PORT_LISTENING=false
 if ss -ltn | grep -Eq ":${input.targetPort}\\\\b"; then
   PORT_LISTENING=true
 fi
-SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" node <<'NODE'
+SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
 const fs = require("node:fs");
 let cfg = {};
 try {
-  cfg = JSON.parse(fs.readFileSync("/var/lib/openclaw/openclaw.json", "utf8"));
+  cfg = JSON.parse(
+    fs.readFileSync(process.env.CONFIG_PATH || "/var/lib/openclaw/.openclaw/openclaw.json", "utf8"),
+  );
 } catch {
   cfg = {};
 }
