@@ -375,6 +375,15 @@ mv "$PROVIDERS_ENV.tmp" "$PROVIDERS_ENV"
 printf '%s=%s\\n' "$PROVIDER_ENV_KEY" "$API_KEY" >> "$PROVIDERS_ENV"
 unset API_KEY
 
+# Apply core defaults via CLI when available, keep JSON patch below as fallback.
+if command -v openclaw >/dev/null 2>&1; then
+  HOME="/root" openclaw config set gateway.mode local || true
+  HOME="/root" openclaw config set gateway.port "${input.targetPort}" || true
+  HOME="/root" openclaw config set gateway.bind lan || true
+  HOME="/root" openclaw config set agents.defaults.model.provider "${input.provider}" || true
+  HOME="/root" openclaw config set agents.defaults.model.primary "${input.defaultModel}" || true
+fi
+
 CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
 const fs = require("node:fs");
 const path = process.env.CONFIG_PATH || "/root/.openclaw/openclaw.json";
@@ -385,6 +394,7 @@ try {
   cfg = {};
 }
 cfg.gateway = cfg.gateway || {};
+cfg.gateway.mode = cfg.gateway.mode || "local";
 cfg.gateway.port = Number("${input.targetPort}");
 cfg.gateway.bind = cfg.gateway.bind || "lan";
 cfg.gateway.controlUi = cfg.gateway.controlUi || {};

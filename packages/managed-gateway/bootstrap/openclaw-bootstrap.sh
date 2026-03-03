@@ -21,7 +21,6 @@ OPENCLAW_ETC_DIR="/etc/openclaw"
 OPENCLAW_ENV_FILE="${OPENCLAW_ETC_DIR}/managed.env"
 OPENCLAW_PROVIDERS_ENV_FILE="${OPENCLAW_ETC_DIR}/providers.env"
 OPENCLAW_GATEWAY_UNIT="openclaw-gateway.service"
-OPENCLAW_GATEWAY_DROPIN_DIR="/etc/systemd/system/${OPENCLAW_GATEWAY_UNIT}.d"
 OPENCLAW_CONFIG_DIR="${OPENCLAW_HOME_DIR}/.openclaw"
 OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_DIR}/openclaw.json"
 
@@ -82,20 +81,20 @@ if [[ -z "${OPENCLAW_BIN}" ]]; then
   exit 1
 fi
 
-# OpenClaw-managed setup path: let OpenClaw install/manage its own service.
-# This avoids brittle custom unit args across OpenClaw versions.
-HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" onboard \
-    --gateway-port "${OPENCLAW_PORT}" \
-    --gateway-bind lan \
-    --gateway-auth token \
-    --gateway-token "${OPENCLAW_TOKEN}" \
-    --install-daemon \
-    --skip-ui \
-    --skip-health \
-    --skip-channels \
-    --skip-skills
+# Ensure OpenClaw runtime config exists in the default root profile.
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" gateway run --help >/dev/null 2>&1
 
-# Ensure managed defaults are set in the OpenClaw config file.
+# Pre-create session store dirs so doctor/setup checks don't block on prompts.
+install -d -m 0700 -o root -g root "${OPENCLAW_HOME_DIR}/.openclaw/agents/main/sessions"
+
+# Configure core gateway settings via OpenClaw CLI (stable contract).
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.mode local
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.port "${OPENCLAW_PORT}"
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.bind lan
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.mode token
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.token "${OPENCLAW_TOKEN}"
+
+# Ensure managed defaults and control UI origins are set in config.
 HOME="${OPENCLAW_HOME_DIR}" node <<NODE
 const fs = require("node:fs");
 const path = "${OPENCLAW_CONFIG_PATH}";
@@ -106,11 +105,6 @@ try {
   cfg = {};
 }
 cfg.gateway = cfg.gateway || {};
-cfg.gateway.port = Number("${OPENCLAW_PORT}");
-cfg.gateway.bind = "lan";
-cfg.gateway.auth = cfg.gateway.auth || {};
-cfg.gateway.auth.mode = "token";
-cfg.gateway.auth.token = "${OPENCLAW_TOKEN}";
 cfg.gateway.controlUi = cfg.gateway.controlUi || {};
 cfg.gateway.controlUi.allowedOrigins = ${CONTROL_UI_ALLOWED_ORIGINS_JSON};
 cfg.agents = cfg.agents || {};
@@ -120,16 +114,30 @@ fs.mkdirSync("${OPENCLAW_CONFIG_DIR}", { recursive: true });
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2), "utf8");
 NODE
 
-# Inject providers env into the installed service via drop-in override.
-install -d -m 0755 "${OPENCLAW_GATEWAY_DROPIN_DIR}"
-cat > "${OPENCLAW_GATEWAY_DROPIN_DIR}/managed-env.conf" <<EOF
+# Create a deterministic systemd service for managed mode.
+cat > "/etc/systemd/system/${OPENCLAW_GATEWAY_UNIT}" <<EOF
+[Unit]
+Description=OpenClaw Gateway (managed)
+After=network-online.target
+Wants=network-online.target
+
 [Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=${OPENCLAW_HOME_DIR}
 EnvironmentFile=${OPENCLAW_ENV_FILE}
 EnvironmentFile=-${OPENCLAW_PROVIDERS_ENV_FILE}
+ExecStart=${OPENCLAW_BIN} gateway run --allow-unconfigured --port \${OPENCLAW_GATEWAY_PORT} --bind \${OPENCLAW_GATEWAY_BIND} --auth token --token \${OPENCLAW_GATEWAY_TOKEN}
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl restart "${OPENCLAW_GATEWAY_UNIT}"
+systemctl enable --now "${OPENCLAW_GATEWAY_UNIT}"
 
 # Service verification.
 systemctl is-active --quiet "${OPENCLAW_GATEWAY_UNIT}"
