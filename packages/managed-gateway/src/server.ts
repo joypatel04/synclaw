@@ -70,10 +70,13 @@ const UPSTREAM_WS_PATH = (process.env.MANAGED_UPSTREAM_WS_PATH ?? "/").trim();
 const UPSTREAM_WS_SCHEME = (process.env.MANAGED_UPSTREAM_WS_SCHEME ?? "ws").trim();
 const UPSTREAM_WS_PORT_DEFAULT = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
 const BOOTSTRAP_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_TIMEOUT_MS ?? "120000");
+const SSH_READY_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_SSH_READY_TIMEOUT_MS ?? "30000");
+const SSH_CONNECT_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_SSH_CONNECT_TIMEOUT_MS ?? "20000");
 const VERIFY_TIMEOUT_MS = Number(process.env.MANAGED_HEALTHCHECK_TIMEOUT_MS ?? "12000");
 const PROVIDER_PORT_WAIT_SECONDS = Number(
   process.env.MANAGED_PROVIDER_PORT_WAIT_SECONDS ?? "30",
 );
+const VERBOSE_LOGS = (process.env.MANAGED_VERBOSE_LOGS ?? "true").trim() !== "false";
 const REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT =
   (process.env.MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT ?? "true").trim() === "true";
 
@@ -120,6 +123,20 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 function log(event: string, data: Record<string, unknown>) {
   // Lightweight JSON logs for VM/container observability.
   console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...data }));
+}
+
+function redactSensitive(text: string): string {
+  return text
+    .replace(
+      /(OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|OPENCLAW_GATEWAY_TOKEN)\s*=\s*[^\s"']+/gi,
+      "$1=[REDACTED]",
+    )
+    .replace(/(--token\s+)([^\s]+)/gi, "$1[REDACTED]");
+}
+
+function clipped(text: string, max = 600): string {
+  if (text.length <= max) return text;
+  return text.slice(-max);
 }
 
 function getRoute(workspaceId: string): RouteRow | null {
@@ -218,11 +235,27 @@ async function runSshCommand(
   username: string,
   privateKey: string,
   command: string,
+  logContext?: Record<string, unknown>,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return await new Promise((resolve, reject) => {
     const conn = new SshClient();
     let stdout = "";
     let stderr = "";
+    let lastProgressLogAt = 0;
+
+    const maybeLogProgress = (stream: "stdout" | "stderr", chunk: string) => {
+      if (!VERBOSE_LOGS) return;
+      const now = Date.now();
+      if (now - lastProgressLogAt < 1000) return;
+      lastProgressLogAt = now;
+      log("ssh_stream_chunk", {
+        ...logContext,
+        host,
+        stream,
+        bytes: chunk.length,
+        tail: clipped(redactSensitive(chunk), 240),
+      });
+    };
 
     const timeout = setTimeout(() => {
       conn.end();
@@ -241,13 +274,28 @@ async function runSshCommand(
           stream.on("close", (code: number | null) => {
             clearTimeout(timeout);
             conn.end();
+            if (VERBOSE_LOGS) {
+              log("ssh_command_finished", {
+                ...logContext,
+                host,
+                exitCode: code ?? 1,
+                stdoutBytes: stdout.length,
+                stderrBytes: stderr.length,
+                stdoutTail: clipped(redactSensitive(stdout), 1200),
+                stderrTail: clipped(redactSensitive(stderr), 1200),
+              });
+            }
             resolve({ code: code ?? 1, stdout, stderr });
           });
           stream.on("data", (d: Buffer) => {
-            stdout += d.toString("utf8");
+            const chunk = d.toString("utf8");
+            stdout += chunk;
+            maybeLogProgress("stdout", chunk);
           });
           stream.stderr.on("data", (d: Buffer) => {
-            stderr += d.toString("utf8");
+            const chunk = d.toString("utf8");
+            stderr += chunk;
+            maybeLogProgress("stderr", chunk);
           });
         });
       })
@@ -259,7 +307,7 @@ async function runSshCommand(
         host,
         username,
         privateKey,
-        readyTimeout: BOOTSTRAP_TIMEOUT_MS,
+        readyTimeout: SSH_CONNECT_TIMEOUT_MS,
       });
   });
 }
@@ -563,10 +611,16 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
       scriptSource: inlineScript ? "env_inline" : scriptFile ? "file" : "default",
     });
 
+    log("bootstrap_waiting_for_ssh", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+      timeoutMs: SSH_READY_TIMEOUT_MS,
+    });
     const sshReady = await waitForTcpReachable({
       host: body.host,
       port: 22,
-      timeoutMs: Math.min(BOOTSTRAP_TIMEOUT_MS, 120000),
+      timeoutMs: SSH_READY_TIMEOUT_MS,
       pollIntervalMs: 3000,
     });
     if (!sshReady) {
@@ -576,8 +630,29 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
       });
       return;
     }
+    log("bootstrap_ssh_ready", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+    });
 
-    const result = await runSshCommand(body.host, username, privateKey, script);
+    log("bootstrap_running_remote_script", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+    });
+    const result = await runSshCommand(body.host, username, privateKey, script, {
+      operation: "bootstrap",
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+    });
+    log("bootstrap_remote_script_finished", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+      exitCode: result.code,
+      stderrTail: result.stderr.slice(-300),
+    });
     if (result.code !== 0) {
       res.status(500).json({
         ok: false,
@@ -663,10 +738,16 @@ app.post("/control/openclaw/provider/apply", requireAuth, async (req, res) => {
   });
 
   try {
+    log("provider_apply_waiting_for_ssh", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+      timeoutMs: SSH_READY_TIMEOUT_MS,
+    });
     const sshReady = await waitForTcpReachable({
       host: body.host,
       port: 22,
-      timeoutMs: Math.min(BOOTSTRAP_TIMEOUT_MS, 120000),
+      timeoutMs: SSH_READY_TIMEOUT_MS,
       pollIntervalMs: 3000,
     });
     if (!sshReady) {
@@ -676,7 +757,16 @@ app.post("/control/openclaw/provider/apply", requireAuth, async (req, res) => {
       });
       return;
     }
-    const result = await runSshCommand(body.host, username, privateKey, script);
+    log("provider_apply_ssh_ready", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+    });
+    const result = await runSshCommand(body.host, username, privateKey, script, {
+      operation: "provider_apply",
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+    });
     if (result.code !== 0) {
       res.status(500).json({
         ok: false,
@@ -744,7 +834,11 @@ app.post("/control/openclaw/provider/verify", requireAuth, async (req, res) => {
     targetPort,
   });
   try {
-    const result = await runSshCommand(host, username, privateKey, script);
+    const result = await runSshCommand(host, username, privateKey, script, {
+      operation: "provider_verify",
+      workspaceId,
+      provider,
+    });
     if (result.code !== 0) {
       res.status(500).json({
         ok: false,
