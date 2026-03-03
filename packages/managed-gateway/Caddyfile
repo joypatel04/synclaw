@@ -1,0 +1,12 @@
+synclaw.in {
+  @ws path /ws/*
+  reverse_proxy @ws managed-gateway:8788
+
+  @control path /control/*
+  reverse_proxy @control managed-gateway:8788
+
+  # Frontend continues on Vercel for all non-gateway routes.
+  reverse_proxy https://synclaw.in {
+    header_up Host synclaw.in
+  }
+}

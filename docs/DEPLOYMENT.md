@@ -72,6 +72,31 @@ AUTH_GOOGLE_SECRET=<Google OAuth Client Secret>
 JWT_PRIVATE_KEY=<RSA private key>
 JWKS=<JSON Web Key Set>
 OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<64 hex chars (openssl rand -hex 32)>
+HETZNER_API_TOKEN=<Hetzner Cloud API token>
+MANAGED_OPENCLAW_WSS_TEMPLATE=wss://synclaw.in/ws/{workspaceId}
+```
+
+### Managed Provisioning Control Plane Vars (Recommended)
+
+```
+MANAGED_DEFAULT_SERVER_PROFILE=starter
+MANAGED_HETZNER_IMAGE=ubuntu-24.04
+MANAGED_HETZNER_SERVER_TYPE=cx22
+MANAGED_HETZNER_FALLBACK_SERVER_TYPE=cx22
+
+MANAGED_CONTROL_PLANE_BASE_URL=https://synclaw.in/control
+MANAGED_BOOTSTRAP_API_BASE_URL=https://synclaw.in/control
+MANAGED_BOOTSTRAP_API_TOKEN=<token>
+MANAGED_BOOTSTRAP_USER=root
+MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY=<private key>
+MANAGED_BOOTSTRAP_TIMEOUT_MS=120000
+MANAGED_BOOTSTRAP_STRICT=false
+
+MANAGED_GATEWAY_API_BASE_URL=https://synclaw.in/control
+MANAGED_GATEWAY_API_TOKEN=<token>
+MANAGED_GATEWAY_STRICT=false
+MANAGED_HEALTHCHECK_TIMEOUT_MS=60000
+MANAGED_UPSTREAM_WS_PORT=8765
 ```
 
 To generate JWT keys for a new deployment:
@@ -131,7 +156,37 @@ npm update -g @synclaw/mcp-server
 
 ---
 
-## 4. OAuth Apps (GitHub + Google)
+## 4. Managed Gateway Control Plane (`packages/managed-gateway`)
+
+Deploy this on a single Hetzner VM to support:
+- `POST /control/bootstrap`
+- `POST /control/routes`
+- `POST /control/routes/delete`
+- `GET /control/routes/verify`
+- `wss://synclaw.in/ws/<workspaceId>`
+
+### Build and Run on VM
+
+```bash
+cd packages/managed-gateway
+docker compose up -d --build
+```
+
+### DNS / Reverse Proxy
+
+Point `synclaw.in` to the gateway VM and use `packages/managed-gateway/Caddyfile`:
+- `/ws/*` and `/control/*` -> managed gateway container
+- all other traffic -> Vercel app origin
+
+### Control Plane Token
+
+Set the same token in both places:
+- Gateway VM env: `MANAGED_GATEWAY_API_TOKEN`
+- Convex env: `MANAGED_GATEWAY_API_TOKEN` (and `MANAGED_BOOTSTRAP_API_TOKEN` optionally)
+
+---
+
+## 5. OAuth Apps (GitHub + Google)
 
 If you change the Convex deployment or domain, update both OAuth providers:
 
@@ -151,7 +206,7 @@ If you change the Convex deployment or domain, update both OAuth providers:
 
 ---
 
-## 5. OpenClaw Files Bridge (Docker)
+## 6. OpenClaw Files Bridge (Docker)
 
 Deploy this when enabling remote OpenClaw workspace file browsing/editing.
 

@@ -143,7 +143,7 @@ function managedWsUrlFor(region: string, workspaceId: string, host: string): str
       .replaceAll("{workspaceId}", workspaceId)
       .replaceAll("{host}", host);
   }
-  return `wss://${region}.managed.synclaw.in/ws/${workspaceId}`;
+  return `wss://synclaw.in/ws/${workspaceId}`;
 }
 
 function isoNow() {

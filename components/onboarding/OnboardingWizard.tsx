@@ -291,7 +291,8 @@ export function OnboardingWizard() {
   );
 
   const step1Done = Boolean(status?.openclawConfigured);
-  const step2Done = Boolean(status?.providerKeyReady);
+  const requiresProviderKey = Boolean(status?.requiresProviderKey);
+  const step2Done = requiresProviderKey ? Boolean(status?.providerKeyReady) : true;
   const step3Done = Boolean(status?.mainAgentId);
   const pairingHintVisible =
     testResult.status === "error" &&
@@ -1392,85 +1393,89 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           </div>
         </div>
 
-        <div
-          className={`rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6 ${
-            !step1Done ? "opacity-60" : ""
-          }`}
-        >
-          <StepHeader
-            step={2}
-            title="Provider setup"
-            subtitle="Add and validate at least one model provider API key."
-            done={step2Done}
-          />
+        {requiresProviderKey ? (
+          <div
+            className={`rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6 ${
+              !step1Done ? "opacity-60" : ""
+            }`}
+          >
+            <StepHeader
+              step={2}
+              title="Provider setup"
+              subtitle="Add and validate at least one model provider API key."
+              done={step2Done}
+            />
 
-          <div className="mt-5 space-y-4">
-            {!step1Done ? (
-              <p className="text-xs text-text-muted">Complete Step 1 first.</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">Provider</Label>
-                    <select
-                      value={providerId}
-                      onChange={(e) => setProviderId(e.target.value as ModelProviderId)}
-                      className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
+            <div className="mt-5 space-y-4">
+              {!step1Done ? (
+                <p className="text-xs text-text-muted">Complete Step 1 first.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-text-secondary">Provider</Label>
+                      <select
+                        value={providerId}
+                        onChange={(e) =>
+                          setProviderId(e.target.value as ModelProviderId)
+                        }
+                        className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
+                      >
+                        {MODEL_PROVIDER_OPTIONS.map((provider) => (
+                          <option key={provider.id} value={provider.id}>
+                            {provider.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-text-secondary">API key</Label>
+                      <Input
+                        type="password"
+                        value={providerKeyDraft}
+                        onChange={(e) => setProviderKeyDraft(e.target.value)}
+                        placeholder="Paste provider key"
+                        className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                      onClick={() => void onSaveProviderKey()}
+                      disabled={providerSaving || !providerKeyDraft.trim()}
                     >
-                      {MODEL_PROVIDER_OPTIONS.map((provider) => (
-                        <option key={provider.id} value={provider.id}>
-                          {provider.label}
-                        </option>
-                      ))}
-                    </select>
+                      {providerSaving ? "Saving..." : "Save & Validate"}
+                    </Button>
+                    <p className="text-xs text-text-dim">
+                      Valid keys: {status?.providerKeyValidCount ?? 0}
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-text-secondary">API key</Label>
-                    <Input
-                      type="password"
-                      value={providerKeyDraft}
-                      onChange={(e) => setProviderKeyDraft(e.target.value)}
-                      placeholder="Paste provider key"
-                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                    />
+
+                  {providerMessage ? (
+                    <p className="text-xs text-status-active">{providerMessage}</p>
+                  ) : null}
+                  {providerError ? (
+                    <p className="text-xs text-status-blocked">{providerError}</p>
+                  ) : null}
+
+                  <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
+                    {providerKeyStatuses.length > 0 ? (
+                      providerKeyStatuses.slice(0, 3).map((row) => (
+                        <p key={row.provider}>
+                          {row.provider}: {row.status}
+                        </p>
+                      ))
+                    ) : (
+                      <p>No provider keys configured yet.</p>
+                    )}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    className="bg-accent-orange hover:bg-accent-orange/90 text-white"
-                    onClick={() => void onSaveProviderKey()}
-                    disabled={providerSaving || !providerKeyDraft.trim()}
-                  >
-                    {providerSaving ? "Saving..." : "Save & Validate"}
-                  </Button>
-                  <p className="text-xs text-text-dim">
-                    Valid keys: {status?.providerKeyValidCount ?? 0}
-                  </p>
-                </div>
-
-                {providerMessage ? (
-                  <p className="text-xs text-status-active">{providerMessage}</p>
-                ) : null}
-                {providerError ? (
-                  <p className="text-xs text-status-blocked">{providerError}</p>
-                ) : null}
-
-                <div className="rounded-md border border-border-default bg-bg-tertiary p-2 text-[11px] text-text-secondary">
-                  {providerKeyStatuses.length > 0 ? (
-                    providerKeyStatuses.slice(0, 3).map((row) => (
-                      <p key={row.provider}>
-                        {row.provider}: {row.status}
-                      </p>
-                    ))
-                  ) : (
-                    <p>No provider keys configured yet.</p>
-                  )}
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div
           className={`rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6 ${
@@ -1478,7 +1483,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           }`}
         >
           <StepHeader
-            step={3}
+            step={requiresProviderKey ? 3 : 2}
             title="Create main agent"
             subtitle='Canonical sessionKey: "agent:main:main".'
             done={step3Done}
@@ -1487,7 +1492,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           <div className="mt-5 space-y-4">
             {!step1Done || !step2Done ? (
               <p className="text-xs text-text-muted">
-                Complete Step 1 and Step 2 first.
+                {requiresProviderKey
+                  ? "Complete Step 1 and Step 2 first."
+                  : "Complete Step 1 first."}
               </p>
             ) : status?.mainAgentId ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

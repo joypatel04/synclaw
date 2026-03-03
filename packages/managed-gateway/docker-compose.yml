@@ -1,0 +1,44 @@
+services:
+  managed-gateway:
+    build: .
+    container_name: synclaw-managed-gateway
+    restart: unless-stopped
+    environment:
+      PORT: "8788"
+      MANAGED_GATEWAY_API_TOKEN: "change_me"
+      MANAGED_GATEWAY_DB_PATH: "/data/routes.db"
+      WORKSPACE_WS_PATH_PREFIX: "/ws"
+      MANAGED_UPSTREAM_WS_SCHEME: "ws"
+      MANAGED_UPSTREAM_WS_PATH: "/ws"
+      MANAGED_UPSTREAM_WS_PORT: "8765"
+      MANAGED_BOOTSTRAP_TIMEOUT_MS: "180000"
+      MANAGED_HEALTHCHECK_TIMEOUT_MS: "12000"
+    volumes:
+      - managed_gateway_data:/data
+    networks:
+      - gateway_net
+
+  caddy:
+    image: caddy:2.8
+    container_name: synclaw-managed-caddy
+    restart: unless-stopped
+    depends_on:
+      - managed-gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - gateway_net
+
+volumes:
+  managed_gateway_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  gateway_net:
+    driver: bridge
