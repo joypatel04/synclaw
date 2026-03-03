@@ -48,3 +48,8 @@ cp .env.example .env
 # edit .env
 docker compose up -d --build
 ```
+
+Important:
+- Do not proxy catch-all traffic back to the same gateway domain (proxy loop risk).
+- Keep this gateway domain dedicated to `/control/*` and `/ws/*`.
+- If you need same-domain frontend routing later, point fallback to a different upstream host (for example your Vercel app domain), never to itself.
