@@ -642,10 +642,12 @@ export function OnboardingWizard() {
         provider: providerId,
         key: providerKeyDraft.trim(),
       });
+      const hasManagedHost = Boolean(managedStatus?.upstreamHost?.trim());
       if (
         requiresProviderKey &&
         deploymentMode === "managed" &&
-        (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed"
+        (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed" &&
+        hasManagedHost
       ) {
         if (!isManagedProviderId(providerId)) {
           setProviderError(
@@ -671,11 +673,24 @@ export function OnboardingWizard() {
         const validCount = validation.results.filter(
           (r) => r.status === "valid",
         ).length;
-        setProviderMessage(
-          validCount > 0
-            ? `Provider key saved and validated (${validCount} valid).`
-            : "Provider key saved but validation failed. Check key and retry.",
-        );
+        if (
+          requiresProviderKey &&
+          deploymentMode === "managed" &&
+          (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed" &&
+          !hasManagedHost
+        ) {
+          setProviderMessage(
+            validCount > 0
+              ? "Provider key saved and validated. Launch managed OpenClaw to apply this key to your managed host."
+              : "Provider key saved but validation failed. Check key and retry.",
+          );
+        } else {
+          setProviderMessage(
+            validCount > 0
+              ? `Provider key saved and validated (${validCount} valid).`
+              : "Provider key saved but validation failed. Check key and retry.",
+          );
+        }
       }
       setProviderKeyDraft("");
     } catch (e) {
