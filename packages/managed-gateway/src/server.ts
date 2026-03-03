@@ -400,10 +400,14 @@ function buildProviderApplyScript(input: {
   const apiKeyB64 = Buffer.from(input.apiKey, "utf8").toString("base64");
   const providerEnv = providerEnvKey(input.provider);
   const allowedOriginsJson = JSON.stringify(input.controlUiAllowedOrigins);
+  const modelRef = input.defaultModel.includes("/")
+    ? input.defaultModel
+    : `${input.provider}/${input.defaultModel}`;
   return `set -euo pipefail
 PROVIDER="${input.provider}"
 PROVIDER_ENV_KEY="${providerEnv}"
 DEFAULT_MODEL="${input.defaultModel}"
+MODEL_REF="${modelRef}"
 TARGET_PORT="${input.targetPort}"
 API_KEY="$(printf '%s' '${apiKeyB64}' | base64 -d)"
 CONFIG_PATH_PRIMARY="/root/.openclaw/openclaw.json"
@@ -428,8 +432,7 @@ if command -v openclaw >/dev/null 2>&1; then
   HOME="/root" openclaw config set gateway.mode local || true
   HOME="/root" openclaw config set gateway.port "${input.targetPort}" || true
   HOME="/root" openclaw config set gateway.bind lan || true
-  HOME="/root" openclaw config set agents.defaults.model.provider "${input.provider}" || true
-  HOME="/root" openclaw config set agents.defaults.model.primary "${input.defaultModel}" || true
+  HOME="/root" openclaw config set agents.defaults.model "$MODEL_REF" || true
 fi
 
 CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
@@ -449,10 +452,7 @@ cfg.gateway.controlUi = cfg.gateway.controlUi || {};
 cfg.gateway.controlUi.allowedOrigins = ${allowedOriginsJson};
 cfg.agents = cfg.agents || {};
 cfg.agents.defaults = cfg.agents.defaults || {};
-cfg.agents.defaults.model = {
-  provider: "${input.provider}",
-  primary: "${input.defaultModel}"
-};
+cfg.agents.defaults.model = "${modelRef}";
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2), "utf8");
 NODE
 
@@ -473,15 +473,21 @@ done
 SERVICE_RESTARTED="$SERVICE_RESTARTED" PORT_LISTENING="$PORT_LISTENING" CONFIG_PATH="$CONFIG_PATH" node <<'NODE'
 const fs = require("node:fs");
 const cfg = JSON.parse(
-  fs.readFileSync(process.env.CONFIG_PATH || "/var/lib/openclaw/.openclaw/openclaw.json", "utf8"),
+  fs.readFileSync(process.env.CONFIG_PATH || "/root/.openclaw/openclaw.json", "utf8"),
 );
 const model = (((cfg || {}).agents || {}).defaults || {}).model || {};
+const primary =
+  typeof model === "string"
+    ? model
+    : typeof model.primary === "string"
+      ? model.primary
+      : "";
 const providersEnv = fs.readFileSync("/etc/openclaw/providers.env", "utf8");
 const checks = {
   appliedToManagedHost: providersEnv.includes("${providerEnv}="),
   serviceRestarted: process.env.SERVICE_RESTARTED === "true",
   portListening: process.env.PORT_LISTENING === "true",
-  modelRuntimeReady: model.provider === "${input.provider}" && model.primary === "${input.defaultModel}"
+  modelRuntimeReady: primary === "${modelRef}"
 };
 process.stdout.write("__RESULT__" + JSON.stringify({checks}));
 NODE`;
@@ -493,6 +499,9 @@ function buildProviderVerifyScript(input: {
   targetPort: number;
 }) {
   const providerEnv = providerEnvKey(input.provider);
+  const modelRef = input.defaultModel.includes("/")
+    ? input.defaultModel
+    : `${input.provider}/${input.defaultModel}`;
   return `set -euo pipefail
 CONFIG_PATH_PRIMARY="/root/.openclaw/openclaw.json"
 CONFIG_PATH_FALLBACK="/var/lib/openclaw/openclaw.json"
@@ -526,11 +535,17 @@ try {
   providersEnv = "";
 }
 const model = (((cfg || {}).agents || {}).defaults || {}).model || {};
+const primary =
+  typeof model === "string"
+    ? model
+    : typeof model.primary === "string"
+      ? model.primary
+      : "";
 const checks = {
   appliedToManagedHost: providersEnv.includes("${providerEnv}="),
   serviceRestarted: process.env.SERVICE_RESTARTED === "true",
   portListening: process.env.PORT_LISTENING === "true",
-  modelRuntimeReady: model.provider === "${input.provider}" && model.primary === "${input.defaultModel}"
+  modelRuntimeReady: primary === "${modelRef}"
 };
 process.stdout.write("__RESULT__" + JSON.stringify({checks}));
 NODE`;

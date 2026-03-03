@@ -237,6 +237,7 @@ export function OnboardingWizard() {
   const [providerMessage, setProviderMessage] = useState<string | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [providerSaving, setProviderSaving] = useState(false);
+  const [providerAutoApplying, setProviderAutoApplying] = useState(false);
   const [providerChecks, setProviderChecks] = useState<{
     keyStored: boolean;
     appliedToManagedHost: boolean;
@@ -362,6 +363,17 @@ export function OnboardingWizard() {
     () => members.find((m) => m._id === membershipId) ?? null,
     [members, membershipId],
   );
+  const firstValidManagedProvider = useMemo(
+    () =>
+      providerKeyStatuses.find(
+        (row) =>
+          row.status === "valid" &&
+          (row.provider === "openai" ||
+            row.provider === "anthropic" ||
+            row.provider === "gemini"),
+      ) ?? null,
+    [providerKeyStatuses],
+  );
 
   useEffect(() => {
     // Prefill assisted owner contact from the current signed-in user's email.
@@ -370,6 +382,66 @@ export function OnboardingWizard() {
     if (!email) return;
     setOwnerContact(email);
   }, [currentMember?.email, ownerContact]);
+
+  useEffect(() => {
+    const shouldAutoApply =
+      canAdmin &&
+      requiresProviderKey &&
+      deploymentMode === "managed" &&
+      (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed" &&
+      Boolean(managedStatus?.upstreamHost?.trim()) &&
+      managedStatus?.providerRuntimeStatus !== "ready" &&
+      Boolean(firstValidManagedProvider) &&
+      !providerSaving &&
+      !providerAutoApplying;
+    if (!shouldAutoApply || !firstValidManagedProvider) return;
+
+    let canceled = false;
+    setProviderAutoApplying(true);
+    setProviderError(null);
+    setProviderMessage("Applying saved provider key to managed host...");
+    void applyManagedProviderConfig({
+      workspaceId,
+      provider: firstValidManagedProvider.provider as "openai" | "anthropic" | "gemini",
+    })
+      .then((result) => {
+        if (canceled) return;
+        setProviderChecks(result.checks ?? null);
+        if (result.ok) {
+          setProviderMessage(
+            `Saved provider auto-applied and runtime-validated (${firstValidManagedProvider.provider} / ${result.defaultModel}).`,
+          );
+        } else {
+          setProviderError(result.error ?? "Managed provider auto-apply failed.");
+          setProviderMessage(
+            `Saved provider key found, but runtime validation failed: ${result.error ?? "Unknown error"}`,
+          );
+        }
+      })
+      .catch((error) => {
+        if (canceled) return;
+        setProviderError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!canceled) setProviderAutoApplying(false);
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [
+    applyManagedProviderConfig,
+    canAdmin,
+    deploymentMode,
+    firstValidManagedProvider,
+    managedStatus?.providerRuntimeStatus,
+    managedStatus?.upstreamHost,
+    providerAutoApplying,
+    providerSaving,
+    requiresProviderKey,
+    summary?.provisioningMode,
+    workspaceId,
+  ]);
 
   const probeGatewayConnection = async () => {
     let connectorOfflineWarning = false;
@@ -944,7 +1016,9 @@ export function OnboardingWizard() {
                     size="sm"
                     className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
                     onClick={() => void onSaveProviderKey()}
-                    disabled={providerSaving || !providerKeyDraft.trim()}
+                    disabled={
+                      providerSaving || providerAutoApplying || !providerKeyDraft.trim()
+                    }
                   >
                     {providerSaving ? "Saving..." : "Save provider key"}
                   </Button>
@@ -1636,7 +1710,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     <Button
                       className="bg-accent-orange hover:bg-accent-orange/90 text-white"
                       onClick={() => void onSaveProviderKey()}
-                      disabled={providerSaving || !providerKeyDraft.trim()}
+                      disabled={
+                        providerSaving || providerAutoApplying || !providerKeyDraft.trim()
+                      }
                     >
                       {providerSaving
                         ? "Saving..."

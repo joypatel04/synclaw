@@ -73,9 +73,9 @@ const managedProviderValidator = v.union(
 );
 
 const MANAGED_PROVIDER_DEFAULT_MODEL: Record<ManagedProviderId, string> = {
-  openai: "gpt-5.1-codex",
-  anthropic: "claude-sonnet-4.5",
-  gemini: "gemini-2.5-pro",
+  openai: "openai/gpt-5.1-codex",
+  anthropic: "anthropic/claude-sonnet-4.5",
+  gemini: "google/gemini-2.5-pro",
 };
 
 function isRegionAvailable(region: string): boolean {

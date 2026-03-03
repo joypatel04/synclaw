@@ -109,7 +109,13 @@ cfg.gateway.controlUi = cfg.gateway.controlUi || {};
 cfg.gateway.controlUi.allowedOrigins = ${CONTROL_UI_ALLOWED_ORIGINS_JSON};
 cfg.agents = cfg.agents || {};
 cfg.agents.defaults = cfg.agents.defaults || {};
-cfg.agents.defaults.model = cfg.agents.defaults.model || {};
+if (typeof cfg.agents.defaults.model === "object" && cfg.agents.defaults.model !== null) {
+  if (typeof cfg.agents.defaults.model.primary === "string") {
+    cfg.agents.defaults.model = cfg.agents.defaults.model.primary;
+  } else {
+    delete cfg.agents.defaults.model;
+  }
+}
 fs.mkdirSync("${OPENCLAW_CONFIG_DIR}", { recursive: true });
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2), "utf8");
 NODE
