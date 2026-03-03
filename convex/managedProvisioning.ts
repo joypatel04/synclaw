@@ -158,7 +158,7 @@ function parseCsvOrigins(input: string | null): string[] {
 }
 
 function managedControlUiAllowedOrigins(): string[] {
-  const siteUrl = optionalEnv("SITE_URL") ?? optionalEnv("NEXT_PUBLIC_APP_URL");
+  const siteUrl = optionalEnv("NEXT_PUBLIC_APP_URL");
   const defaults = ["https://synclaw.in", "https://managed.synclaw.in", "https://sutraha-hq-git-develop-sutraha.vercel.app", "http://localhost:3000"];
   const localhostOrigins =
     (process.env.NODE_ENV ?? "").trim() === "production"
@@ -1791,7 +1791,13 @@ export const applyManagedProviderConfig: any = action({
 
 export const verifyManagedConnection = mutation({
   args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    ok: boolean;
+    status: "ready" | "failed" | "missing_config" | "manual_mode";
+    checks?: { hasConnectionTarget: boolean; hasAuth: boolean; gatewayRouteOk: boolean };
+    nextAction: string;
+    error?: string | null;
+  }> => {
     requireEnabledCapability("managedProvisioning");
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     const cfg = await ctx.db
@@ -1817,28 +1823,12 @@ export const verifyManagedConnection = mutation({
       (cfg.authTokenCiphertextHex && cfg.authTokenIvHex) ||
         (cfg.passwordCiphertextHex && cfg.passwordIvHex),
     );
-    let gatewayRouteOk = true;
-    let healthError: string | null = null;
-    if (hasConnectionTarget && cfg.managedUpstreamHost) {
-      try {
-        const health = await ctx.runAction(
-          internal.managedProvisioning._runManagedHealthChecks,
-          {
-            workspaceId: args.workspaceId,
-            jobId: cfg.lastManagedJobId ?? ("verify" as any),
-            host: cfg.managedUpstreamHost,
-            managedWsUrl: cfg.wsUrl ?? "",
-          },
-        );
-        gatewayRouteOk = Boolean((health as any)?.ok);
-      } catch (error) {
-        gatewayRouteOk = false;
-        healthError = error instanceof Error ? error.message : String(error);
-      }
-    } else if (hasConnectionTarget) {
-      gatewayRouteOk = false;
-      healthError = "Managed upstream host is missing.";
-    }
+    // Mutation contexts cannot call actions; keep this check local and deterministic.
+    const gatewayRouteOk = hasConnectionTarget ? Boolean(cfg.managedUpstreamHost) : false;
+    const healthError =
+      hasConnectionTarget && !cfg.managedUpstreamHost
+        ? "Managed upstream host is missing."
+        : null;
     const ok = hasConnectionTarget && hasAuth && gatewayRouteOk;
     const now = Date.now();
     await ctx.db.patch(cfg._id, {

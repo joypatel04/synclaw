@@ -67,7 +67,6 @@ bunx convex env list --dev
 ### Required Prod Environment Variables
 
 ```
-SITE_URL=https://hq.sutraha.in
 SYNCLAW_EDITION=commercial
 SYNCLAW_MANAGED_BETA_ENABLED=false
 SYNCLAW_ASSISTED_LAUNCH_ENABLED=false
@@ -276,4 +275,4 @@ bunx convex dev
 | Convex Cloud | `descriptive-perch-695.convex.cloud` | `confident-ram-83.convex.cloud` |
 | Convex Site | `descriptive-perch-695.convex.site` | `confident-ram-83.convex.site` |
 | Frontend | `localhost:3001` | `hq.sutraha.in` |
-| SITE_URL | `http://localhost:3001` | `https://hq.sutraha.in` |
+| NEXT_PUBLIC_APP_URL | `http://localhost:3001` | `https://synclaw.in` |
