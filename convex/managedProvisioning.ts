@@ -9,7 +9,10 @@ import {
 import { v } from "convex/values";
 import { requireMember, requireRole } from "./lib/permissions";
 import { encryptSecretToHex } from "./lib/secretCrypto";
-import { requireEnabledCapability } from "./lib/edition";
+import {
+  isCommercialCapabilityEnabled,
+  requireEnabledCapability,
+} from "./lib/edition";
 import {
   DEFAULT_MANAGED_SERVER_PROFILE,
   managedServerProfileByCode,
@@ -1256,7 +1259,11 @@ export const autoConnectWorkspace = mutation({
 export const getManagedStatus = query({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
-    requireEnabledCapability("managedProvisioning");
+    // Read-path should be resilient to env drift (client flags vs server flags).
+    // If managed capability is disabled, return null instead of throwing.
+    if (!isCommercialCapabilityEnabled("managedProvisioning")) {
+      return null;
+    }
     await requireMember(ctx, args.workspaceId);
     const cfg = await ctx.db
       .query("openclawGatewayConfigs")
