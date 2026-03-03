@@ -354,6 +354,14 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
   });
 
   try {
+    log("bootstrap_started", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+      upstreamPort: targetPort,
+      scriptSource: inlineScript ? "env_inline" : scriptFile ? "file" : "default",
+    });
+
     const sshReady = await waitForTcpReachable({
       host: body.host,
       port: 22,
@@ -405,6 +413,12 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
       },
     });
   } catch (error) {
+    log("bootstrap_failed", {
+      workspaceId: body.workspaceId,
+      jobId: body.jobId,
+      host: body.host,
+      error: error instanceof Error ? error.message : String(error),
+    });
     res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : String(error),
