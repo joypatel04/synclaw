@@ -72,6 +72,7 @@ const WORKSPACE_WS_PATH_PREFIX = (process.env.WORKSPACE_WS_PATH_PREFIX ?? "/ws")
 const UPSTREAM_WS_PATH = (process.env.MANAGED_UPSTREAM_WS_PATH ?? "/").trim();
 const UPSTREAM_WS_SCHEME = (process.env.MANAGED_UPSTREAM_WS_SCHEME ?? "ws").trim();
 const UPSTREAM_WS_PORT_DEFAULT = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
+const UPSTREAM_WS_ORIGIN_FALLBACK = (process.env.MANAGED_UPSTREAM_WS_ORIGIN ?? "https://synclaw.in").trim();
 const BOOTSTRAP_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_TIMEOUT_MS ?? "120000");
 const SSH_READY_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_SSH_READY_TIMEOUT_MS ?? "30000");
 const SSH_CONNECT_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_SSH_CONNECT_TIMEOUT_MS ?? "20000");
@@ -1035,9 +1036,18 @@ server.on("upgrade", async (req, socket, head) => {
 
 wss.on(
   "connection",
-  (clientSocket: WebSocket, _req: IncomingMessage, route: RouteRow) => {
+  (clientSocket: WebSocket, req: IncomingMessage, route: RouteRow) => {
   const upstreamUrl = `${UPSTREAM_WS_SCHEME}://${route.upstream_host}:${route.upstream_port}${UPSTREAM_WS_PATH}`;
-  const upstream = new WebSocket(upstreamUrl);
+  const originHeader =
+    typeof req.headers.origin === "string" && req.headers.origin.trim().length > 0
+      ? req.headers.origin.trim()
+      : UPSTREAM_WS_ORIGIN_FALLBACK;
+  const upstream = new WebSocket(upstreamUrl, { origin: originHeader });
+  log("ws_proxy_connecting", {
+    workspaceId: route.workspace_id,
+    upstream: upstreamUrl,
+    origin: originHeader,
+  });
 
   const closeBoth = (code = 1011, reason = "proxy_error") => {
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) {
