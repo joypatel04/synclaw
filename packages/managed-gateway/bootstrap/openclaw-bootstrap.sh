@@ -144,15 +144,18 @@ systemctl enable --now openclaw-gateway.service
 SSH_CLIENT_IP="$(awk '{print $1}' <<< "${SSH_CONNECTION:-}")"
 if [[ -n "${SSH_CLIENT_IP}" ]]; then
   # Keep SSH access safe even after enabling UFW.
-  ufw --force allow OpenSSH >/dev/null 2>&1 || true
-  ufw --force allow proto tcp from "${SSH_CLIENT_IP}" to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
-  ufw --force deny proto tcp to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
+  # Use explicit insert ordering so source-allow is evaluated before generic deny.
+  ufw --force delete allow OpenSSH >/dev/null 2>&1 || true
+  ufw --force delete allow proto tcp from "${SSH_CLIENT_IP}" to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
+  ufw --force delete deny proto tcp to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
+  ufw --force insert 1 allow OpenSSH >/dev/null 2>&1 || true
+  ufw --force insert 2 allow proto tcp from "${SSH_CLIENT_IP}" to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
+  ufw --force insert 3 deny proto tcp to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
+  if ! ufw status | grep -q "Status: active"; then
+    ufw --force enable
+  fi
 else
-  echo "Warning: SSH_CONNECTION missing; skipped gateway-IP firewall allow rule." >&2
-fi
-
-if ! ufw status | grep -q "Status: active"; then
-  ufw --force enable
+  echo "Warning: SSH_CONNECTION missing; skipping UFW enable to avoid blocking managed gateway reachability." >&2
 fi
 
 # Service verification.
