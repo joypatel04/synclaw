@@ -680,6 +680,7 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
       jobId: body.jobId,
       host: body.host,
       exitCode: result.code,
+      stdoutTail: result.stdout.slice(-600),
       stderrTail: result.stderr.slice(-300),
     });
     if (result.code !== 0) {

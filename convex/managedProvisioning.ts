@@ -149,13 +149,26 @@ function controlPlaneBaseUrl(kind: "bootstrap" | "gateway"): string | null {
   return normalizedBaseUrl(optionalEnv("MANAGED_GATEWAY_API_BASE_URL"));
 }
 
+function parseCsvOrigins(input: string | null): string[] {
+  if (!input) return [];
+  return input
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.startsWith("http://") || value.startsWith("https://"));
+}
+
 function managedControlUiAllowedOrigins(): string[] {
   const siteUrl = optionalEnv("SITE_URL") ?? optionalEnv("NEXT_PUBLIC_APP_URL");
-  const defaults = ["https://synclaw.in", "https://managed.synclaw.in"];
+  const defaults = ["https://synclaw.in", "https://managed.synclaw.in", "https://sutraha-hq-git-develop-sutraha.vercel.app", "http://localhost:3000"];
+  const localhostOrigins =
+    (process.env.NODE_ENV ?? "").trim() === "production"
+      ? []
+      : ["http://localhost:3000", "http://127.0.0.1:3000"];
+  const merged = [...defaults, ...localhostOrigins];
   if (siteUrl && !defaults.includes(siteUrl)) {
-    defaults.unshift(siteUrl);
+    merged.unshift(siteUrl);
   }
-  return defaults;
+  return Array.from(new Set(merged));
 }
 
 function providerForManagedCloud(): "hetzner" | "aws" {

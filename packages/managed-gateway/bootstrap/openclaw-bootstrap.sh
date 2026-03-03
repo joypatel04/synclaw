@@ -357,6 +357,7 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 JS
 chmod 0755 "${FS_BRIDGE_SCRIPT_PATH}"
+echo "Filesystem bridge script installed at ${FS_BRIDGE_SCRIPT_PATH}"
 
 # Create a deterministic systemd service for managed mode.
 cat > "/etc/systemd/system/${OPENCLAW_GATEWAY_UNIT}" <<EOF
@@ -407,6 +408,7 @@ EOF
 systemctl daemon-reload
 systemctl enable --now "${OPENCLAW_GATEWAY_UNIT}"
 systemctl enable --now "${FS_BRIDGE_UNIT}"
+echo "Services enabled: ${OPENCLAW_GATEWAY_UNIT}, ${FS_BRIDGE_UNIT}"
 
 # Service verification.
 systemctl is-active --quiet "${OPENCLAW_GATEWAY_UNIT}"
@@ -443,5 +445,6 @@ if [[ "${FS_BOUND}" -ne 1 ]]; then
   journalctl -u "${FS_BRIDGE_UNIT}" -n 120 --no-pager >&2 || true
   exit 1
 fi
+echo "Filesystem bridge is listening on port ${FILES_BRIDGE_PORT} (root: ${FILES_BRIDGE_ROOT_PATH})."
 
 echo "OpenClaw managed bootstrap complete for workspace ${WORKSPACE_ID} on port ${OPENCLAW_PORT}."

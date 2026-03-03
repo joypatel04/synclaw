@@ -493,7 +493,16 @@ export const validateSetup = action({
           workspaceId: args.workspaceId,
           basePath,
           path: filename,
+          allowMissing: true,
         });
+        if (result?.missing) {
+          fileChecks[filename] = {
+            exists: false,
+            source: "manual",
+          };
+          errors.push(`${filename}: File not found`);
+          continue;
+        }
         const content = String(result?.content ?? "");
         const localErrors = contentErrorsForFile({
           filename,

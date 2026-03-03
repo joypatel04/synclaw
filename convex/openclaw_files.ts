@@ -218,6 +218,7 @@ export const readFile = action({
     workspaceId: v.id("workspaces"),
     basePath: v.optional(v.string()),
     path: v.string(),
+    allowMissing: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const cfg = await getBridgeConfig(ctx, args.workspaceId);
@@ -226,10 +227,28 @@ export const readFile = action({
       path: args.path,
     });
     assertReadableExtension(requestedPath);
-    const result = await fetchBridge({
-      url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(bridgePath)}`,
-      token: cfg.token,
-    });
+    let result: any;
+    try {
+      result = await fetchBridge({
+        url: `${cfg.baseUrl}/v1/file?path=${encodeURIComponent(bridgePath)}`,
+        token: cfg.token,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (args.allowMissing && /file not found/i.test(message)) {
+        return {
+          missing: true,
+          path: toScopedPath(bridgePath, scopedBase, requestedPath),
+          content: "",
+          mime: "text/plain",
+          encoding: "utf8",
+          hash: undefined,
+          size: 0,
+          mtimeMs: undefined,
+        };
+      }
+      throw error;
+    }
     const mime =
       typeof (result as any)?.mime === "string"
         ? (result as any).mime
@@ -243,6 +262,7 @@ export const readFile = action({
         ? String((result as any)?.contentBase64 ?? "")
         : String((result as any)?.content ?? "");
     return {
+      missing: false,
       path: toScopedPath(
         String((result as any)?.path ?? bridgePath),
         scopedBase,

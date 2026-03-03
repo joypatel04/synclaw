@@ -120,10 +120,20 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
             workspaceId,
             basePath: detail.effectiveWorkspaceFolderPath,
             path: file,
+            allowMissing: true,
           })) as {
             content?: string;
             hash?: string;
+            missing?: boolean;
           };
+          if (res.missing) {
+            nextScan[file] = {
+              exists: false,
+              changed: false,
+            };
+            nextOps[file] = "create";
+            continue;
+          }
           const draft = drafts[file] ?? "";
           const changed = (res.content ?? "").trim() !== draft.trim();
           nextScan[file] = {
