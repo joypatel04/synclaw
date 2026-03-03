@@ -46,6 +46,7 @@ type ModelProviderId =
   | "google_antigravity"
   | "z_ai"
   | "minimax";
+type ManagedProviderId = "openai" | "anthropic" | "gemini";
 
 const MODEL_PROVIDER_OPTIONS: Array<{ id: ModelProviderId; label: string }> = [
   { id: "openai", label: "OpenAI" },
@@ -54,6 +55,11 @@ const MODEL_PROVIDER_OPTIONS: Array<{ id: ModelProviderId; label: string }> = [
   { id: "google_antigravity", label: "Google Antigravity" },
   { id: "z_ai", label: "Z.ai" },
   { id: "minimax", label: "Minimax" },
+];
+const MANAGED_PROVIDER_OPTIONS: Array<{ id: ManagedProviderId; label: string }> = [
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "gemini", label: "Gemini" },
 ];
 
 const FIXED_GATEWAY_ROLE = "operator";
@@ -71,6 +77,10 @@ function isPairingRequiredMessage(message: string): boolean {
     lower.includes("device identity mismatch") ||
     lower.includes("device signature invalid")
   );
+}
+
+function isManagedProviderId(value: ModelProviderId): value is ManagedProviderId {
+  return value === "openai" || value === "anthropic" || value === "gemini";
 }
 
 function StepHeader({
@@ -333,6 +343,14 @@ export function OnboardingWizard() {
   const requiresProviderKey = Boolean(status?.requiresProviderKey);
   const step2Done = requiresProviderKey ? Boolean(status?.providerKeyReady) : true;
   const step3Done = Boolean(status?.mainAgentId);
+  const providerOptions =
+    deploymentMode === "managed" || needsManagedSetup
+      ? MANAGED_PROVIDER_OPTIONS
+      : MODEL_PROVIDER_OPTIONS;
+  const selectedProviderKeyStatus =
+    providerKeyStatuses.find((row) => row.provider === providerId) ?? null;
+  const canLaunchManagedProvisioning =
+    selectedProviderKeyStatus?.status === "valid";
   const pairingHintVisible =
     testResult.status === "error" &&
     isPairingRequiredMessage(testResult.message);
@@ -523,6 +541,16 @@ export function OnboardingWizard() {
   const onCreateProvisioningJob = async () => {
     setServiceError(null);
     setServiceMessage(null);
+    if (!isManagedProviderId(providerId)) {
+      setServiceError("Managed setup supports OpenAI, Anthropic, or Gemini only.");
+      return;
+    }
+    if (!canLaunchManagedProvisioning) {
+      setServiceError(
+        "Save and validate a provider key (OpenAI, Anthropic, or Gemini) before launching managed setup.",
+      );
+      return;
+    }
     try {
       const result = await createManagedJob({
         workspaceId,
@@ -619,6 +647,12 @@ export function OnboardingWizard() {
         deploymentMode === "managed" &&
         (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed"
       ) {
+        if (!isManagedProviderId(providerId)) {
+          setProviderError(
+            "Managed setup supports OpenAI, Anthropic, or Gemini only.",
+          );
+          return;
+        }
         const result = await applyManagedProviderConfig({
           workspaceId,
           provider: providerId,
@@ -764,6 +798,9 @@ export function OnboardingWizard() {
                 onClick={() => {
                   setNeedsManagedSetup(true);
                   setDeploymentMode("managed");
+                  if (!isManagedProviderId(providerId)) {
+                    setProviderId("openai");
+                  }
                 }}
                 className={`rounded-lg border p-3 text-left ${
                   needsManagedSetup
@@ -855,6 +892,56 @@ export function OnboardingWizard() {
                 </p>
               </div>
 
+              <div className="space-y-2 rounded-md border border-border-default bg-bg-tertiary p-3">
+                <Label className="text-text-secondary">
+                  Model provider (required before launch)
+                </Label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Provider</Label>
+                    <select
+                      value={providerId}
+                      onChange={(e) =>
+                        setProviderId(e.target.value as ManagedProviderId)
+                      }
+                      className="h-10 w-full rounded-md border border-border-default bg-bg-secondary px-3 text-sm text-text-primary"
+                    >
+                      {MANAGED_PROVIDER_OPTIONS.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">API key</Label>
+                    <Input
+                      type="password"
+                      value={providerKeyDraft}
+                      onChange={(e) => setProviderKeyDraft(e.target.value)}
+                      placeholder="Paste provider key"
+                      className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    onClick={() => void onSaveProviderKey()}
+                    disabled={providerSaving || !providerKeyDraft.trim()}
+                  >
+                    {providerSaving ? "Saving..." : "Save provider key"}
+                  </Button>
+                  <p className="text-[11px] text-text-dim">
+                    Status:{" "}
+                    {selectedProviderKeyStatus
+                      ? selectedProviderKeyStatus.status
+                      : "not saved"}
+                  </p>
+                </div>
+              </div>
+
               {assistedLaunchEnabled && serviceTier === "assisted" ? (
                 <>
                   <div className="space-y-2">
@@ -906,6 +993,7 @@ export function OnboardingWizard() {
                         size="sm"
                         className="h-8"
                         onClick={() => void onCreateProvisioningJob()}
+                        disabled={!canLaunchManagedProvisioning}
                       >
                         Launch managed OpenClaw
                       </Button>
@@ -1510,7 +1598,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                         }
                         className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
                       >
-                        {MODEL_PROVIDER_OPTIONS.map((provider) => (
+                        {providerOptions.map((provider) => (
                           <option key={provider.id} value={provider.id}>
                             {provider.label}
                           </option>

@@ -61,7 +61,6 @@ OPENCLAW_GATEWAY_PORT=${OPENCLAW_PORT}
 OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_TOKEN}
 OPENCLAW_GATEWAY_BIND=lan
 OPENCLAW_STATE_DIR=${OPENCLAW_STATE_DIR}
-OPENCLAW_CONFIG_PATH=${OPENCLAW_STATE_DIR}/openclaw.json
 OPENCLAW_WORKSPACE_ID=${WORKSPACE_ID}
 OPENCLAW_MANAGED_REGION=${REGION}
 OPENCLAW_MANAGED_INSTANCE_ID=${INSTANCE_ID}
@@ -127,6 +126,12 @@ UNIT
 # Adjust binary path if npm installs elsewhere.
 if [[ "${OPENCLAW_BIN}" != "/usr/local/bin/openclaw" ]]; then
   sed -i "s|/usr/local/bin/openclaw|${OPENCLAW_BIN}|g" "${OPENCLAW_UNIT_FILE}"
+fi
+
+# Some OpenClaw builds don't support --config. Run gateway without this flag
+# and rely on the default config location under WorkingDirectory.
+if ! "${OPENCLAW_BIN}" gateway --help 2>&1 | grep -q -- "--config"; then
+  sed -i "s| --config \\${OPENCLAW_CONFIG_PATH}||g" "${OPENCLAW_UNIT_FILE}"
 fi
 
 systemctl daemon-reload

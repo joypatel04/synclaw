@@ -69,8 +69,11 @@ const WORKSPACE_WS_PATH_PREFIX = (process.env.WORKSPACE_WS_PATH_PREFIX ?? "/ws")
 const UPSTREAM_WS_PATH = (process.env.MANAGED_UPSTREAM_WS_PATH ?? "/").trim();
 const UPSTREAM_WS_SCHEME = (process.env.MANAGED_UPSTREAM_WS_SCHEME ?? "ws").trim();
 const UPSTREAM_WS_PORT_DEFAULT = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
-const BOOTSTRAP_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_TIMEOUT_MS ?? "180000");
+const BOOTSTRAP_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_TIMEOUT_MS ?? "120000");
 const VERIFY_TIMEOUT_MS = Number(process.env.MANAGED_HEALTHCHECK_TIMEOUT_MS ?? "12000");
+const PROVIDER_PORT_WAIT_SECONDS = Number(
+  process.env.MANAGED_PROVIDER_PORT_WAIT_SECONDS ?? "30",
+);
 const REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT =
   (process.env.MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT ?? "true").trim() === "true";
 
@@ -396,7 +399,7 @@ if systemctl is-active --quiet openclaw-gateway.service; then
   SERVICE_RESTARTED=true
 fi
 PORT_LISTENING=false
-for _ in $(seq 1 45); do
+for _ in $(seq 1 ${Math.max(5, Math.floor(PROVIDER_PORT_WAIT_SECONDS))}); do
   if ss -ltn | grep -Eq ":${input.targetPort}\\\\b"; then
     PORT_LISTENING=true
     break

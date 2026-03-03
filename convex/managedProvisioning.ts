@@ -657,7 +657,7 @@ export const _applyManagedProviderConfig = internalAction({
   handler: async (_ctx, args) => {
     requireEnabledCapability("managedProvisioning");
     const apiBase = controlPlaneBaseUrl("gateway");
-    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 120000);
+    const timeoutMs = timeoutMsFromEnv("MANAGED_PROVIDER_APPLY_TIMEOUT_MS", 75000);
     if (!apiBase) {
       throw new Error(
         "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required for provider autoconfig.",
@@ -708,7 +708,7 @@ export const _verifyManagedProviderRuntime = internalAction({
   handler: async (_ctx, args) => {
     requireEnabledCapability("managedProvisioning");
     const apiBase = controlPlaneBaseUrl("gateway");
-    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    const timeoutMs = timeoutMsFromEnv("MANAGED_PROVIDER_VERIFY_TIMEOUT_MS", 30000);
     if (!apiBase) {
       throw new Error(
         "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required for provider verify.",
