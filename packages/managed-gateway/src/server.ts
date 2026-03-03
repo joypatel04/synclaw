@@ -167,6 +167,22 @@ async function checkTcpReachable(host: string, port: number, timeoutMs: number) 
   });
 }
 
+async function waitForTcpReachable(args: {
+  host: string;
+  port: number;
+  timeoutMs: number;
+  pollIntervalMs?: number;
+}) {
+  const startedAt = Date.now();
+  const pollIntervalMs = args.pollIntervalMs ?? 2500;
+  while (Date.now() - startedAt < args.timeoutMs) {
+    const ok = await checkTcpReachable(args.host, args.port, 2500);
+    if (ok) return true;
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+  return false;
+}
+
 async function runSshCommand(
   host: string,
   username: string,
@@ -285,6 +301,20 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
   const script = customScript || defaultBootstrapScript(targetPort);
 
   try {
+    const sshReady = await waitForTcpReachable({
+      host: body.host,
+      port: 22,
+      timeoutMs: Math.min(BOOTSTRAP_TIMEOUT_MS, 120000),
+      pollIntervalMs: 3000,
+    });
+    if (!sshReady) {
+      res.status(502).json({
+        ok: false,
+        error: `SSH is not reachable yet on ${body.host}:22`,
+      });
+      return;
+    }
+
     const result = await runSshCommand(body.host, username, privateKey, script);
     if (result.code !== 0) {
       res.status(500).json({
