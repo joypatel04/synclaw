@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import http, { type IncomingMessage } from "node:http";
 import net from "node:net";
 import path from "node:path";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { Client as SshClient, type ClientChannel } from "ssh2";
 import Database from "better-sqlite3";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
@@ -27,6 +27,7 @@ type BootstrapBody = {
   region: string;
   bootstrapUser?: string;
   sshPrivateKey?: string;
+  openclawGatewayToken?: string;
 };
 
 type UpsertRouteBody = {
@@ -41,11 +42,13 @@ type UpsertRouteBody = {
 const PORT = Number(process.env.PORT ?? "8788");
 const CONTROL_TOKEN = (process.env.MANAGED_GATEWAY_API_TOKEN ?? "").trim();
 const WORKSPACE_WS_PATH_PREFIX = (process.env.WORKSPACE_WS_PATH_PREFIX ?? "/ws").trim();
-const UPSTREAM_WS_PATH = (process.env.MANAGED_UPSTREAM_WS_PATH ?? "/ws").trim();
+const UPSTREAM_WS_PATH = (process.env.MANAGED_UPSTREAM_WS_PATH ?? "/").trim();
 const UPSTREAM_WS_SCHEME = (process.env.MANAGED_UPSTREAM_WS_SCHEME ?? "ws").trim();
-const UPSTREAM_WS_PORT_DEFAULT = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "8765");
+const UPSTREAM_WS_PORT_DEFAULT = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
 const BOOTSTRAP_TIMEOUT_MS = Number(process.env.MANAGED_BOOTSTRAP_TIMEOUT_MS ?? "180000");
 const VERIFY_TIMEOUT_MS = Number(process.env.MANAGED_HEALTHCHECK_TIMEOUT_MS ?? "12000");
+const REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT =
+  (process.env.MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT ?? "true").trim() === "true";
 
 const dbFile = process.env.MANAGED_GATEWAY_DB_PATH?.trim() || "/var/lib/managed-gateway/routes.db";
 mkdirSync(path.dirname(dbFile), { recursive: true });
@@ -278,6 +281,17 @@ systemctl is-active --quiet openclaw-managed.service
 `;
 }
 
+function renderBootstrapScript(
+  template: string,
+  values: Record<string, string>,
+): string {
+  let out = template;
+  for (const [key, value] of Object.entries(values)) {
+    out = out.replaceAll(`{{${key}}}`, value);
+  }
+  return out;
+}
+
 app.get("/control/health", (_req, res) => {
   res.json({ ok: true, service: "managed-gateway", wsPathPrefix: WORKSPACE_WS_PATH_PREFIX });
 });
@@ -291,14 +305,53 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
 
   const username = (body.bootstrapUser || "root").trim();
   const privateKey = (body.sshPrivateKey || "").trim();
+  const openclawGatewayToken = (body.openclawGatewayToken || "").trim();
   if (!privateKey) {
     res.status(400).json({ error: "sshPrivateKey is required." });
     return;
   }
+  if (!openclawGatewayToken) {
+    res.status(400).json({ error: "openclawGatewayToken is required." });
+    return;
+  }
 
-  const targetPort = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "8765");
-  const customScript = (process.env.MANAGED_BOOTSTRAP_SCRIPT ?? "").trim();
-  const script = customScript || defaultBootstrapScript(targetPort);
+  const targetPort = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
+  const inlineScript = (process.env.MANAGED_BOOTSTRAP_SCRIPT ?? "").trim();
+  const scriptFile = (process.env.MANAGED_BOOTSTRAP_SCRIPT_FILE ?? "").trim();
+  let fileScript = "";
+  if (scriptFile.length > 0) {
+    try {
+      fileScript = readFileSync(scriptFile, "utf8").trim();
+    } catch (error) {
+      res.status(500).json({
+        ok: false,
+        error:
+          error instanceof Error
+            ? `Failed to read MANAGED_BOOTSTRAP_SCRIPT_FILE: ${error.message}`
+            : "Failed to read MANAGED_BOOTSTRAP_SCRIPT_FILE",
+      });
+      return;
+    }
+  }
+  const customScript = inlineScript || fileScript;
+  if (!customScript && REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT) {
+    res.status(500).json({
+      ok: false,
+      error:
+        "MANAGED_BOOTSTRAP_SCRIPT is required for real OpenClaw mode. Set a hardened install/start script template in gateway env.",
+    });
+    return;
+  }
+  const scriptTemplate = customScript || defaultBootstrapScript(targetPort);
+  const script = renderBootstrapScript(scriptTemplate, {
+    WORKSPACE_ID: body.workspaceId,
+    JOB_ID: body.jobId,
+    INSTANCE_ID: body.instanceId,
+    HOST: body.host,
+    REGION: body.region,
+    UPSTREAM_PORT: String(targetPort),
+    OPENCLAW_GATEWAY_TOKEN: openclawGatewayToken,
+  });
 
   try {
     const sshReady = await waitForTcpReachable({

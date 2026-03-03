@@ -104,6 +104,14 @@ function normalizedBaseUrl(value: string | null): string | null {
   return value.replace(/\/+$/, "");
 }
 
+function generateManagedGatewayTokenHex(bytesLength = 32): string {
+  const bytes = new Uint8Array(bytesLength);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function controlPlaneBaseUrl(kind: "bootstrap" | "gateway"): string | null {
   const canonical = normalizedBaseUrl(optionalEnv("MANAGED_CONTROL_PLANE_BASE_URL"));
   if (canonical) return canonical;
@@ -433,6 +441,7 @@ export const _bootstrapOpenClawInstance = internalAction({
     instanceId: v.string(),
     host: v.string(),
     resolvedRegion: v.string(),
+    openclawGatewayToken: v.string(),
   },
   handler: async (_ctx, args) => {
     requireEnabledCapability("managedProvisioning");
@@ -471,6 +480,7 @@ export const _bootstrapOpenClawInstance = internalAction({
           region: args.resolvedRegion,
           bootstrapUser: optionalEnv("MANAGED_BOOTSTRAP_USER") ?? "root",
           sshPrivateKey: optionalEnv("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY"),
+          openclawGatewayToken: args.openclawGatewayToken,
         }),
       },
       timeoutMs,
@@ -519,7 +529,7 @@ export const _configureGatewayRoute = internalAction({
           workspaceId: String(args.workspaceId),
           jobId: String(args.jobId),
           upstreamHost: args.host,
-          upstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765"),
+          upstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789"),
           region: args.resolvedRegion,
           wsUrl: args.managedWsUrl,
         }),
@@ -766,6 +776,7 @@ export const _finalizeManagedConnection = internalMutation({
     upstreamHost: v.optional(v.string()),
     upstreamPort: v.optional(v.number()),
     routeVersion: v.optional(v.number()),
+    openclawGatewayToken: v.string(),
   },
   handler: async (ctx, args) => {
     requireEnabledCapability("managedProvisioning");
@@ -781,9 +792,7 @@ export const _finalizeManagedConnection = internalMutation({
       String(args.workspaceId),
       args.host,
     );
-    const tokenEnc = await encryptSecretToHex(
-      `managed-${String(args.workspaceId)}-${now}-${args.instanceId}`,
-    );
+    const tokenEnc = await encryptSecretToHex(args.openclawGatewayToken);
 
     await ctx.db.patch(cfg._id, {
       wsUrl: managedWsUrl,
@@ -799,7 +808,7 @@ export const _finalizeManagedConnection = internalMutation({
       managedServerType: args.serverTypeUsed ?? cfg.managedServerType,
       managedUpstreamHost: args.upstreamHost ?? cfg.managedUpstreamHost ?? args.host,
       managedUpstreamPort:
-        args.upstreamPort ?? cfg.managedUpstreamPort ?? Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765"),
+        args.upstreamPort ?? cfg.managedUpstreamPort ?? Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789"),
       managedRouteVersion: args.routeVersion ?? cfg.managedRouteVersion,
       setupStatus: "verified",
       securityChecklistVersion: 1,
@@ -909,6 +918,7 @@ export const executeManagedProvisioning = internalAction({
         status: "running",
         log: "Bootstrapping OpenClaw runtime on provisioned instance.",
       });
+      const managedGatewayToken = generateManagedGatewayTokenHex(32);
       try {
         await ctx.runAction(internal.managedProvisioning._bootstrapOpenClawInstance, {
           workspaceId: args.workspaceId,
@@ -917,6 +927,7 @@ export const executeManagedProvisioning = internalAction({
           instanceId: provisioned.instanceId,
           host: provisioned.host,
           resolvedRegion: job.resolvedRegion || "eu_central_hil",
+          openclawGatewayToken: managedGatewayToken,
         });
         await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
           workspaceId: args.workspaceId,
@@ -936,7 +947,7 @@ export const executeManagedProvisioning = internalAction({
         provisioned.host,
       );
       let routedUpstreamHost = provisioned.host;
-      let routedUpstreamPort = Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765");
+      let routedUpstreamPort = Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789");
       let routedVersion: number | undefined = undefined;
 
       await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
@@ -977,7 +988,7 @@ export const executeManagedProvisioning = internalAction({
         const upstreamPort =
           typeof upstreamPortRaw === "number"
             ? upstreamPortRaw
-            : Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765");
+            : Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789");
         const routeVersionRaw = routePayload.routeVersion ?? routePayload.version;
         const routeVersion =
           typeof routeVersionRaw === "number" ? routeVersionRaw : undefined;
@@ -1049,6 +1060,7 @@ export const executeManagedProvisioning = internalAction({
           upstreamHost: routedUpstreamHost,
           upstreamPort: routedUpstreamPort,
           routeVersion: routedVersion,
+          openclawGatewayToken: managedGatewayToken,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -1163,7 +1175,7 @@ async function createManagedJobInternal(
       managedRegionResolved: resolvedRegion,
       managedServerProfile: serverProfile,
       managedUpstreamHost: "",
-      managedUpstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "8765"),
+      managedUpstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789"),
       managedRouteVersion: 0,
       managedStatus: "queued",
       managedInstanceId: `mc-${String(workspaceId)}-${now}`,

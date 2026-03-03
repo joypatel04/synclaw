@@ -108,17 +108,14 @@ You must inject your bootstrap public key into newly created servers via cloud-i
 
 If this is missing, provisioning reaches create-server but fails at bootstrap SSH step.
 
-## 7) Current limitation (important)
+## 7) Real bootstrap requirement (important)
 
-Current default bootstrap script in `managed-gateway` starts a placeholder Node service on upstream port (for pipeline validation). It does not install full OpenClaw yet.
+`managed-gateway` now requires a real `MANAGED_BOOTSTRAP_SCRIPT` by default.
+It receives template placeholders (including `{{OPENCLAW_GATEWAY_TOKEN}}` and
+`{{UPSTREAM_PORT}}`) and must install/start OpenClaw on the provisioned host.
 
-Use this phase to validate:
-- server creation
-- SSH bootstrap execution
-- route registration
-- ws proxy plumbing
-
-Then replace bootstrap with real OpenClaw install script.
+If `MANAGED_BOOTSTRAP_SCRIPT` is not set, `/control/bootstrap` fails fast with
+an explicit error.
 
 ## Quick answers
 

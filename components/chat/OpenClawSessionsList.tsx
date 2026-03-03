@@ -275,6 +275,8 @@ export function OpenClawSessionsList({
         protocol: openclawConfig.protocol,
         authToken: openclawConfig.authToken,
         password: openclawConfig.password,
+        forceDisableDeviceAuth:
+          (openclawConfig.deploymentMode ?? "manual") === "managed",
         clientId: openclawConfig.clientId,
         clientMode: openclawConfig.clientMode,
         clientPlatform: openclawConfig.clientPlatform,

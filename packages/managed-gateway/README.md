@@ -31,11 +31,50 @@ npm start
 - `MANAGED_GATEWAY_DB_PATH` (default: `/var/lib/managed-gateway/routes.db`)
 - `WORKSPACE_WS_PATH_PREFIX` (default: `/ws`)
 - `MANAGED_UPSTREAM_WS_SCHEME` (default: `ws`)
-- `MANAGED_UPSTREAM_WS_PORT` (default: `8765`)
-- `MANAGED_UPSTREAM_WS_PATH` (default: `/ws`)
+- `MANAGED_UPSTREAM_WS_PORT` (default: `18789`)
+- `MANAGED_UPSTREAM_WS_PATH` (default: `/`)
 - `MANAGED_BOOTSTRAP_TIMEOUT_MS`
 - `MANAGED_HEALTHCHECK_TIMEOUT_MS`
-- `MANAGED_BOOTSTRAP_SCRIPT` (optional custom SSH bootstrap script)
+- `MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT` (default: `true`)
+- `MANAGED_BOOTSTRAP_SCRIPT` (required in real mode; custom SSH bootstrap script)
+- `MANAGED_BOOTSTRAP_SCRIPT_FILE` (optional path to script file on VM)
+
+## Real OpenClaw Bootstrap Script
+
+`/control/bootstrap` now expects `MANAGED_BOOTSTRAP_SCRIPT` in real mode and injects:
+
+- `{{WORKSPACE_ID}}`
+- `{{JOB_ID}}`
+- `{{INSTANCE_ID}}`
+- `{{HOST}}`
+- `{{REGION}}`
+- `{{UPSTREAM_PORT}}`
+- `{{OPENCLAW_GATEWAY_TOKEN}}`
+
+Example shape:
+
+```bash
+set -euo pipefail
+apt-get update -y
+apt-get install -y curl ca-certificates
+
+# install OpenClaw CLI/runtime here
+# ...
+
+mkdir -p /etc/openclaw
+cat > /etc/openclaw/managed.env <<EOF
+OPENCLAW_GATEWAY_TOKEN={{OPENCLAW_GATEWAY_TOKEN}}
+OPENCLAW_GATEWAY_PORT={{UPSTREAM_PORT}}
+EOF
+
+# run OpenClaw as a systemd service (replace with your production command)
+# ExecStart should bind to 0.0.0.0:${OPENCLAW_GATEWAY_PORT} (or tailnet IP)
+```
+
+If you prefer a file-based script:
+
+1. Save the script on VM, for example `/opt/managed-gateway/bootstrap/openclaw-bootstrap.sh`.
+2. Set `MANAGED_BOOTSTRAP_SCRIPT_FILE=/opt/managed-gateway/bootstrap/openclaw-bootstrap.sh`.
 
 ## Deployment
 

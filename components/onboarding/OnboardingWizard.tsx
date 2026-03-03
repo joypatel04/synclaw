@@ -361,6 +361,7 @@ export function OnboardingWizard() {
         protocol,
         authToken: tokenDraft.trim() ? tokenDraft.trim() : undefined,
         password: passwordDraft.trim() ? passwordDraft.trim() : undefined,
+        forceDisableDeviceAuth: deploymentMode === "managed",
         clientId,
         clientMode,
         clientPlatform,

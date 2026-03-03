@@ -557,6 +557,8 @@ function OpenClawSettingsContent() {
           protocol: cfg.protocol,
           authToken: cfg.authToken,
           password: cfg.password,
+          forceDisableDeviceAuth:
+            (cfg.deploymentMode ?? "manual") === "managed",
           clientId: cfg.clientId,
           clientMode: cfg.clientMode,
           clientPlatform: cfg.clientPlatform,
