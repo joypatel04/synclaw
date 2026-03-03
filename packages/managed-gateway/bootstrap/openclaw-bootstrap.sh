@@ -113,12 +113,10 @@ systemctl enable --now openclaw-gateway.service
 # - allow only the current SSH client IP (managed-gateway host) to that port
 SSH_CLIENT_IP="$(awk '{print $1}' <<< "${SSH_CONNECTION:-}")"
 if [[ -n "${SSH_CLIENT_IP}" ]]; then
-  if ! ufw status | grep -q "DENY.*${OPENCLAW_PORT}/tcp"; then
-    ufw --force deny in proto tcp to any port "${OPENCLAW_PORT}" comment "openclaw-managed-default-deny"
-  fi
-  if ! ufw status | grep -q "ALLOW IN.*${SSH_CLIENT_IP}.*${OPENCLAW_PORT}/tcp"; then
-    ufw --force allow in proto tcp from "${SSH_CLIENT_IP}" to any port "${OPENCLAW_PORT}" comment "openclaw-managed-gateway-allow"
-  fi
+  # Keep SSH access safe even after enabling UFW.
+  ufw --force allow OpenSSH >/dev/null 2>&1 || true
+  ufw --force allow proto tcp from "${SSH_CLIENT_IP}" to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
+  ufw --force deny proto tcp to any port "${OPENCLAW_PORT}" >/dev/null 2>&1 || true
 else
   echo "Warning: SSH_CONNECTION missing; skipped gateway-IP firewall allow rule." >&2
 fi
