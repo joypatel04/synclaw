@@ -93,7 +93,6 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/openclaw
-MemoryDenyWriteExecute=true
 LockPersonality=true
 RestrictRealtime=true
 
