@@ -637,9 +637,21 @@ export const _runManagedHealthChecks = internalAction({
       },
       timeoutMs,
     );
+    const routeChecks = (payload as any)?.checks ?? {};
+    const gatewayRouteOk = Boolean(
+      (payload as any)?.ok &&
+        routeChecks.routeExists !== false &&
+        routeChecks.upstreamReachable !== false,
+    );
     return {
-      ok: true,
-      checks: { wsUrlTls: true, hostPresent: Boolean(args.host), gatewayRoute: true },
+      ok: gatewayRouteOk,
+      checks: {
+        wsUrlTls: true,
+        hostPresent: Boolean(args.host),
+        gatewayRoute: gatewayRouteOk,
+        routeExists: routeChecks.routeExists ?? null,
+        upstreamReachable: routeChecks.upstreamReachable ?? null,
+      },
       payload,
     };
   },
@@ -1748,6 +1760,7 @@ export const applyManagedProviderConfig: any = action({
 export const verifyManagedConnection = mutation({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
     const membership = await requireRole(ctx, args.workspaceId, "owner");
     const cfg = await ctx.db
       .query("openclawGatewayConfigs")
@@ -1772,22 +1785,45 @@ export const verifyManagedConnection = mutation({
       (cfg.authTokenCiphertextHex && cfg.authTokenIvHex) ||
         (cfg.passwordCiphertextHex && cfg.passwordIvHex),
     );
-    const ok = hasConnectionTarget && hasAuth;
+    let gatewayRouteOk = true;
+    let healthError: string | null = null;
+    if (hasConnectionTarget && cfg.managedUpstreamHost) {
+      try {
+        const health = await ctx.runAction(
+          internal.managedProvisioning._runManagedHealthChecks,
+          {
+            workspaceId: args.workspaceId,
+            jobId: cfg.lastManagedJobId ?? ("verify" as any),
+            host: cfg.managedUpstreamHost,
+            managedWsUrl: cfg.wsUrl ?? "",
+          },
+        );
+        gatewayRouteOk = Boolean((health as any)?.ok);
+      } catch (error) {
+        gatewayRouteOk = false;
+        healthError = error instanceof Error ? error.message : String(error);
+      }
+    } else if (hasConnectionTarget) {
+      gatewayRouteOk = false;
+      healthError = "Managed upstream host is missing.";
+    }
+    const ok = hasConnectionTarget && hasAuth && gatewayRouteOk;
     const now = Date.now();
     await ctx.db.patch(cfg._id, {
-      managedStatus: ok ? "ready" : "degraded",
-      setupStatus: ok ? "verified" : (cfg.setupStatus ?? "not_started"),
-      managedConnectedAt: ok ? now : cfg.managedConnectedAt,
+      managedStatus: ok ? "ready" : "failed",
+      setupStatus: ok ? "verified" : "infra_ready",
+      managedConnectedAt: ok ? now : undefined,
       updatedAt: now,
       updatedBy: membership.userId,
     } as any);
     return {
       ok,
-      status: ok ? "ready" : "degraded",
-      checks: { hasConnectionTarget, hasAuth },
+      status: ok ? "ready" : "failed",
+      checks: { hasConnectionTarget, hasAuth, gatewayRouteOk },
       nextAction: ok
         ? "Managed connection verified."
-        : "Re-run auto-connect or retry provisioning.",
+        : "Managed host is unreachable or missing. Restart managed setup to recreate/reconnect.",
+      error: healthError,
     };
   },
 });

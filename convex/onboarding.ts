@@ -31,6 +31,10 @@ export const getStatus = query({
     const serviceTier = openclaw?.serviceTier ?? "self_serve";
     const provisioningMode = openclaw?.provisioningMode ?? "sutraha_managed";
     const deploymentMode = openclaw?.deploymentMode ?? "manual";
+    const managedConnectionReady =
+      deploymentMode !== "managed" ||
+      provisioningMode !== "sutraha_managed" ||
+      openclaw?.managedStatus === "ready";
     const requiresProviderKey =
       isCommercialCapabilityEnabled("managedProvisioning") &&
       deploymentMode === "managed" &&
@@ -68,6 +72,7 @@ export const getStatus = query({
 
     const isComplete =
       openclawConfigured &&
+      managedConnectionReady &&
       (!requiresProviderKey || providerKeyReady) &&
       mainAgentId !== null;
 
@@ -83,6 +88,7 @@ export const getStatus = query({
       serviceTier,
       provisioningMode,
       deploymentMode,
+      managedConnectionReady,
       mainAgentId,
       hasCanonicalMainAgent,
       isComplete,

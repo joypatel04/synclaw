@@ -1262,9 +1262,28 @@ export function OnboardingWizard() {
                       size="sm"
                       className="h-8"
                       onClick={() =>
-                        void verifyManagedConnection({ workspaceId }).then(() =>
-                          setServiceMessage("Managed connection verified."),
-                        )
+                        void verifyManagedConnection({ workspaceId })
+                          .then((result) => {
+                            setServiceMessage(
+                              result?.nextAction ??
+                                (result?.ok
+                                  ? "Managed connection verified."
+                                  : "Managed verification failed."),
+                            );
+                            if (!result?.ok) {
+                              setServiceError(
+                                result?.error ??
+                                  "Managed host appears unavailable. Restart setup.",
+                              );
+                            } else {
+                              setServiceError(null);
+                            }
+                          })
+                          .catch((error) => {
+                            setServiceError(
+                              error instanceof Error ? error.message : String(error),
+                            );
+                          })
                       }
                     >
                       Reconnect / Verify
