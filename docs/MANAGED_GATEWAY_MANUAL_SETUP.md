@@ -66,8 +66,18 @@ cd /opt/managed-gateway
 cp docker-compose.yml docker-compose.override.yml
 ```
 
+Set executable permissions on the hardened bootstrap script:
+
+```bash
+chmod 700 /opt/managed-gateway/bootstrap/openclaw-bootstrap.sh
+```
+
 Edit `docker-compose.override.yml` and set:
 - `MANAGED_GATEWAY_API_TOKEN=<strong-random-token>`
+- `MANAGED_UPSTREAM_WS_PORT=18789`
+- `MANAGED_UPSTREAM_WS_PATH=/`
+- `MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT=true`
+- `MANAGED_BOOTSTRAP_SCRIPT_FILE=/opt/managed-gateway/bootstrap/openclaw-bootstrap.sh`
 
 Edit `Caddyfile` to use your gateway domain (example `managed.synclaw.in`).
 
