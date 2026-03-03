@@ -6,6 +6,7 @@ RUN npm install --omit=dev
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY bootstrap ./bootstrap
 RUN npm install --include=dev && npm run build && npm prune --omit=dev
 
 EXPOSE 8788
