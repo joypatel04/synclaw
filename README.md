@@ -93,6 +93,7 @@ OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 ## Docs
 
 - Deployment: `docs/DEPLOYMENT.md`
+- Managed gateway manual setup: `docs/MANAGED_GATEWAY_MANUAL_SETUP.md`
 - OSS edition track: `docs/oss/README.md`
 - Commercial edition track: `docs/commercial/README.md`
 - OpenClaw chat: `docs/OPENCLAW_CHAT.md`
