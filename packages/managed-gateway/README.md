@@ -40,6 +40,8 @@ npm start
 - `MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT` (default: `true`)
 - `MANAGED_BOOTSTRAP_SCRIPT` (required in real mode; custom SSH bootstrap script)
 - `MANAGED_BOOTSTRAP_SCRIPT_FILE` (optional path to script file on VM)
+- `MANAGED_FILES_BRIDGE_PORT` (default: `8787`)
+- `MANAGED_FILES_BRIDGE_ROOT_PATH` (default: `/root/.openclaw`)
 
 ## Real OpenClaw Bootstrap Script
 
@@ -52,6 +54,9 @@ npm start
 - `{{REGION}}`
 - `{{UPSTREAM_PORT}}`
 - `{{OPENCLAW_GATEWAY_TOKEN}}`
+- `{{FILES_BRIDGE_TOKEN}}`
+- `{{FILES_BRIDGE_PORT}}`
+- `{{FILES_BRIDGE_ROOT_PATH}}`
 
 Example shape:
 

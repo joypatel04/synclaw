@@ -479,6 +479,7 @@ export const _bootstrapOpenClawInstance = internalAction({
     host: v.string(),
     resolvedRegion: v.string(),
     openclawGatewayToken: v.string(),
+    filesBridgeToken: v.string(),
   },
   handler: async (_ctx, args) => {
     requireEnabledCapability("managedProvisioning");
@@ -518,6 +519,10 @@ export const _bootstrapOpenClawInstance = internalAction({
           bootstrapUser: optionalEnv("MANAGED_BOOTSTRAP_USER") ?? "root",
           sshPrivateKey: optionalEnv("MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY"),
           openclawGatewayToken: args.openclawGatewayToken,
+          filesBridgeToken: args.filesBridgeToken,
+          filesBridgePort: Number(optionalEnv("MANAGED_FILES_BRIDGE_PORT") ?? "8787"),
+          filesBridgeRootPath:
+            optionalEnv("MANAGED_FILES_BRIDGE_ROOT_PATH") ?? "/root/.openclaw",
           controlUiAllowedOrigins: managedControlUiAllowedOrigins(),
         }),
       },
@@ -927,6 +932,7 @@ export const _finalizeManagedConnection = internalMutation({
     upstreamPort: v.optional(v.number()),
     routeVersion: v.optional(v.number()),
     openclawGatewayToken: v.string(),
+    filesBridgeToken: v.string(),
   },
   handler: async (ctx, args) => {
     requireEnabledCapability("managedProvisioning");
@@ -943,6 +949,11 @@ export const _finalizeManagedConnection = internalMutation({
       args.host,
     );
     const tokenEnc = await encryptSecretToHex(args.openclawGatewayToken);
+    const filesBridgeTokenEnc = await encryptSecretToHex(args.filesBridgeToken);
+    const filesBridgePort = Number(optionalEnv("MANAGED_FILES_BRIDGE_PORT") ?? "8787");
+    const filesBridgeBaseUrl = `http://${args.host}:${filesBridgePort}`;
+    const filesBridgeRootPath =
+      optionalEnv("MANAGED_FILES_BRIDGE_ROOT_PATH") ?? "/root/.openclaw";
 
     await ctx.db.patch(cfg._id, {
       wsUrl: managedWsUrl,
@@ -971,6 +982,11 @@ export const _finalizeManagedConnection = internalMutation({
       recommendedMethod: "public_wss",
       authTokenCiphertextHex: tokenEnc.ciphertextHex,
       authTokenIvHex: tokenEnc.ivHex,
+      filesBridgeEnabled: true,
+      filesBridgeBaseUrl,
+      filesBridgeRootPath,
+      filesBridgeTokenCiphertextHex: filesBridgeTokenEnc.ciphertextHex,
+      filesBridgeTokenIvHex: filesBridgeTokenEnc.ivHex,
       updatedAt: now,
       updatedBy: cfg.updatedBy,
     } as any);
@@ -1074,6 +1090,7 @@ export const executeManagedProvisioning = internalAction({
         log: "Bootstrapping OpenClaw runtime on provisioned instance.",
       });
       const managedGatewayToken = generateManagedGatewayTokenHex(32);
+      const filesBridgeToken = generateManagedGatewayTokenHex(32);
       try {
         await ctx.runAction(internal.managedProvisioning._bootstrapOpenClawInstance, {
           workspaceId: args.workspaceId,
@@ -1083,6 +1100,7 @@ export const executeManagedProvisioning = internalAction({
           host: provisioned.host,
           resolvedRegion: job.resolvedRegion || "eu_central_hil",
           openclawGatewayToken: managedGatewayToken,
+          filesBridgeToken,
         });
         await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
           workspaceId: args.workspaceId,
@@ -1216,6 +1234,7 @@ export const executeManagedProvisioning = internalAction({
           upstreamPort: routedUpstreamPort,
           routeVersion: routedVersion,
           openclawGatewayToken: managedGatewayToken,
+          filesBridgeToken,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

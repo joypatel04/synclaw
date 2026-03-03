@@ -28,6 +28,9 @@ type BootstrapBody = {
   bootstrapUser?: string;
   sshPrivateKey?: string;
   openclawGatewayToken?: string;
+  filesBridgeToken?: string;
+  filesBridgePort?: number;
+  filesBridgeRootPath?: string;
   controlUiAllowedOrigins?: string[];
 };
 
@@ -128,7 +131,7 @@ function log(event: string, data: Record<string, unknown>) {
 function redactSensitive(text: string): string {
   return text
     .replace(
-      /(OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|OPENCLAW_GATEWAY_TOKEN)\s*=\s*[^\s"']+/gi,
+      /(OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|OPENCLAW_GATEWAY_TOKEN|FS_BRIDGE_TOKEN)\s*=\s*[^\s"']+/gi,
       "$1=[REDACTED]",
     )
     .replace(/(--token\s+)([^\s]+)/gi, "$1[REDACTED]");
@@ -565,6 +568,7 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
   const username = (body.bootstrapUser || "root").trim();
   const privateKey = (body.sshPrivateKey || "").trim();
   const openclawGatewayToken = (body.openclawGatewayToken || "").trim();
+  const filesBridgeToken = (body.filesBridgeToken || "").trim();
   if (!privateKey) {
     res.status(400).json({ error: "sshPrivateKey is required." });
     return;
@@ -573,8 +577,14 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
     res.status(400).json({ error: "openclawGatewayToken is required." });
     return;
   }
+  if (!filesBridgeToken) {
+    res.status(400).json({ error: "filesBridgeToken is required." });
+    return;
+  }
 
   const targetPort = Number(process.env.MANAGED_UPSTREAM_WS_PORT ?? "18789");
+  const filesBridgePort = Number(body.filesBridgePort ?? process.env.MANAGED_FILES_BRIDGE_PORT ?? "8787");
+  const filesBridgeRootPath = (body.filesBridgeRootPath || process.env.MANAGED_FILES_BRIDGE_ROOT_PATH || "/root/.openclaw").trim();
   const inlineScript = (process.env.MANAGED_BOOTSTRAP_SCRIPT ?? "").trim();
   const scriptFile = (process.env.MANAGED_BOOTSTRAP_SCRIPT_FILE ?? "").trim();
   let fileScript = "";
@@ -610,6 +620,9 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
     REGION: body.region,
     UPSTREAM_PORT: String(targetPort),
     OPENCLAW_GATEWAY_TOKEN: openclawGatewayToken,
+    FILES_BRIDGE_TOKEN: filesBridgeToken,
+    FILES_BRIDGE_PORT: String(filesBridgePort),
+    FILES_BRIDGE_ROOT_PATH: filesBridgeRootPath,
     CONTROL_UI_ALLOWED_ORIGINS_JSON: JSON.stringify(
       Array.isArray(body.controlUiAllowedOrigins)
         ? body.controlUiAllowedOrigins.filter((v) => typeof v === "string" && v.trim().length > 0)
@@ -623,6 +636,7 @@ app.post("/control/bootstrap", requireAuth, async (req, res) => {
       jobId: body.jobId,
       host: body.host,
       upstreamPort: targetPort,
+      filesBridgePort,
       scriptSource: inlineScript ? "env_inline" : scriptFile ? "file" : "default",
     });
 
