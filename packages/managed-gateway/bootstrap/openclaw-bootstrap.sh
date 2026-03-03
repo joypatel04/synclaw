@@ -59,6 +59,7 @@ fi
 install -d -m 0750 -o "${OPENCLAW_USER}" -g "${OPENCLAW_GROUP}" "${OPENCLAW_STATE_DIR}"
 install -d -m 0750 -o root -g "${OPENCLAW_GROUP}" "${OPENCLAW_ETC_DIR}"
 install -d -m 0700 -o root -g root "${OPENCLAW_CONFIG_DIR}"
+install -d -m 0755 -o root -g root /var/tmp/openclaw-compile-cache
 
 cat > "${OPENCLAW_ENV_FILE}" <<EOF
 OPENCLAW_GATEWAY_PORT=${OPENCLAW_PORT}
@@ -93,6 +94,9 @@ HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.port "${OPENCLA
 HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.bind lan
 HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.mode token
 HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.token "${OPENCLAW_TOKEN}"
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.rateLimit.maxAttempts 10
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.rateLimit.windowMs 60000
+HOME="${OPENCLAW_HOME_DIR}" "${OPENCLAW_BIN}" config set gateway.auth.rateLimit.lockoutMs 300000
 
 # Ensure managed defaults and control UI origins are set in config.
 HOME="${OPENCLAW_HOME_DIR}" node <<NODE
@@ -135,6 +139,8 @@ Group=root
 WorkingDirectory=${OPENCLAW_HOME_DIR}
 EnvironmentFile=${OPENCLAW_ENV_FILE}
 EnvironmentFile=-${OPENCLAW_PROVIDERS_ENV_FILE}
+Environment=NODE_COMPILE_CACHE=/var/tmp/openclaw-compile-cache
+Environment=OPENCLAW_NO_RESPAWN=1
 ExecStart=${OPENCLAW_BIN} gateway run --allow-unconfigured --port \${OPENCLAW_GATEWAY_PORT} --bind \${OPENCLAW_GATEWAY_BIND} --auth token --token \${OPENCLAW_GATEWAY_TOKEN}
 Restart=always
 RestartSec=3

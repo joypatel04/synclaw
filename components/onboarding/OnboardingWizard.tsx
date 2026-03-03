@@ -368,11 +368,20 @@ export function OnboardingWizard() {
       providerKeyStatuses.find(
         (row) =>
           row.status === "valid" &&
+          row.provider === providerId &&
           (row.provider === "openai" ||
             row.provider === "anthropic" ||
             row.provider === "gemini"),
-      ) ?? null,
-    [providerKeyStatuses],
+      ) ??
+      providerKeyStatuses.find(
+        (row) =>
+          row.status === "valid" &&
+          (row.provider === "openai" ||
+            row.provider === "anthropic" ||
+            row.provider === "gemini"),
+      ) ??
+      null,
+    [providerId, providerKeyStatuses],
   );
 
   useEffect(() => {
