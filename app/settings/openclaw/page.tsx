@@ -67,17 +67,6 @@ import {
   type ManagedServerProfileCode,
 } from "@/lib/managedServerProfiles";
 
-const MODEL_PROVIDER_OPTIONS = [
-  { id: "openai", label: "OpenAI" },
-  { id: "anthropic", label: "Anthropic" },
-  { id: "gemini", label: "Gemini" },
-  { id: "google_antigravity", label: "Google Antigravity" },
-  { id: "z_ai", label: "Z.ai" },
-  { id: "minimax", label: "Minimax" },
-] as const;
-
-type ModelProviderId = (typeof MODEL_PROVIDER_OPTIONS)[number]["id"];
-
 const FIXED_GATEWAY_ROLE = "operator";
 const FIXED_GATEWAY_SCOPES = [
   "operator.read",
@@ -161,16 +150,12 @@ function OpenClawSettingsContent() {
     managedProvisioningEnabled ? { workspaceId } : "skip",
   );
   const createAssistedSession = useMutation(api.support.createAssistedSession);
-  const upsertWorkspaceKey = useMutation(api.modelKeys.upsertWorkspaceKey);
-  const validateWorkspaceKeys = useMutation(api.modelKeys.validateWorkspaceKeys);
   const createAgent = useMutation(api.agents.create);
   const assistedSessions =
     useQuery(
       api.support.listAssistedSessions,
       assistedLaunchEnabled ? { workspaceId } : "skip",
     ) ?? [];
-  const providerKeyStatuses =
-    useQuery(api.modelKeys.listWorkspaceKeyStatus, { workspaceId }) ?? [];
   const [wsUrl, setWsUrl] = useState("");
   const [transportMode, setTransportMode] =
     useState<OpenClawTransportMode>("direct_ws");
@@ -248,18 +233,6 @@ function OpenClawSettingsContent() {
   const [securityHardeningNotes, setSecurityHardeningNotes] = useState("");
   const [serviceMessage, setServiceMessage] = useState<string | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
-  const [providerKeyDrafts, setProviderKeyDrafts] = useState({
-    openai: "",
-    anthropic: "",
-    gemini: "",
-    google_antigravity: "",
-    z_ai: "",
-    minimax: "",
-  });
-  const [providerKeyMessage, setProviderKeyMessage] = useState<string | null>(
-    null,
-  );
-  const [providerKeyError, setProviderKeyError] = useState<string | null>(null);
   const managedModeActive =
     managedProvisioningEnabled && deploymentMode === "managed";
   const copy = async (id: string, value: string) => {
@@ -737,39 +710,6 @@ function OpenClawSettingsContent() {
     }
   };
 
-  const onSaveProviderKey = async (provider: ModelProviderId) => {
-    setProviderKeyMessage(null);
-    setProviderKeyError(null);
-    try {
-      const keyValue = providerKeyDrafts[provider].trim();
-      if (!keyValue) {
-        setProviderKeyError(`Enter a ${provider} key first.`);
-        return;
-      }
-      await upsertWorkspaceKey({
-        workspaceId,
-        provider,
-        key: keyValue,
-      });
-      setProviderKeyDrafts((prev) => ({ ...prev, [provider]: "" }));
-      setProviderKeyMessage(`${provider} key saved (encrypted).`);
-    } catch (e) {
-      setProviderKeyError(e instanceof Error ? e.message : String(e));
-    }
-  };
-
-  const onValidateProviderKeys = async () => {
-    setProviderKeyMessage(null);
-    setProviderKeyError(null);
-    try {
-      const result = await validateWorkspaceKeys({ workspaceId });
-      const validCount = result.results.filter((r) => r.status === "valid").length;
-      setProviderKeyMessage(`Validated ${validCount}/${result.results.length} provider keys.`);
-    } catch (e) {
-      setProviderKeyError(e instanceof Error ? e.message : String(e));
-    }
-  };
-
   const connectionHealth = useMemo(() => {
     if (testResult.status === "ok") return "Connected";
     if (transportMode === "connector" && connectorStatus !== "online") {
@@ -1165,82 +1105,6 @@ function OpenClawSettingsContent() {
             </div>
           </>
         ) : null}
-
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">
-            BYO Model Provider Keys
-          </h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Workspace-level encrypted keys for managed OpenClaw runtime.
-          </p>
-          <div className="mt-3 rounded-md border border-status-review/40 bg-status-review/10 px-3 py-2">
-            <p className="text-[11px] font-semibold text-status-review">
-              Model providers currently use API keys
-            </p>
-            <p className="mt-1 text-[11px] text-text-secondary">
-              For managed OpenClaw runtime, provider logins are not connected here yet.
-              Add provider keys below to enable inference.
-            </p>
-          </div>
-          <div className="mt-4 space-y-4">
-            {MODEL_PROVIDER_OPTIONS.map((providerOpt) => {
-              const provider = providerOpt.id;
-              const status = providerKeyStatuses.find((s) => s.provider === provider);
-              return (
-                <div
-                  key={provider}
-                  className="rounded-lg border border-border-default bg-bg-primary p-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-text-primary">
-                      {providerOpt.label}
-                    </p>
-                    <p className="text-[11px] text-text-dim">
-                      Status: {status?.status ?? "missing"}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      value={providerKeyDrafts[provider]}
-                      onChange={(e) =>
-                        setProviderKeyDrafts((prev) => ({
-                          ...prev,
-                          [provider]: e.target.value,
-                        }))
-                      }
-                      placeholder={`Paste ${provider} key`}
-                      className="bg-bg-secondary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10"
-                      onClick={() => void onSaveProviderKey(provider)}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-8"
-                onClick={() => void onValidateProviderKeys()}
-              >
-                Validate provider keys
-              </Button>
-              {providerKeyMessage ? (
-                <span className="text-xs text-status-active">{providerKeyMessage}</span>
-              ) : null}
-              {providerKeyError ? (
-                <span className="text-xs text-status-blocked">{providerKeyError}</span>
-              ) : null}
-            </div>
-          </div>
-        </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
