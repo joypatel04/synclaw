@@ -15,6 +15,8 @@ Single-domain managed control plane + WebSocket gateway for path-based workspace
 
 ```bash
 cd packages/managed-gateway
+cp .env.example .env
+# edit .env (set MANAGED_GATEWAY_API_TOKEN at minimum)
 npm install
 npm run build
 npm start
@@ -38,3 +40,11 @@ npm start
 ## Deployment
 
 Use `docker-compose.yml` in this folder on your Hetzner VM.
+
+Recommended:
+
+```bash
+cp .env.example .env
+# edit .env
+docker compose up -d --build
+```
