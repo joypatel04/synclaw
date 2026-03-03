@@ -1,11 +1,11 @@
 import express, { type Request, type Response, type NextFunction } from "express";
-import http from "node:http";
+import http, { type IncomingMessage } from "node:http";
 import net from "node:net";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
-import { Client as SshClient } from "ssh2";
+import { Client as SshClient, type ClientChannel } from "ssh2";
 import Database from "better-sqlite3";
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer, type RawData } from "ws";
 
 type RouteRow = {
   workspace_id: string;
@@ -185,7 +185,7 @@ async function runSshCommand(
 
     conn
       .on("ready", () => {
-        conn.exec(command, (err, stream) => {
+        conn.exec(command, (err: Error | undefined, stream: ClientChannel) => {
           if (err) {
             clearTimeout(timeout);
             conn.end();
@@ -205,7 +205,7 @@ async function runSshCommand(
           });
         });
       })
-      .on("error", (err) => {
+      .on("error", (err: Error) => {
         clearTimeout(timeout);
         reject(err);
       })
@@ -459,7 +459,9 @@ server.on("upgrade", async (req, socket, head) => {
   }
 });
 
-wss.on("connection", (clientSocket, _req, route: RouteRow) => {
+wss.on(
+  "connection",
+  (clientSocket: WebSocket, _req: IncomingMessage, route: RouteRow) => {
   const upstreamUrl = `${UPSTREAM_WS_SCHEME}://${route.upstream_host}:${route.upstream_port}${UPSTREAM_WS_PATH}`;
   const upstream = new WebSocket(upstreamUrl);
 
@@ -479,25 +481,25 @@ wss.on("connection", (clientSocket, _req, route: RouteRow) => {
     });
   });
 
-  upstream.on("message", (data, isBinary) => {
+  upstream.on("message", (data: RawData, isBinary: boolean) => {
     if (clientSocket.readyState === WebSocket.OPEN) {
       clientSocket.send(data, { binary: isBinary });
     }
   });
 
-  clientSocket.on("message", (data, isBinary) => {
+  clientSocket.on("message", (data: RawData, isBinary: boolean) => {
     if (upstream.readyState === WebSocket.OPEN) {
       upstream.send(data, { binary: isBinary });
     }
   });
 
-  upstream.on("close", (code, reason) => {
+  upstream.on("close", (code: number, reason: Buffer) => {
     if (clientSocket.readyState === WebSocket.OPEN) {
       clientSocket.close(code, reason.toString());
     }
   });
 
-  clientSocket.on("close", (code, reason) => {
+  clientSocket.on("close", (code: number, reason: Buffer) => {
     if (upstream.readyState === WebSocket.OPEN) {
       upstream.close(code, reason.toString());
     }
@@ -505,7 +507,8 @@ wss.on("connection", (clientSocket, _req, route: RouteRow) => {
 
   upstream.on("error", () => closeBoth(1011, "upstream_error"));
   clientSocket.on("error", () => closeBoth(1011, "client_error"));
-});
+  },
+);
 
 server.listen(PORT, () => {
   log("service_started", {
