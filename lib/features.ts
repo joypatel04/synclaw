@@ -40,3 +40,8 @@ export const OPENCLAW_FILES_ENABLED = parseBooleanEnv(
   process.env.NEXT_PUBLIC_OPENCLAW_FILES_ENABLED,
   false,
 );
+
+export const AGENT_SETUP_ADVANCED_ENABLED = parseBooleanEnv(
+  process.env.NEXT_PUBLIC_AGENT_SETUP_ADVANCED_ENABLED,
+  process.env.NODE_ENV !== "production",
+);

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { REQUIRED_AGENT_SETUP_FILES } from "@/lib/agentSetupTemplates";
 
 function AgentSetupGuideContent() {
+  const requiredFileCount = REQUIRED_AGENT_SETUP_FILES.length;
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-3 sm:p-6">
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
@@ -19,7 +20,7 @@ function AgentSetupGuideContent() {
 
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
         <h2 className="text-sm font-semibold text-text-primary">
-          Mandatory 8-file Pack
+          Mandatory {requiredFileCount}-file Pack
         </h2>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-secondary">
           {REQUIRED_AGENT_SETUP_FILES.map((file) => (
@@ -50,7 +51,10 @@ function AgentSetupGuideContent() {
           Completion checklist
         </h2>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-secondary">
-          <li>All 8 required files exist and pass validation checks.</li>
+          <li>
+            All {requiredFileCount} required files exist and pass validation
+            checks.
+          </li>
           <li>Bootstrap step confirmed.</li>
           <li>Cron step confirmed.</li>
           <li>First pulse detected.</li>

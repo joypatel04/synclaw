@@ -17,6 +17,7 @@ import { setChatDraft } from "@/lib/chatDraft";
 import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 import { canUseCapability } from "@/lib/edition";
 import {
+  AGENT_SETUP_ADVANCED_ENABLED,
   ASSISTED_LAUNCH_BETA_ENABLED,
   MANAGED_BETA_ENABLED,
   MANAGED_INTERNAL_CONTROLS_ENABLED,
@@ -87,6 +88,25 @@ function isManagedProviderId(
   value: ModelProviderId,
 ): value is ManagedProviderId {
   return value === "openai" || value === "anthropic" || value === "gemini";
+}
+
+function mapOneClickSetupError(code: string | undefined, message: string): string {
+  switch (code) {
+    case "BRIDGE_UNAVAILABLE":
+      return "Remote files bridge is not reachable. Verify OpenClaw files bridge and retry.";
+    case "BRIDGE_WRITE_FAILED":
+      return `Failed to write setup files to workspace directory. ${message}`;
+    case "TEMPLATE_VALIDATION_FAILED":
+      return `Template validation failed after write. ${message}`;
+    case "ROLLBACK_FAILED":
+      return `Setup failed and rollback also failed. ${message}`;
+    case "DUPLICATE_SESSION_KEY":
+      return "An agent with sessionKey agent:main:main already exists.";
+    case "AGENT_LIMIT_REACHED":
+      return "Workspace agent limit reached. Upgrade plan or archive an agent, then retry.";
+    default:
+      return message;
+  }
 }
 
 function StepHeader({
@@ -191,7 +211,7 @@ export function OnboardingWizard() {
       api.modelKeys.listWorkspaceKeyStatus,
       canAdmin ? { workspaceId } : "skip",
     ) ?? [];
-  const createAgent = useMutation(api.agents.create);
+  const createAgentOneClick = useAction(api.agentSetup.createAgentOneClick);
 
   const [wsUrl, setWsUrl] = useState("");
   const [transportMode, setTransportMode] =
@@ -880,7 +900,7 @@ export function OnboardingWizard() {
       sessionKey: "agent:main:main",
       content: mainBootstrap,
     });
-    router.replace(`/agents/${mainAgentId}/setup`);
+    router.replace(`/chat/${mainAgentId}`);
   };
 
   const continueAfterOnboarding = (mainAgentId: string) => {
@@ -2021,13 +2041,13 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
             ) : status?.mainAgentId ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-text-muted">
-                  Main agent exists. Continue setup in Chat.
+                  Main agent exists. Continue in chat.
                 </p>
                 <Button
                   className="bg-teal hover:bg-teal/90 text-white"
                   onClick={() => goChatSetup(String(status.mainAgentId))}
                 >
-                  Open Setup Guide
+                  Open Agent Chat
                 </Button>
               </div>
             ) : (
@@ -2085,15 +2105,24 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     setCreateError(null);
                     void (async () => {
                       try {
-                        const id = await createAgent({
+                        const result = (await createAgentOneClick({
                           workspaceId,
                           name: mainName.trim(),
                           role: mainRole.trim() || "Squad Lead",
                           emoji: mainEmoji.trim() || "🦊",
                           sessionKey: "agent:main:main",
                           externalAgentId: "agent:main:main",
-                        });
-                        goChatSetup(String(id));
+                          source: "onboarding_main",
+                        })) as
+                          | { ok: true; agentId: string }
+                          | { ok: false; code?: string; message: string };
+                        if (!result.ok) {
+                          setCreateError(
+                            mapOneClickSetupError(result.code, result.message),
+                          );
+                          return;
+                        }
+                        goChatSetup(String(result.agentId));
                       } catch (e) {
                         setCreateError(
                           e instanceof Error ? e.message : String(e),
@@ -2104,7 +2133,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     })();
                   }}
                 >
-                  {creatingAgent ? "Creating..." : "Create main agent"}
+                  {creatingAgent
+                    ? "Creating & configuring..."
+                    : "Create & Configure Agent"}
                 </Button>
               </>
             )}
@@ -2112,23 +2143,32 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
         </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <p className="text-xs text-text-muted">
-            After prerequisites, continue with Agent Setup Guide for strict
-            file-pack validation and runtime checks.
-          </p>
-          <div className="mt-3">
-            <Button asChild variant="outline" size="sm" className="h-8">
-              <Link
-                href={
-                  status?.mainAgentId
-                    ? `/agents/${status.mainAgentId}/setup`
-                    : "/agents"
-                }
-              >
-                Open Setup Guide
-              </Link>
-            </Button>
-          </div>
+          {AGENT_SETUP_ADVANCED_ENABLED ? (
+            <>
+              <p className="text-xs text-text-muted">
+                Need diagnostics? Open setup details for validation and
+                troubleshooting.
+              </p>
+              <div className="mt-3">
+                <Button asChild variant="outline" size="sm" className="h-8">
+                  <Link
+                    href={
+                      status?.mainAgentId
+                        ? `/agents/${status.mainAgentId}/setup`
+                        : "/agents"
+                    }
+                  >
+                    Open setup diagnostics
+                  </Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-text-muted">
+              Setup is handled automatically. Continue in chat once agent
+              creation completes.
+            </p>
+          )}
         </div>
       </div>
     </div>

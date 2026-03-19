@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -58,6 +58,25 @@ const emptyForm: AgentFormData = {
   externalAgentId: "",
 };
 
+function mapOneClickSetupError(code: string | undefined, message: string) {
+  switch (code) {
+    case "BRIDGE_UNAVAILABLE":
+      return "OpenClaw file bridge is unavailable. Verify OpenClaw connection first.";
+    case "BRIDGE_WRITE_FAILED":
+      return "Could not write required setup files. Check bridge connectivity and retry.";
+    case "TEMPLATE_VALIDATION_FAILED":
+      return "Template validation failed after setup. Please retry.";
+    case "ROLLBACK_FAILED":
+      return "Setup failed and rollback was incomplete. Please contact support with this error.";
+    case "DUPLICATE_SESSION_KEY":
+      return "An agent with this session key already exists in this workspace.";
+    case "AGENT_LIMIT_REACHED":
+      return "Agent limit reached for this workspace.";
+    default:
+      return message;
+  }
+}
+
 function AgentsContent() {
   const { workspaceId, canAdmin, canManage } = useWorkspace();
   const router = useRouter();
@@ -65,11 +84,13 @@ function AgentsContent() {
     useQuery(api.agents.list, { workspaceId, includeArchived: canAdmin }) ?? [];
   const tasks = useQuery(api.tasks.list, { workspaceId }) ?? [];
   const updateStatus = useMutation(api.agents.updateStatus);
-  const createAgent = useMutation(api.agents.create);
+  const createAgentOneClick = useAction(api.agentSetup.createAgentOneClick);
   const updateAgent = useMutation(api.agents.update);
   const toggleArchive = useMutation(api.agents.toggleArchive);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [creatingAgent, setCreatingAgent] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<Id<"agents"> | null>(null);
   const [archivingAgent, setArchivingAgent] = useState<{
     id: Id<"agents">;
@@ -120,6 +141,7 @@ function AgentsContent() {
   };
 
   const openEdit = (agent: (typeof agents)[number]) => {
+    setCreateError(null);
     setForm({
       name: agent.name,
       role: agent.role,
@@ -130,22 +152,46 @@ function AgentsContent() {
     setEditingId(agent._id);
   };
 
+  const openCreateModal = () => {
+    setCreateError(null);
+    setEditingId(null);
+    setForm(emptyForm);
+    setShowCreate(true);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
-    const id = await createAgent({
-      workspaceId,
-      name: form.name.trim(),
-      role: form.role.trim(),
-      emoji: form.emoji,
-      sessionKey:
+    if (creatingAgent) return;
+    setCreatingAgent(true);
+    setCreateError(null);
+    try {
+      const nextSessionKey =
         form.sessionKey.trim() ||
-        `agent:${form.name.toLowerCase().replace(/\s+/g, "-")}:main`,
-      externalAgentId: form.externalAgentId.trim() || undefined,
-    });
-    setForm(emptyForm);
-    setShowCreate(false);
-    router.push(`/agents/${id}/setup`);
+        `agent:${form.name.toLowerCase().replace(/\s+/g, "-")}:main`;
+      const result = (await createAgentOneClick({
+        workspaceId,
+        name: form.name.trim(),
+        role: form.role.trim(),
+        emoji: form.emoji,
+        sessionKey: nextSessionKey,
+        externalAgentId: form.externalAgentId.trim() || undefined,
+        source: "agents_page",
+      })) as
+        | { ok: true; agentId: string }
+        | { ok: false; code?: string; message: string };
+      if (!result.ok) {
+        setCreateError(mapOneClickSetupError(result.code, result.message));
+        return;
+      }
+      setForm(emptyForm);
+      setShowCreate(false);
+      router.push(`/chat/${result.agentId}`);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCreatingAgent(false);
+    }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -426,11 +472,11 @@ function AgentsContent() {
               </Link>
             </Button>
             <Button
-              asChild
               size="sm"
               className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+              onClick={openCreateModal}
             >
-              <Link href="/agents/new">Create agent</Link>
+              Create & Configure Agent
             </Button>
           </div>
         )}
@@ -450,6 +496,13 @@ function AgentsContent() {
             <p className="text-sm text-text-muted">No active agents</p>
             {canAdmin && (
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="sm"
+                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  onClick={openCreateModal}
+                >
+                  Create & Configure Agent
+                </Button>
                 <Button asChild variant="outline" size="sm">
                   <Link href="/agents/new">Use recipe</Link>
                 </Button>
@@ -488,13 +541,14 @@ function AgentsContent() {
               setShowCreate(false);
               setEditingId(null);
               setForm(emptyForm);
+              setCreateError(null);
             }
           }}
         >
           <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[480px] max-h-[calc(100vh-2rem)] overflow-auto">
             <DialogHeader>
               <DialogTitle className="text-text-primary">
-                {editingId ? "Edit Agent" : "Add New Agent"}
+                {editingId ? "Edit Agent" : "Create & Configure Agent"}
               </DialogTitle>
             </DialogHeader>
             <form
@@ -567,6 +621,16 @@ function AgentsContent() {
                 </p>
               </div>
 
+              {!editingId ? (
+                <p className="text-[11px] text-text-dim">
+                  This will create the agent, apply the canonical setup pack,
+                  validate setup, and open chat.
+                </p>
+              ) : null}
+              {createError && !editingId ? (
+                <p className="text-xs text-status-blocked">{createError}</p>
+              ) : null}
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -575,6 +639,7 @@ function AgentsContent() {
                     setShowCreate(false);
                     setEditingId(null);
                     setForm(emptyForm);
+                    setCreateError(null);
                   }}
                   className="border-border-default text-text-secondary"
                 >
@@ -583,8 +648,13 @@ function AgentsContent() {
                 <Button
                   type="submit"
                   className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  disabled={creatingAgent && !editingId}
                 >
-                  {editingId ? "Save Changes" : "Add Agent"}
+                  {editingId
+                    ? "Save Changes"
+                    : creatingAgent
+                      ? "Creating & configuring..."
+                      : "Create & Configure Agent"}
                 </Button>
               </DialogFooter>
             </form>

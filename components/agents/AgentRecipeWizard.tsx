@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { Check, Copy, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,6 +18,7 @@ import {
   buildAgentRecipePrompt,
 } from "@/lib/agentRecipes";
 import { setChatDraft } from "@/lib/chatDraft";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 function slugify(input: string): string {
   return input
@@ -26,6 +27,25 @@ function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
+}
+
+function mapOneClickSetupError(code: string | undefined, message: string) {
+  switch (code) {
+    case "BRIDGE_UNAVAILABLE":
+      return "OpenClaw file bridge is unavailable. Verify OpenClaw connection first.";
+    case "BRIDGE_WRITE_FAILED":
+      return "Could not write required setup files. Check bridge connectivity and retry.";
+    case "TEMPLATE_VALIDATION_FAILED":
+      return "Template validation failed after setup. Please retry.";
+    case "ROLLBACK_FAILED":
+      return "Setup failed and rollback was incomplete. Please contact support with this error.";
+    case "DUPLICATE_SESSION_KEY":
+      return "This session key already exists in this workspace. Pick a unique one.";
+    case "AGENT_LIMIT_REACHED":
+      return "Agent limit reached for this workspace.";
+    default:
+      return message;
+  }
 }
 
 export function AgentRecipeWizard() {
@@ -38,7 +58,7 @@ export function AgentRecipeWizard() {
       api.agents.list,
       canAdmin ? { workspaceId, includeArchived: true } : "skip",
     ) ?? [];
-  const createAgent = useMutation(api.agents.create);
+  const createAgentOneClick = useAction(api.agentSetup.createAgentOneClick);
   const createAgentManual = useMutation(api.agents.createManual);
 
   const [selectedId, setSelectedId] = useState<AgentRecipe["id"]>("research");
@@ -128,21 +148,28 @@ export function AgentRecipeWizard() {
     setCreateError(null);
     try {
       const nextSessionKey = sessionKey.trim() || defaultSessionKey;
-      const id = await createAgent({
+      const result = (await createAgentOneClick({
         workspaceId,
         name: agentName.trim() || recipe.title,
         role: agentRole.trim() || recipe.defaultRole,
         emoji: agentEmoji.trim() || recipe.defaultEmoji,
         sessionKey: nextSessionKey,
         externalAgentId: nextSessionKey,
-      });
+        source: "recipe",
+      })) as
+        | { ok: true; agentId: string }
+        | { ok: false; code?: string; message: string };
+      if (!result.ok) {
+        setCreateError(mapOneClickSetupError(result.code, result.message));
+        return;
+      }
 
       setChatDraft({
         workspaceId: String(workspaceId),
         sessionKey: nextSessionKey,
         content: prompt,
       });
-      router.push(`/agents/${id}/setup`);
+      router.push(`/chat/${result.agentId}`);
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -194,14 +221,15 @@ export function AgentRecipeWizard() {
             New agent (recipe)
           </h1>
           <p className="mt-1 text-xs text-text-muted">
-            Create agent metadata + SPEC prompt, then continue with Agent Setup
-            Guide (recommended) or register only if already configured.
+            Pick a recipe and create a fully configured agent in one click.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm" className="h-8">
-            <Link href="/help/agent-setup">Open Setup Guide</Link>
-          </Button>
+          {AGENT_SETUP_ADVANCED_ENABLED ? (
+            <Button asChild variant="outline" size="sm" className="h-8">
+              <Link href="/help/agent-setup">Open Setup Guide</Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline" size="sm" className="h-8">
             <Link href="/agents">Back</Link>
           </Button>
@@ -351,28 +379,30 @@ export function AgentRecipeWizard() {
                 title={
                   collision
                     ? "Session key must be unique"
-                    : "Create agent in Synclaw"
+                    : "Create and configure agent"
                 }
               >
-                {creating ? "Creating..." : "Create and open Setup Guide"}
+                {creating ? "Creating..." : "Create & Configure Agent"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => void onCreateManual()}
-                disabled={
-                  creating ||
-                  !agentName.trim() ||
-                  !sessionKey.trim() ||
-                  collision
-                }
-                title={
-                  collision
-                    ? "Session key must be unique"
-                    : "Create on Convex only (stay on this page)"
-                }
-              >
-                {creating ? "Creating..." : "Create on Convex only"}
-              </Button>
+              {AGENT_SETUP_ADVANCED_ENABLED ? (
+                <Button
+                  variant="outline"
+                  onClick={() => void onCreateManual()}
+                  disabled={
+                    creating ||
+                    !agentName.trim() ||
+                    !sessionKey.trim() ||
+                    collision
+                  }
+                  title={
+                    collision
+                      ? "Session key must be unique"
+                      : "Create on Convex only (internal debug path)"
+                  }
+                >
+                  {creating ? "Creating..." : "Create on Convex only"}
+                </Button>
+              ) : null}
             </div>
             {createError ? (
               <p className="text-xs text-status-blocked">{createError}</p>
@@ -383,8 +413,8 @@ export function AgentRecipeWizard() {
               </p>
             ) : (
               <p className="text-[11px] text-text-dim">
-                Recommended: open Setup Guide after creation. Use register-only
-                when your OpenClaw agent files/cron are already configured.
+                One-click path writes the canonical setup pack and opens chat
+                automatically.
               </p>
             )}
           </div>

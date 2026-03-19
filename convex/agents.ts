@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { maxAgentsForWorkspace } from "./lib/billing";
 import {
@@ -691,6 +691,64 @@ export const toggleArchive = mutation({
       metadata: { action: newArchived ? "archived" : "unarchived" },
       createdAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Internal rollback used by one-click setup orchestration.
+ * Archives a newly created agent and removes setup-progress artifacts.
+ */
+export const _rollbackCreatedAgentForSetupFailure = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    id: v.id("agents"),
+    reason: v.string(),
+    source: v.union(
+      v.literal("onboarding_main"),
+      v.literal("recipe"),
+      v.literal("agents_page"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db.get(args.id);
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      throw new Error("Agent not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      isArchived: true,
+      status: "idle",
+    });
+
+    const setupRow = await ctx.db
+      .query("agentSetupProgress")
+      .withIndex("byWorkspaceAndAgent", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("agentId", args.id),
+      )
+      .first();
+    if (setupRow) {
+      await ctx.db.delete(setupRow._id);
+    }
+
+    await ctx.db.insert("activities", {
+      workspaceId: args.workspaceId,
+      type: "agent_status",
+      agentId: args.id,
+      taskId: null,
+      message: `${agent.emoji} ${agent.name} setup rollback executed`,
+      metadata: {
+        action: "setup_rollback",
+        source: args.source,
+        reason: args.reason,
+      },
+      createdAt: Date.now(),
+    });
+
+    return {
+      ok: true,
+      archived: true,
+      setupProgressCleared: Boolean(setupRow),
+    };
   },
 });
 
