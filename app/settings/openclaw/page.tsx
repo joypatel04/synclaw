@@ -1,9 +1,8 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useAction, useConvex, useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ import {
   buildSpecialistAgentBootstrapMessage,
   buildMcpServerConfigTemplate,
   CANONICAL_AGENT_TEMPLATES,
-  MODEL_STRATEGY_PRESETS,
 } from "@/lib/onboardingTemplates";
 import {
   buildSynclawProtocolMd,
@@ -46,6 +44,7 @@ import {
   ASSISTED_LAUNCH_BETA_ENABLED,
   BILLING_ENABLED,
   MANAGED_BETA_ENABLED,
+  MANAGED_INTERNAL_CONTROLS_ENABLED,
   WEBHOOKS_ENABLED,
 } from "@/lib/features";
 import { canUseCapability } from "@/lib/edition";
@@ -124,9 +123,10 @@ function SettingsTabs({
 function OpenClawSettingsContent() {
   const { workspaceId, canAdmin, workspace } = useWorkspace();
   const convex = useConvex();
-  const router = useRouter();
   const managedProvisioningEnabled =
-    canUseCapability("managedProvisioning") && MANAGED_BETA_ENABLED;
+    canUseCapability("managedProvisioning") &&
+    MANAGED_BETA_ENABLED &&
+    MANAGED_INTERNAL_CONTROLS_ENABLED;
   const assistedLaunchEnabled =
     canUseCapability("assistedLaunch") && ASSISTED_LAUNCH_BETA_ENABLED;
 
@@ -140,10 +140,18 @@ function OpenClawSettingsContent() {
   const confirmSecurityChecklist = useMutation(
     api.openclaw.confirmSecurityChecklist,
   );
-  const createManagedJob = useMutation(api.managedProvisioning.createManagedJob);
+  const createManagedJob = useMutation(
+    api.managedProvisioning.createManagedJob,
+  );
   const retryManagedJob = useMutation(api.managedProvisioning.retryJob);
   const verifyManagedConnection = useMutation(
     api.managedProvisioning.verifyManagedConnection,
+  );
+  const listHostingerDatacenters = useAction(
+    api.managedProvisioning.listHostingerDatacenters,
+  );
+  const measureHostingerApiLatency = useAction(
+    api.managedProvisioning.measureHostingerApiLatency,
   );
   const managedStatus = useQuery(
     api.managedProvisioning.getManagedStatus,
@@ -170,7 +178,12 @@ function OpenClawSettingsContent() {
     "manual",
   );
   const [requestedRegion, setRequestedRegion] =
-    useState<ManagedRegionCode>("eu_central_hil");
+    useState<ManagedRegionCode>("lt");
+  const [hostingerDatacenters, setHostingerDatacenters] = useState<
+    Array<{ id: string; name: string; country?: string; city?: string }>
+  >([]);
+  const [apiLatencyMs, setApiLatencyMs] = useState<number | null>(null);
+  const [measuringLatency, setMeasuringLatency] = useState(false);
   const [serverProfile, setServerProfile] =
     useState<ManagedServerProfileCode>("starter");
   const [serviceTier, setServiceTier] = useState<"self_serve" | "assisted">(
@@ -263,8 +276,7 @@ function OpenClawSettingsContent() {
     );
     setRequestedRegion(
       ((summary.managedRegionRequested ||
-        summary.managedRegionResolved) as ManagedRegionCode) ??
-        "eu_central_hil",
+        summary.managedRegionResolved) as ManagedRegionCode) ?? "lt",
     );
     setServerProfile(
       (summary.managedServerProfile as ManagedServerProfileCode) ?? "starter",
@@ -295,6 +307,23 @@ function OpenClawSettingsContent() {
     setPasswordClear(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistedLaunchEnabled, managedProvisioningEnabled, summary?.updatedAt]);
+
+  useEffect(() => {
+    if (!managedProvisioningEnabled) return;
+    listHostingerDatacenters().then((r) => {
+      if (r.ok && r.datacenters?.length) setHostingerDatacenters(r.datacenters);
+    });
+  }, [managedProvisioningEnabled, listHostingerDatacenters]);
+
+  const regionOptions = useMemo(() => {
+    if (hostingerDatacenters.length > 0) {
+      return hostingerDatacenters.map((dc) => ({
+        code: dc.id as ManagedRegionCode,
+        label: dc.country ? `${dc.name} (${dc.country})` : dc.name,
+      }));
+    }
+    return MANAGED_REGION_OPTIONS;
+  }, [hostingerDatacenters]);
 
   useEffect(() => {
     if (!securityStatus) return;
@@ -580,9 +609,12 @@ function OpenClawSettingsContent() {
           message: status?.message ?? "Connected.",
         });
         if ((cfg.transportMode ?? "direct_ws") === "direct_ws") {
-          const validation = await convex.query(api.openclaw.validatePublicWssConfig, {
-            workspaceId,
-          });
+          const validation = await convex.query(
+            api.openclaw.validatePublicWssConfig,
+            {
+              workspaceId,
+            },
+          );
           setValidationState(validation);
           if (!validation.ok) {
             setTestResult({
@@ -604,6 +636,7 @@ function OpenClawSettingsContent() {
       const message = mapOpenClawSetupError(
         e instanceof Error ? e.message : String(e),
         transportMode,
+        { deploymentMode },
       );
       setTestResult({ status: "error", message });
       if (client) {
@@ -636,6 +669,12 @@ function OpenClawSettingsContent() {
   const onCreateProvisioningJob = async () => {
     setServiceError(null);
     setServiceMessage(null);
+    if (!managedProvisioningEnabled) {
+      setServiceMessage(
+        "Managed setup is private beta right now. Continue with BYO OpenClaw, or contact support for managed access.",
+      );
+      return;
+    }
     try {
       const result = await createManagedJob({
         workspaceId,
@@ -647,8 +686,8 @@ function OpenClawSettingsContent() {
       setSetupStatus("verified");
       setServiceMessage(
         result.fallbackApplied
-          ? `Provisioning started. Requested region unavailable; deploying to nearest available region: ${managedRegionLabel(result.resolvedRegion)}.`
-          : `Provisioning started in ${managedRegionLabel(result.resolvedRegion)}.`,
+          ? `Provisioning started. Requested region unavailable; deploying to nearest available region: ${managedRegionLabel(result.resolvedRegion, regionOptions)}.`
+          : `Provisioning started in ${managedRegionLabel(result.resolvedRegion, regionOptions)}.`,
       );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
@@ -677,10 +716,18 @@ function OpenClawSettingsContent() {
   const onVerifyProvisioning = async () => {
     setServiceError(null);
     setServiceMessage(null);
+    if (!managedProvisioningEnabled) {
+      setServiceMessage(
+        "BYO mode: run Reconnect / Verify to validate your current wsUrl and auth settings.",
+      );
+      return;
+    }
     try {
       const result = await verifyManagedConnection({ workspaceId });
       setSetupStatus(result.ok ? "verified" : "openclaw_ready");
-      setServiceMessage(result.ok ? "Managed connection verified." : result.nextAction);
+      setServiceMessage(
+        result.ok ? "Managed connection verified." : result.nextAction,
+      );
     } catch (e) {
       setServiceError(e instanceof Error ? e.message : String(e));
     }
@@ -785,325 +832,376 @@ function OpenClawSettingsContent() {
         {managedProvisioningEnabled ? (
           <>
             <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary mb-1">
-            Connection Method
-          </h2>
-          <p className="text-xs text-text-muted">
-            Choose how this workspace connects to OpenClaw. Switching methods
-            can require a different setup path.
-          </p>
-          <p className="mt-1 text-[11px] text-text-dim">
-            Switching method may require a new URL/auth strategy and a fresh connectivity test.
-          </p>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {OPENCLAW_METHOD_CARDS.filter((m) => m.mode !== "connector").map(
-              (method) => {
-                const active = transportMode === method.mode;
-                const suggested = recommendedMode === method.mode;
-                return (
-                  <button
-                    key={method.mode}
-                    type="button"
-                    onClick={() => {
-                      if (managedModeActive) return;
-                      setTransportMode(method.mode);
-                    }}
-                    className={`rounded-xl border p-3 text-left ${
-                      active
-                        ? "border-accent-orange/50 bg-accent-orange/10"
-                        : "border-border-default bg-bg-primary"
-                    } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-text-primary">
-                        {method.title}
+              <h2 className="text-sm font-semibold text-text-primary mb-1">
+                Connection Method
+              </h2>
+              <p className="text-xs text-text-muted">
+                Choose how this workspace connects to OpenClaw. Switching
+                methods can require a different setup path.
+              </p>
+              <p className="mt-1 text-[11px] text-text-dim">
+                Switching method may require a new URL/auth strategy and a fresh
+                connectivity test.
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {OPENCLAW_METHOD_CARDS.filter(
+                  (m) => m.mode !== "connector",
+                ).map((method) => {
+                  const active = transportMode === method.mode;
+                  const suggested = recommendedMode === method.mode;
+                  return (
+                    <button
+                      key={method.mode}
+                      type="button"
+                      onClick={() => {
+                        if (managedModeActive) return;
+                        setTransportMode(method.mode);
+                      }}
+                      className={`rounded-xl border p-3 text-left ${
+                        active
+                          ? "border-accent-orange/50 bg-accent-orange/10"
+                          : "border-border-default bg-bg-primary"
+                      } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-text-primary">
+                          {method.title}
+                        </p>
+                        {method.badge ? (
+                          <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                            {method.badge}
+                          </span>
+                        ) : suggested ? (
+                          <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                            Context match
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-[11px] text-text-muted">
+                        {method.subtitle}
                       </p>
-                      {method.badge ? (
-                        <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                      <p className="mt-2 text-[11px] text-text-secondary">
+                        Use when: {method.useWhen}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+              <details className="mt-2 rounded-xl border border-border-default bg-bg-primary p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-text-primary">
+                  Advanced: Private Connector
+                </summary>
+                <p className="mt-2 text-[11px] text-text-muted">
+                  Experimental/advanced until relay runtime is fully available.
+                </p>
+                {OPENCLAW_METHOD_CARDS.filter(
+                  (m) => m.mode === "connector",
+                ).map((method) => {
+                  const active = transportMode === method.mode;
+                  return (
+                    <button
+                      key={method.mode}
+                      type="button"
+                      onClick={() => {
+                        if (managedModeActive) return;
+                        setTransportMode(method.mode);
+                      }}
+                      className={`mt-2 w-full rounded-xl border p-3 text-left ${
+                        active
+                          ? "border-accent-orange/50 bg-accent-orange/10"
+                          : "border-border-default bg-bg-secondary"
+                      } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-text-primary">
+                          {method.title}
+                        </p>
+                        <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                           {method.badge}
                         </span>
-                      ) : suggested ? (
-                        <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                          Context match
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-[11px] text-text-muted">
-                      {method.subtitle}
-                    </p>
-                    <p className="mt-2 text-[11px] text-text-secondary">
-                      Use when: {method.useWhen}
-                    </p>
-                  </button>
-                );
-              },
-            )}
-          </div>
-          <details className="mt-2 rounded-xl border border-border-default bg-bg-primary p-3">
-            <summary className="cursor-pointer text-xs font-semibold text-text-primary">
-              Advanced: Private Connector
-            </summary>
-            <p className="mt-2 text-[11px] text-text-muted">
-              Experimental/advanced until relay runtime is fully available.
-            </p>
-            {OPENCLAW_METHOD_CARDS.filter((m) => m.mode === "connector").map(
-              (method) => {
-                const active = transportMode === method.mode;
-                return (
-                  <button
-                    key={method.mode}
-                    type="button"
-                    onClick={() => {
-                      if (managedModeActive) return;
-                      setTransportMode(method.mode);
-                    }}
-                    className={`mt-2 w-full rounded-xl border p-3 text-left ${
-                      active
-                        ? "border-accent-orange/50 bg-accent-orange/10"
-                        : "border-border-default bg-bg-secondary"
-                    } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-text-primary">
-                        {method.title}
+                      </div>
+                      <p className="mt-1 text-[11px] text-text-muted">
+                        {method.useWhen}
                       </p>
-                      <span className="rounded-full bg-bg-tertiary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                        {method.badge}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-text-muted">
-                      {method.useWhen}
-                    </p>
-                  </button>
-                );
-              },
-            )}
-          </details>
-        </div>
-
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <div className="flex items-center gap-2">
-            <Server className="h-4 w-4 text-accent-orange" />
-            <h2 className="text-sm font-semibold text-text-primary">
-              Need OpenClaw setup?
-            </h2>
-          </div>
-          <p className="mt-1 text-xs text-text-muted">
-            Managed cloud setup: choose region and launch mode, then Sutraha provisions and auto-connects OpenClaw.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Region</Label>
-              <select
-                value={requestedRegion}
-                onChange={(e) =>
-                  setRequestedRegion(e.target.value as ManagedRegionCode)
-                }
-                className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
-              >
-                {MANAGED_REGION_OPTIONS.map((region) => (
-                  <option key={region.code} value={region.code}>
-                    {region.label}
-                  </option>
-                ))}
-              </select>
+                    </button>
+                  );
+                })}
+              </details>
             </div>
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Launch mode</Label>
-              <select
-                value={serviceTier}
-                onChange={(e) =>
-                  setServiceTier(e.target.value as "self_serve" | "assisted")
-                }
-                className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
-              >
-                <option value="self_serve">Guided self-serve</option>
-                {assistedLaunchEnabled ? (
-                  <option value="assisted">Assisted launch</option>
-                ) : null}
-              </select>
-              <p className="text-[11px] text-text-dim">
-                {serviceTier === "assisted"
-                  ? "Assisted launch creates a support request; status appears below in Latest assisted session."
-                  : "Guided self-serve means no support ticket is created unless you explicitly request it."}
-              </p>
-            </div>
-          </div>
 
-          <div className="mt-4 space-y-2">
-            <Label className="text-text-secondary">Server size</Label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {MANAGED_SERVER_PROFILES.map((profile) => {
-                const selected = serverProfile === profile.code;
-                return (
-                  <button
-                    key={profile.code}
-                    type="button"
-                    onClick={() => setServerProfile(profile.code)}
-                    className={`rounded-md border p-2 text-left ${
-                      selected
-                        ? "border-accent-orange/50 bg-accent-orange/10"
-                        : "border-border-default bg-bg-primary"
-                    }`}
-                  >
-                    <p className="text-xs font-semibold text-text-primary">
-                      {profile.label}
-                    </p>
-                    <p className="mt-1 text-[10px] text-text-muted">
-                      {profile.serverType} · {profile.vcpu} vCPU · {profile.ramGb}GB RAM
-                    </p>
-                    <p className="text-[10px] text-text-muted">
-                      {profile.storageGb}GB {profile.storageType} · {profile.costTier} cost
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[11px] text-text-dim">
-              {managedServerProfileByCode(serverProfile).description}
-            </p>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Setup status</Label>
-              <select
-                value={setupStatus}
-                onChange={(e) =>
-                  setSetupStatus(
-                    e.target.value as
-                      | "not_started"
-                      | "infra_ready"
-                      | "openclaw_ready"
-                      | "agents_ready"
-                      | "verified",
-                  )
-                }
-                className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
-              >
-                <option value="not_started">Not started</option>
-                <option value="infra_ready">Infra ready</option>
-                <option value="openclaw_ready">OpenClaw ready</option>
-                <option value="agents_ready">Agents ready</option>
-                <option value="verified">Verified</option>
-              </select>
-            </div>
-            {assistedLaunchEnabled && serviceTier === "assisted" ? (
-              <div className="space-y-2">
-                <Label className="text-text-secondary">Owner contact</Label>
-                <Input
-                  value={ownerContact}
-                  onChange={(e) => setOwnerContact(e.target.value)}
-                  placeholder="name@company.com or +1 phone"
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                />
+            <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <Server className="h-4 w-4 text-accent-orange" />
+                <h2 className="text-sm font-semibold text-text-primary">
+                  Need OpenClaw setup?
+                </h2>
               </div>
-            ) : null}
-          </div>
-
-          {assistedLaunchEnabled && serviceTier === "assisted" ? (
-            <div className="mt-4 space-y-2">
-              <Label className="text-text-secondary">Support notes</Label>
-              <Textarea
-                value={supportNotes}
-                onChange={(e) => setSupportNotes(e.target.value)}
-                placeholder="Deployment preferences, tailnet notes, constraints, preferred regions..."
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                rows={3}
-              />
-            </div>
-          ) : null}
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {assistedLaunchEnabled && serviceTier === "assisted" ? (
-              <Button
-                type="button"
-                className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
-                onClick={() => void onRequestAssistedLaunch()}
-              >
-                <LifeBuoy className="mr-1 h-3.5 w-3.5" />
-                Request assisted launch
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-8"
-                onClick={() => void onCreateProvisioningJob()}
-              >
-                Launch managed OpenClaw
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8"
-              onClick={() => void onVerifyProvisioning()}
-            >
-              Verify stack
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8"
-              onClick={() => void onRetryLatestJob()}
-            >
-              Retry latest job
-            </Button>
-          </div>
-          {assistedLaunchEnabled && serviceTier === "assisted" ? (
-            <p className="mt-2 text-[11px] text-text-dim">
-              Assisted launch creates a support request only. Infra provisioning starts when support triggers setup.
-            </p>
-          ) : null}
-
-          {serviceMessage ? (
-            <p className="mt-3 text-xs text-status-active">{serviceMessage}</p>
-          ) : null}
-          {serviceError ? (
-            <p className="mt-3 text-xs text-status-blocked">{serviceError}</p>
-          ) : null}
-
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">
-                Latest provisioning job
+              <p className="mt-1 text-xs text-text-muted">
+                Managed cloud setup: choose region and launch mode, then Sutraha
+                provisions and auto-connects OpenClaw.
               </p>
-              <p className="mt-1 text-xs text-text-primary">
-                {managedStatus?.latestJob
-                  ? `${managedStatus.latestJob.status} · ${managedStatus.latestJob.step}`
-                  : "No job yet"}
-              </p>
-              {managedStatus?.latestJob?.failureCode ? (
-                <p className="mt-1 text-[11px] text-status-blocked">
-                  Failure code: {managedStatus.latestJob.failureCode}
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Region</Label>
+                  <select
+                    value={requestedRegion}
+                    onChange={(e) =>
+                      setRequestedRegion(e.target.value as ManagedRegionCode)
+                    }
+                    className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
+                  >
+                    {regionOptions.length === 0 ? (
+                      <option value="lt">Lithuania (default)</option>
+                    ) : (
+                      regionOptions.map((region) => (
+                        <option key={region.code} value={region.code}>
+                          {region.label}
+                          {apiLatencyMs != null ? ` — ~${apiLatencyMs} ms` : ""}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {hostingerDatacenters.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-text-dim">
+                      <span>
+                        API latency:{" "}
+                        {measuringLatency
+                          ? "Measuring…"
+                          : apiLatencyMs != null
+                            ? `~${apiLatencyMs} ms`
+                            : "—"}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px]"
+                        disabled={measuringLatency}
+                        onClick={async () => {
+                          setMeasuringLatency(true);
+                          try {
+                            const r = await measureHostingerApiLatency();
+                            if (r.ok && r.latencyMs != null)
+                              setApiLatencyMs(r.latencyMs);
+                          } finally {
+                            setMeasuringLatency(false);
+                          }
+                        }}
+                      >
+                        Measure latency
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Launch mode</Label>
+                  <select
+                    value={serviceTier}
+                    onChange={(e) =>
+                      setServiceTier(
+                        e.target.value as "self_serve" | "assisted",
+                      )
+                    }
+                    className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
+                  >
+                    <option value="self_serve">Guided self-serve</option>
+                    {assistedLaunchEnabled ? (
+                      <option value="assisted">Assisted launch</option>
+                    ) : null}
+                  </select>
+                  <p className="text-[11px] text-text-dim">
+                    {serviceTier === "assisted"
+                      ? "Assisted launch creates a support request; status appears below in Latest assisted session."
+                      : "Guided self-serve means no support ticket is created unless you explicitly request it."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <Label className="text-text-secondary">Server size</Label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {MANAGED_SERVER_PROFILES.map((profile) => {
+                    const selected = serverProfile === profile.code;
+                    return (
+                      <button
+                        key={profile.code}
+                        type="button"
+                        onClick={() => setServerProfile(profile.code)}
+                        className={`rounded-md border p-2 text-left ${
+                          selected
+                            ? "border-accent-orange/50 bg-accent-orange/10"
+                            : "border-border-default bg-bg-primary"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold text-text-primary">
+                          {profile.label}
+                        </p>
+                        <p className="mt-1 text-[10px] text-text-muted">
+                          {profile.serverType} · {profile.vcpu} vCPU ·{" "}
+                          {profile.ramGb}GB RAM
+                        </p>
+                        <p className="text-[10px] text-text-muted">
+                          {profile.storageGb}GB {profile.storageType} ·{" "}
+                          {profile.costTier} cost
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-text-dim">
+                  {managedServerProfileByCode(serverProfile).description}
+                </p>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Setup status</Label>
+                  <select
+                    value={setupStatus}
+                    onChange={(e) =>
+                      setSetupStatus(
+                        e.target.value as
+                          | "not_started"
+                          | "infra_ready"
+                          | "openclaw_ready"
+                          | "agents_ready"
+                          | "verified",
+                      )
+                    }
+                    className="h-10 w-full rounded-md border border-border-default bg-bg-primary px-3 text-sm text-text-primary"
+                  >
+                    <option value="not_started">Not started</option>
+                    <option value="infra_ready">Infra ready</option>
+                    <option value="openclaw_ready">OpenClaw ready</option>
+                    <option value="agents_ready">Agents ready</option>
+                    <option value="verified">Verified</option>
+                  </select>
+                </div>
+                {assistedLaunchEnabled && serviceTier === "assisted" ? (
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Owner contact</Label>
+                    <Input
+                      value={ownerContact}
+                      onChange={(e) => setOwnerContact(e.target.value)}
+                      placeholder="name@company.com or +1 phone"
+                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              {assistedLaunchEnabled && serviceTier === "assisted" ? (
+                <div className="mt-4 space-y-2">
+                  <Label className="text-text-secondary">Support notes</Label>
+                  <Textarea
+                    value={supportNotes}
+                    onChange={(e) => setSupportNotes(e.target.value)}
+                    placeholder="Deployment preferences, tailnet notes, constraints, preferred regions..."
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                    rows={3}
+                  />
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {assistedLaunchEnabled && serviceTier === "assisted" ? (
+                  <Button
+                    type="button"
+                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    onClick={() => void onRequestAssistedLaunch()}
+                  >
+                    <LifeBuoy className="mr-1 h-3.5 w-3.5" />
+                    Request assisted launch
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => void onCreateProvisioningJob()}
+                  >
+                    Launch managed OpenClaw
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => void onVerifyProvisioning()}
+                >
+                  Verify stack
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => void onRetryLatestJob()}
+                >
+                  Retry latest job
+                </Button>
+              </div>
+              {assistedLaunchEnabled && serviceTier === "assisted" ? (
+                <p className="mt-2 text-[11px] text-text-dim">
+                  Assisted launch creates a support request only. Infra
+                  provisioning starts when support triggers setup.
                 </p>
               ) : null}
-              <p className="mt-1 text-[11px] text-text-dim">
-                Server:{" "}
-                {managedStatus?.serverType ||
-                  managedServerProfileByCode(serverProfile).serverType}{" "}
-                ({managedServerProfileByCode(
-                  managedStatus?.serverProfile ?? serverProfile,
-                ).label})
-              </p>
-            </div>
-            {assistedLaunchEnabled ? (
-              <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-                <p className="text-[11px] text-text-dim">
-                  Latest assisted session
+
+              {serviceMessage ? (
+                <p className="mt-3 text-xs text-status-active">
+                  {serviceMessage}
                 </p>
-                <p className="mt-1 text-xs text-text-primary">
-                  {assistedSessions[0]
-                    ? `${assistedSessions[0].status} · ${new Date(
-                        assistedSessions[0].createdAt,
-                      ).toLocaleString()}`
-                    : "No request yet"}
+              ) : null}
+              {serviceError ? (
+                <p className="mt-3 text-xs text-status-blocked">
+                  {serviceError}
                 </p>
+              ) : null}
+
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                  <p className="text-[11px] text-text-dim">
+                    Latest provisioning job
+                  </p>
+                  <p className="mt-1 text-xs text-text-primary">
+                    {managedStatus?.latestJob
+                      ? `${managedStatus.latestJob.status} · ${managedStatus.latestJob.step}`
+                      : "No job yet"}
+                  </p>
+                  {managedStatus?.latestJob?.failureCode ? (
+                    <p className="mt-1 text-[11px] text-status-blocked">
+                      Failure code: {managedStatus.latestJob.failureCode}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-[11px] text-text-dim">
+                    Server:{" "}
+                    {managedStatus?.serverType ||
+                      managedServerProfileByCode(serverProfile).serverType}{" "}
+                    (
+                    {
+                      managedServerProfileByCode(
+                        managedStatus?.serverProfile ?? serverProfile,
+                      ).label
+                    }
+                    )
+                  </p>
+                </div>
+                {assistedLaunchEnabled ? (
+                  <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                    <p className="text-[11px] text-text-dim">
+                      Latest assisted session
+                    </p>
+                    <p className="mt-1 text-xs text-text-primary">
+                      {assistedSessions[0]
+                        ? `${assistedSessions[0].status} · ${new Date(
+                            assistedSessions[0].createdAt,
+                          ).toLocaleString()}`
+                        : "No request yet"}
+                    </p>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-            </div>
             </div>
           </>
         ) : null}
@@ -1119,14 +1217,17 @@ function OpenClawSettingsContent() {
                   Managed instance
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  This workspace uses Sutraha-managed OpenClaw. Connection is auto-configured.
+                  This workspace uses Sutraha-managed OpenClaw. Connection is
+                  auto-configured.
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
                   <div className="rounded-md border border-border-default bg-bg-tertiary p-2">
                     <p className="text-[10px] text-text-dim">Region</p>
                     <p className="text-xs text-text-primary">
                       {managedRegionLabel(
-                        managedStatus?.resolvedRegion || managedStatus?.requestedRegion,
+                        managedStatus?.resolvedRegion ||
+                          managedStatus?.requestedRegion,
+                        regionOptions,
                       )}
                     </p>
                   </div>
@@ -1146,7 +1247,9 @@ function OpenClawSettingsContent() {
                     <p className="text-[10px] text-text-dim">Last connect</p>
                     <p className="text-xs text-text-primary">
                       {managedStatus?.managedConnectedAt
-                        ? new Date(managedStatus.managedConnectedAt).toLocaleString()
+                        ? new Date(
+                            managedStatus.managedConnectedAt,
+                          ).toLocaleString()
                         : "Pending"}
                     </p>
                   </div>
@@ -1172,120 +1275,126 @@ function OpenClawSettingsContent() {
                       Live setup activity
                     </p>
                     <div className="mt-1 space-y-1 text-[11px] text-text-secondary">
-                      {managedStatus.latestJob.logs.slice(-8).map((log: string) => (
-                        <p key={log} className="font-mono">
-                          {log}
-                        </p>
-                      ))}
+                      {managedStatus.latestJob.logs
+                        .slice(-8)
+                        .map((log: string) => (
+                          <p key={log} className="font-mono">
+                            {log}
+                          </p>
+                        ))}
                     </div>
                   </div>
                 ) : null}
               </div>
             ) : null}
             {managedModeActive ? null : (
-            <>
-            {transportMode === "connector" ? (
               <>
-                <div className="rounded-lg border border-status-review/40 bg-status-review/10 px-3 py-2 text-[11px] text-status-review">
-                  Private Connector is an advanced path for private networking operators.
-                  Use Public WSS unless you need tailnet/private upstream routing.
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-text-secondary">Connector ID</Label>
-                  <Input
-                    value={connectorId}
-                    onChange={(e) => setConnectorId(e.target.value)}
-                    placeholder="connector-workspace-prod-01"
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-                    <p className="text-[11px] text-text-dim">
-                      Connector status
-                    </p>
-                    <p className="mt-1 text-xs text-text-primary capitalize">
-                      {connectorStatus}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-                    <p className="text-[11px] text-text-dim">Last seen</p>
-                    <p className="mt-1 text-xs text-text-primary">
-                      {connectorLastSeenAt
-                        ? new Date(connectorLastSeenAt).toLocaleString()
-                        : "Not reported"}
-                    </p>
-                  </div>
-                </div>
-                <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-                  <p className="text-[11px] text-text-dim">
-                    Connector startup template
-                  </p>
-                  <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-bg-primary p-2 font-mono text-[11px] text-text-primary">
-                    {`SUTRAHA_CONNECTOR_ID=${connectorId || "<connector-id>"}
+                {transportMode === "connector" ? (
+                  <>
+                    <div className="rounded-lg border border-status-review/40 bg-status-review/10 px-3 py-2 text-[11px] text-status-review">
+                      Private Connector is an advanced path for private
+                      networking operators. Use Public WSS unless you need
+                      tailnet/private upstream routing.
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-text-secondary">
+                        Connector ID
+                      </Label>
+                      <Input
+                        value={connectorId}
+                        onChange={(e) => setConnectorId(e.target.value)}
+                        placeholder="connector-workspace-prod-01"
+                        className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                        <p className="text-[11px] text-text-dim">
+                          Connector status
+                        </p>
+                        <p className="mt-1 text-xs text-text-primary capitalize">
+                          {connectorStatus}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                        <p className="text-[11px] text-text-dim">Last seen</p>
+                        <p className="mt-1 text-xs text-text-primary">
+                          {connectorLastSeenAt
+                            ? new Date(connectorLastSeenAt).toLocaleString()
+                            : "Not reported"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
+                      <p className="text-[11px] text-text-dim">
+                        Connector startup template
+                      </p>
+                      <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-bg-primary p-2 font-mono text-[11px] text-text-primary">
+                        {`SUTRAHA_CONNECTOR_ID=${connectorId || "<connector-id>"}
 SUTRAHA_WORKSPACE_ID=${String(workspaceId)}
 OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
 ./sutraha-connector start`}
-                  </pre>
-                  <p className="mt-2 text-[11px] text-text-dim">
-                    Guide:{" "}
-                    <Link
-                      href="/docs/hosting/self-hosted/mcp"
-                      className="text-accent-orange hover:underline"
-                    >
-                      Private-network setup documentation
-                    </Link>
+                      </pre>
+                      <p className="mt-2 text-[11px] text-text-dim">
+                        Guide:{" "}
+                        <Link
+                          href="/docs/hosting/self-hosted/mcp"
+                          className="text-accent-orange hover:underline"
+                        >
+                          Private-network setup documentation
+                        </Link>
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">WebSocket URL</Label>
+                    <Input
+                      value={wsUrl}
+                      onChange={(e) => setWsUrl(e.target.value)}
+                      placeholder={
+                        transportMode === "self_hosted_local"
+                          ? "ws://localhost:8788"
+                          : "wss://claw.sahayoga.in"
+                      }
+                      className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
+                    />
+                    <p className="text-[11px] text-text-dim">
+                      Make sure this origin is allowed in OpenClaw:
+                      <span className="ml-1 font-mono text-text-muted">
+                        {origin}
+                      </span>
+                    </p>
+                    {showMixedContentWarning ? (
+                      <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
+                        This app is running on HTTPS. Browsers often block{" "}
+                        <code className="font-mono">ws://</code> as mixed
+                        content. Prefer{" "}
+                        <code className="font-mono">wss://</code>. Or use
+                        Private Connector.
+                      </div>
+                    ) : null}
+                    {transportMode === "self_hosted_local" ? (
+                      <p className="text-[11px] text-text-dim">
+                        Local mode is recommended only when Sutraha is also
+                        hosted inside your private/local network.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Protocol</Label>
+                  <Input
+                    value="req"
+                    readOnly
+                    className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-text-dim">
+                    Role/scopes are managed automatically for this workspace.
                   </p>
                 </div>
               </>
-            ) : (
-              <div className="space-y-2">
-                <Label className="text-text-secondary">WebSocket URL</Label>
-                <Input
-                  value={wsUrl}
-                  onChange={(e) => setWsUrl(e.target.value)}
-                  placeholder={
-                    transportMode === "self_hosted_local"
-                      ? "ws://localhost:8788"
-                      : "wss://claw.sahayoga.in"
-                  }
-                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim"
-                />
-                <p className="text-[11px] text-text-dim">
-                  Make sure this origin is allowed in OpenClaw:
-                  <span className="ml-1 font-mono text-text-muted">
-                    {origin}
-                  </span>
-                </p>
-                {showMixedContentWarning ? (
-                  <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
-                    This app is running on HTTPS. Browsers often block{" "}
-                    <code className="font-mono">ws://</code> as mixed content.
-                    Prefer <code className="font-mono">wss://</code>. Or use
-                    Private Connector.
-                  </div>
-                ) : null}
-                {transportMode === "self_hosted_local" ? (
-                  <p className="text-[11px] text-text-dim">
-                    Local mode is recommended only when Sutraha is also hosted
-                    inside your private/local network.
-                  </p>
-                ) : null}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Protocol</Label>
-              <Input
-                value="req"
-                readOnly
-                className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
-              />
-              <p className="text-[11px] text-text-dim">
-                Role/scopes are managed automatically for this workspace.
-              </p>
-            </div>
-            </>
             )}
           </div>
         </div>
@@ -1337,111 +1446,114 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           </h2>
           {managedModeActive ? (
             <p className="text-[11px] text-text-dim">
-              Managed mode handles gateway credentials automatically. No manual token/password entry is required.
+              Managed mode handles gateway credentials automatically. No manual
+              token/password entry is required.
             </p>
           ) : (
-          <>
-          <p className="mb-4 text-[11px] text-text-dim">
-            {transportMode === "connector"
-              ? "For connector/private network flows, you can use token or password auth."
-              : "For direct WebSocket flows, use token/password as required by your gateway."}
-          </p>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm text-text-primary font-medium">
-                  Auth token
-                </p>
-                <p className="text-xs text-text-dim">
-                  Status:{" "}
-                  <span
-                    className={
-                      hasToken ? "text-status-active" : "text-text-muted"
-                    }
+            <>
+              <p className="mb-4 text-[11px] text-text-dim">
+                {transportMode === "connector"
+                  ? "For connector/private network flows, you can use token or password auth."
+                  : "For direct WebSocket flows, use token/password as required by your gateway."}
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-text-primary font-medium">
+                      Auth token
+                    </p>
+                    <p className="text-xs text-text-dim">
+                      Status:{" "}
+                      <span
+                        className={
+                          hasToken ? "text-status-active" : "text-text-muted"
+                        }
+                      >
+                        {hasToken ? "Set" : "Not set"}
+                      </span>
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      setTokenDraft("");
+                      setTokenClear(true);
+                    }}
+                    disabled={!hasToken}
                   >
-                    {hasToken ? "Set" : "Not set"}
-                  </span>
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => {
-                  setTokenDraft("");
-                  setTokenClear(true);
-                }}
-                disabled={!hasToken}
-              >
-                Clear token
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Replace token</Label>
-              <Input
-                value={tokenDraft}
-                onChange={(e) => {
-                  setTokenDraft(e.target.value);
-                  setTokenClear(false);
-                }}
-                placeholder="Paste a new token…"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-              />
-              {tokenClear && (
-                <p className="text-[11px] text-status-blocked">
-                  Token will be cleared on Save.
-                </p>
-              )}
-            </div>
+                    Clear token
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">Replace token</Label>
+                  <Input
+                    value={tokenDraft}
+                    onChange={(e) => {
+                      setTokenDraft(e.target.value);
+                      setTokenClear(false);
+                    }}
+                    placeholder="Paste a new token…"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                  {tokenClear && (
+                    <p className="text-[11px] text-status-blocked">
+                      Token will be cleared on Save.
+                    </p>
+                  )}
+                </div>
 
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm text-text-primary font-medium">
-                  Password (optional)
-                </p>
-                <p className="text-xs text-text-dim">
-                  Status:{" "}
-                  <span
-                    className={
-                      hasPassword ? "text-status-active" : "text-text-muted"
-                    }
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-text-primary font-medium">
+                      Password (optional)
+                    </p>
+                    <p className="text-xs text-text-dim">
+                      Status:{" "}
+                      <span
+                        className={
+                          hasPassword ? "text-status-active" : "text-text-muted"
+                        }
+                      >
+                        {hasPassword ? "Set" : "Not set"}
+                      </span>
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      setPasswordDraft("");
+                      setPasswordClear(true);
+                    }}
+                    disabled={!hasPassword}
                   >
-                    {hasPassword ? "Set" : "Not set"}
-                  </span>
-                </p>
+                    Clear password
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-text-secondary">
+                    Replace password
+                  </Label>
+                  <Input
+                    value={passwordDraft}
+                    onChange={(e) => {
+                      setPasswordDraft(e.target.value);
+                      setPasswordClear(false);
+                    }}
+                    placeholder="Optional password mode…"
+                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                  />
+                  {passwordClear && (
+                    <p className="text-[11px] text-status-blocked">
+                      Password will be cleared on Save.
+                    </p>
+                  )}
+                </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => {
-                  setPasswordDraft("");
-                  setPasswordClear(true);
-                }}
-                disabled={!hasPassword}
-              >
-                Clear password
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-text-secondary">Replace password</Label>
-              <Input
-                value={passwordDraft}
-                onChange={(e) => {
-                  setPasswordDraft(e.target.value);
-                  setPasswordClear(false);
-                }}
-                placeholder="Optional password mode…"
-                className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-              />
-              {passwordClear && (
-                <p className="text-[11px] text-status-blocked">
-                  Password will be cleared on Save.
-                </p>
-              )}
-            </div>
-          </div>
-          </>
+            </>
           )}
         </div>
 
@@ -1469,7 +1581,11 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
             className="gap-2"
           >
             <Activity className="h-4 w-4" />
-            {testing ? "Testing..." : "Initiate pairing handshake / Test"}
+            {testing
+              ? "Testing..."
+              : managedModeActive
+                ? "Initiate pairing handshake / Test"
+                : "Reconnect / Verify (BYO)"}
           </Button>
         </div>
 
@@ -1503,7 +1619,9 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
             </div>
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
               <p className="text-[11px] text-text-dim">Security</p>
-              <p className="mt-1 text-xs text-text-primary">{securityUiStatus}</p>
+              <p className="mt-1 text-xs text-text-primary">
+                {securityUiStatus}
+              </p>
             </div>
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
               <p className="text-[11px] text-text-dim">Method</p>
@@ -1535,7 +1653,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
             Public WSS Security Checklist
           </h2>
           <p className="mt-1 text-xs text-text-muted">
-            Default baseline for production. Complete and confirm after your test passes.
+            Default baseline for production. Complete and confirm after your
+            test passes.
           </p>
           {transportMode === "direct_ws" ? (
             <div className="mt-3 space-y-3">
@@ -1605,22 +1724,32 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 </Button>
                 {securityStatus?.securityConfirmedAt ? (
                   <span className="text-xs text-status-active">
-                    Confirmed at {new Date(securityStatus.securityConfirmedAt).toLocaleString()}
+                    Confirmed at{" "}
+                    {new Date(
+                      securityStatus.securityConfirmedAt,
+                    ).toLocaleString()}
                   </span>
                 ) : null}
               </div>
             </div>
           ) : transportMode === "connector" ? (
             <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
-              <li>Save connector config and run connector runtime on private host.</li>
+              <li>
+                Save connector config and run connector runtime on private host.
+              </li>
               <li>Wait for connector status to report online.</li>
               <li>Run Test and verify upstream health.</li>
               <li>Use this only for private-network/tailnet operation.</li>
             </ol>
           ) : (
             <ol className="mt-3 list-decimal pl-5 space-y-2 text-xs text-text-secondary">
-              <li>Use self-hosted local only when Synclaw and OpenClaw share the same private/local network.</li>
-              <li>Set local ws:// URL and verify browser/network policy allows it.</li>
+              <li>
+                Use self-hosted local only when Synclaw and OpenClaw share the
+                same private/local network.
+              </li>
+              <li>
+                Set local ws:// URL and verify browser/network policy allows it.
+              </li>
               <li>Run Test and complete device approval + scope checks.</li>
             </ol>
           )}
@@ -1806,7 +1935,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                   MCPorter config
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  BYO mode: provider keys are stored encrypted at workspace scope.
+                  BYO mode: provider keys are stored encrypted at workspace
+                  scope.
                 </p>
                 <div className="mt-2 flex justify-end">
                   <Button

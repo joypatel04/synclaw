@@ -31,14 +31,18 @@ export const getStatus = query({
     const serviceTier = openclaw?.serviceTier ?? "self_serve";
     const provisioningMode = openclaw?.provisioningMode ?? "sutraha_managed";
     const deploymentMode = openclaw?.deploymentMode ?? "manual";
+    const hasManagedRuntimeHost = Boolean(
+      openclaw?.managedUpstreamHost?.trim(),
+    );
+    const requiresManagedRuntimeGate =
+      deploymentMode === "managed" &&
+      provisioningMode === "sutraha_managed" &&
+      hasManagedRuntimeHost;
     const managedConnectionReady =
-      deploymentMode !== "managed" ||
-      provisioningMode !== "sutraha_managed" ||
-      openclaw?.managedStatus === "ready";
+      !requiresManagedRuntimeGate || openclaw?.managedStatus === "ready";
     const requiresProviderKey =
       isCommercialCapabilityEnabled("managedProvisioning") &&
-      deploymentMode === "managed" &&
-      provisioningMode === "sutraha_managed";
+      requiresManagedRuntimeGate;
 
     const providerKeys = await ctx.db
       .query("workspaceModelProviderKeys")

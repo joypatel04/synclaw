@@ -24,6 +24,7 @@ NEXT_PUBLIC_CONVEX_URL=https://confident-ram-83.convex.cloud
 NEXT_PUBLIC_CONVEX_SITE_URL=https://confident-ram-83.convex.site
 NEXT_PUBLIC_SYNCLAW_EDITION=commercial
 NEXT_PUBLIC_MANAGED_BETA_ENABLED=false
+NEXT_PUBLIC_MANAGED_INTERNAL_CONTROLS_ENABLED=false
 NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED=false
 NEXT_PUBLIC_APP_NAME=Synclaw
 NEXT_PUBLIC_APP_URL=https://hq.sutraha.in
@@ -77,17 +78,24 @@ AUTH_GOOGLE_SECRET=<Google OAuth Client Secret>
 JWT_PRIVATE_KEY=<RSA private key>
 JWKS=<JSON Web Key Set>
 OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<64 hex chars (openssl rand -hex 32)>
-HETZNER_API_TOKEN=<Hetzner Cloud API token>
 MANAGED_OPENCLAW_WSS_TEMPLATE=wss://synclaw.in/ws/{workspaceId}
 ```
+
+Public beta recommendation:
+- keep `SYNCLAW_MANAGED_BETA_ENABLED=false`
+- keep `NEXT_PUBLIC_MANAGED_BETA_ENABLED=false`
+- keep `NEXT_PUBLIC_MANAGED_INTERNAL_CONTROLS_ENABLED=false`
+
+**Cloud provider for new managed servers** (default: Hostinger):
+
+- **Hostinger**: set `HOSTINGER_API_TOKEN` and `MANAGED_HOSTINGER_CATALOG_ITEM_ID`. See [docs/HOSTINGER_MIGRATION.md](HOSTINGER_MIGRATION.md).
+- **AWS**: set `MANAGED_CLOUD_PROVIDER=aws` and AWS credentials.
 
 ### Managed Provisioning Control Plane Vars (Recommended)
 
 ```
 MANAGED_DEFAULT_SERVER_PROFILE=starter
-MANAGED_HETZNER_IMAGE=ubuntu-24.04
-MANAGED_HETZNER_SERVER_TYPE=cx22
-MANAGED_HETZNER_FALLBACK_SERVER_TYPE=cx22
+# Hostinger (default): see HOSTINGER_MIGRATION.md for HOSTINGER_API_TOKEN, MANAGED_HOSTINGER_CATALOG_ITEM_ID, region mapping
 
 MANAGED_CONTROL_PLANE_BASE_URL=https://synclaw.in/control
 MANAGED_BOOTSTRAP_API_BASE_URL=https://synclaw.in/control
@@ -102,7 +110,18 @@ MANAGED_GATEWAY_API_TOKEN=<token>
 MANAGED_GATEWAY_STRICT=false
 MANAGED_HEALTHCHECK_TIMEOUT_MS=60000
 MANAGED_UPSTREAM_WS_PORT=18789
+MANAGED_RUNTIME_MODE=vm_legacy   # vm_legacy | container_pool
+MANAGED_RUNTIME_RESOURCE_PROFILE=default
+MANAGED_HOST_AGENT_SHARED_TOKEN=<shared host-agent token>
+MANAGED_HOST_POOL_MAX_UTILIZATION=0.75
+MANAGED_HOST_AGENT_TIMEOUT_MS=45000
 ```
+
+Container-pool mode also requires at least one registered host:
+- `POST /control/hosts/register`
+- `POST /control/hosts/heartbeat`
+
+Each runtime host must run `packages/host-agent` privately (not internet-exposed).
 
 To generate JWT keys for a new deployment:
 
@@ -163,8 +182,14 @@ npm update -g @synclaw/mcp-server
 
 ## 4. Managed Gateway Control Plane (`packages/managed-gateway`)
 
-Deploy this on a single Hetzner VM to support:
+Deploy this on a single VM to support:
 - `POST /control/bootstrap`
+- `POST /control/hosts/register`
+- `POST /control/hosts/heartbeat`
+- `POST /control/tenant/create`
+- `POST /control/tenant/delete`
+- `POST /control/tenant/restart`
+- `GET /control/tenant/verify`
 - `POST /control/routes`
 - `POST /control/routes/delete`
 - `GET /control/routes/verify`

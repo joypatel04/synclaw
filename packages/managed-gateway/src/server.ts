@@ -18,10 +18,44 @@ type RouteRow = {
   route_version: number;
 };
 
+type HostRow = {
+  host_id: string;
+  provider: string;
+  region: string;
+  api_base_url: string;
+  status: "active" | "degraded" | "draining" | "offline";
+  capacity_cpu: number;
+  capacity_mem_mb: number;
+  used_cpu: number;
+  used_mem_mb: number;
+  agent_version: string | null;
+  public_ip: string | null;
+  private_ip: string | null;
+  last_heartbeat_at: number;
+  updated_at: number;
+};
+
+type TenantRuntimeRow = {
+  workspace_id: string;
+  host_id: string;
+  runtime_id: string;
+  runtime_status: "creating" | "ready" | "degraded" | "failed" | "deleted";
+  upstream_host: string;
+  upstream_port: number;
+  fs_bridge_base_url: string | null;
+  openclaw_container_id: string | null;
+  fs_bridge_container_id: string | null;
+  volume_name: string | null;
+  resource_profile: string | null;
+  last_health_at: number | null;
+  metadata_json: string | null;
+  updated_at: number;
+};
+
 type BootstrapBody = {
   workspaceId: string;
   jobId: string;
-  provider: "hetzner" | "aws";
+  provider: "aws" | "hostinger" | "digitalocean";
   instanceId: string;
   host: string;
   region: string;
@@ -41,6 +75,44 @@ type UpsertRouteBody = {
   upstreamPort?: number;
   region: string;
   wsUrl: string;
+};
+
+type RegisterHostBody = {
+  hostId: string;
+  provider: string;
+  region: string;
+  apiBaseUrl: string;
+  status?: "active" | "degraded" | "draining" | "offline";
+  capacityCpu: number;
+  capacityMemMb: number;
+  usedCpu?: number;
+  usedMemMb?: number;
+  agentVersion?: string;
+  publicIp?: string;
+  privateIp?: string;
+};
+
+type HostHeartbeatBody = {
+  hostId: string;
+  status?: "active" | "degraded" | "draining" | "offline";
+  usedCpu?: number;
+  usedMemMb?: number;
+  capacityCpu?: number;
+  capacityMemMb?: number;
+  agentVersion?: string;
+};
+
+type CreateTenantBody = {
+  workspaceId: string;
+  jobId: string;
+  region: string;
+  openclawGatewayToken: string;
+  filesBridgeToken: string;
+  filesBridgePort?: number;
+  filesBridgeRootPath?: string;
+  upstreamPort?: number;
+  resourceProfile?: string;
+  controlUiAllowedOrigins?: string[];
 };
 
 type ManagedProvider = "openai" | "anthropic" | "gemini";
@@ -83,6 +155,10 @@ const PROVIDER_PORT_WAIT_SECONDS = Number(
 const VERBOSE_LOGS = (process.env.MANAGED_VERBOSE_LOGS ?? "true").trim() !== "false";
 const REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT =
   (process.env.MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT ?? "true").trim() === "true";
+const HOST_AGENT_TIMEOUT_MS = Number(process.env.MANAGED_HOST_AGENT_TIMEOUT_MS ?? "45000");
+const HOST_POOL_MAX_UTILIZATION = Number(
+  process.env.MANAGED_HOST_POOL_MAX_UTILIZATION ?? "0.75",
+);
 
 const dbFile = process.env.MANAGED_GATEWAY_DB_PATH?.trim() || "/var/lib/managed-gateway/routes.db";
 mkdirSync(path.dirname(dbFile), { recursive: true });
@@ -100,6 +176,44 @@ CREATE TABLE IF NOT EXISTS workspace_routes (
   last_verified_at INTEGER,
   updated_at INTEGER NOT NULL,
   route_version INTEGER NOT NULL DEFAULT 1
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS managed_hosts (
+  host_id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  region TEXT NOT NULL,
+  api_base_url TEXT NOT NULL,
+  status TEXT NOT NULL,
+  capacity_cpu REAL NOT NULL,
+  capacity_mem_mb REAL NOT NULL,
+  used_cpu REAL NOT NULL DEFAULT 0,
+  used_mem_mb REAL NOT NULL DEFAULT 0,
+  agent_version TEXT,
+  public_ip TEXT,
+  private_ip TEXT,
+  last_heartbeat_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS tenant_runtimes (
+  workspace_id TEXT PRIMARY KEY,
+  host_id TEXT NOT NULL,
+  runtime_id TEXT NOT NULL,
+  runtime_status TEXT NOT NULL,
+  upstream_host TEXT NOT NULL,
+  upstream_port INTEGER NOT NULL,
+  fs_bridge_base_url TEXT,
+  openclaw_container_id TEXT,
+  fs_bridge_container_id TEXT,
+  volume_name TEXT,
+  resource_profile TEXT,
+  last_health_at INTEGER,
+  metadata_json TEXT,
+  updated_at INTEGER NOT NULL
 );
 `);
 
@@ -192,6 +306,213 @@ function deleteRoute(workspaceId: string) {
     .prepare("DELETE FROM workspace_routes WHERE workspace_id = ?")
     .run(workspaceId);
   return result.changes > 0;
+}
+
+function getHost(hostId: string): HostRow | null {
+  const row = db
+    .prepare("SELECT * FROM managed_hosts WHERE host_id = ?")
+    .get(hostId) as HostRow | undefined;
+  return row ?? null;
+}
+
+function upsertHost(input: RegisterHostBody): HostRow {
+  const now = Date.now();
+  const status = input.status ?? "active";
+  db.prepare(
+    `INSERT INTO managed_hosts (
+      host_id, provider, region, api_base_url, status, capacity_cpu, capacity_mem_mb,
+      used_cpu, used_mem_mb, agent_version, public_ip, private_ip, last_heartbeat_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(host_id) DO UPDATE SET
+      provider=excluded.provider,
+      region=excluded.region,
+      api_base_url=excluded.api_base_url,
+      status=excluded.status,
+      capacity_cpu=excluded.capacity_cpu,
+      capacity_mem_mb=excluded.capacity_mem_mb,
+      used_cpu=excluded.used_cpu,
+      used_mem_mb=excluded.used_mem_mb,
+      agent_version=excluded.agent_version,
+      public_ip=excluded.public_ip,
+      private_ip=excluded.private_ip,
+      last_heartbeat_at=excluded.last_heartbeat_at,
+      updated_at=excluded.updated_at`,
+  ).run(
+    input.hostId,
+    input.provider,
+    input.region,
+    input.apiBaseUrl,
+    status,
+    input.capacityCpu,
+    input.capacityMemMb,
+    input.usedCpu ?? 0,
+    input.usedMemMb ?? 0,
+    input.agentVersion ?? null,
+    input.publicIp ?? null,
+    input.privateIp ?? null,
+    now,
+    now,
+  );
+  return getHost(input.hostId)!;
+}
+
+function heartbeatHost(input: HostHeartbeatBody): HostRow | null {
+  const host = getHost(input.hostId);
+  if (!host) return null;
+  const now = Date.now();
+  db.prepare(
+    `UPDATE managed_hosts
+      SET status = ?,
+          used_cpu = ?,
+          used_mem_mb = ?,
+          capacity_cpu = ?,
+          capacity_mem_mb = ?,
+          agent_version = ?,
+          last_heartbeat_at = ?,
+          updated_at = ?
+      WHERE host_id = ?`,
+  ).run(
+    input.status ?? host.status,
+    Number.isFinite(input.usedCpu ?? NaN) ? input.usedCpu : host.used_cpu,
+    Number.isFinite(input.usedMemMb ?? NaN) ? input.usedMemMb : host.used_mem_mb,
+    Number.isFinite(input.capacityCpu ?? NaN) ? input.capacityCpu : host.capacity_cpu,
+    Number.isFinite(input.capacityMemMb ?? NaN) ? input.capacityMemMb : host.capacity_mem_mb,
+    input.agentVersion ?? host.agent_version,
+    now,
+    now,
+    input.hostId,
+  );
+  return getHost(input.hostId);
+}
+
+function getRuntime(workspaceId: string): TenantRuntimeRow | null {
+  const row = db
+    .prepare("SELECT * FROM tenant_runtimes WHERE workspace_id = ?")
+    .get(workspaceId) as TenantRuntimeRow | undefined;
+  return row ?? null;
+}
+
+function upsertRuntime(input: {
+  workspaceId: string;
+  hostId: string;
+  runtimeId: string;
+  runtimeStatus: TenantRuntimeRow["runtime_status"];
+  upstreamHost: string;
+  upstreamPort: number;
+  fsBridgeBaseUrl?: string | null;
+  openclawContainerId?: string | null;
+  fsBridgeContainerId?: string | null;
+  volumeName?: string | null;
+  resourceProfile?: string | null;
+  lastHealthAt?: number | null;
+  metadataJson?: string | null;
+}): TenantRuntimeRow {
+  const now = Date.now();
+  db.prepare(
+    `INSERT INTO tenant_runtimes (
+      workspace_id, host_id, runtime_id, runtime_status, upstream_host, upstream_port,
+      fs_bridge_base_url, openclaw_container_id, fs_bridge_container_id, volume_name,
+      resource_profile, last_health_at, metadata_json, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(workspace_id) DO UPDATE SET
+      host_id=excluded.host_id,
+      runtime_id=excluded.runtime_id,
+      runtime_status=excluded.runtime_status,
+      upstream_host=excluded.upstream_host,
+      upstream_port=excluded.upstream_port,
+      fs_bridge_base_url=excluded.fs_bridge_base_url,
+      openclaw_container_id=excluded.openclaw_container_id,
+      fs_bridge_container_id=excluded.fs_bridge_container_id,
+      volume_name=excluded.volume_name,
+      resource_profile=excluded.resource_profile,
+      last_health_at=excluded.last_health_at,
+      metadata_json=excluded.metadata_json,
+      updated_at=excluded.updated_at`,
+  ).run(
+    input.workspaceId,
+    input.hostId,
+    input.runtimeId,
+    input.runtimeStatus,
+    input.upstreamHost,
+    input.upstreamPort,
+    input.fsBridgeBaseUrl ?? null,
+    input.openclawContainerId ?? null,
+    input.fsBridgeContainerId ?? null,
+    input.volumeName ?? null,
+    input.resourceProfile ?? null,
+    input.lastHealthAt ?? null,
+    input.metadataJson ?? null,
+    now,
+  );
+  return getRuntime(input.workspaceId)!;
+}
+
+function pickHostForRegion(region: string): HostRow | null {
+  const rows = db
+    .prepare("SELECT * FROM managed_hosts WHERE status = 'active' AND region = ?")
+    .all(region) as HostRow[];
+  if (!rows.length) {
+    const fallback = db
+      .prepare("SELECT * FROM managed_hosts WHERE status = 'active'")
+      .all() as HostRow[];
+    if (!fallback.length) return null;
+    fallback.sort((a, b) => {
+      const aUtil =
+        Math.max(a.used_cpu / Math.max(a.capacity_cpu, 0.001), a.used_mem_mb / Math.max(a.capacity_mem_mb, 1));
+      const bUtil =
+        Math.max(b.used_cpu / Math.max(b.capacity_cpu, 0.001), b.used_mem_mb / Math.max(b.capacity_mem_mb, 1));
+      return aUtil - bUtil;
+    });
+    return fallback[0] ?? null;
+  }
+  rows.sort((a, b) => {
+    const aUtil =
+      Math.max(a.used_cpu / Math.max(a.capacity_cpu, 0.001), a.used_mem_mb / Math.max(a.capacity_mem_mb, 1));
+    const bUtil =
+      Math.max(b.used_cpu / Math.max(b.capacity_cpu, 0.001), b.used_mem_mb / Math.max(b.capacity_mem_mb, 1));
+    return aUtil - bUtil;
+  });
+  const best = rows[0] ?? null;
+  if (!best) return null;
+  const util =
+    Math.max(
+      best.used_cpu / Math.max(best.capacity_cpu, 0.001),
+      best.used_mem_mb / Math.max(best.capacity_mem_mb, 1),
+    );
+  if (util >= HOST_POOL_MAX_UTILIZATION) return null;
+  return best;
+}
+
+async function hostAgentRequest(
+  host: HostRow,
+  path: string,
+  init: RequestInit,
+): Promise<any> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HOST_AGENT_TIMEOUT_MS);
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(init.headers as Record<string, string> | undefined),
+    };
+    if (process.env.MANAGED_HOST_AGENT_SHARED_TOKEN?.trim()) {
+      headers.Authorization = `Bearer ${process.env.MANAGED_HOST_AGENT_SHARED_TOKEN!.trim()}`;
+    }
+    const response = await fetch(`${host.api_base_url.replace(/\/+$/, "")}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(
+        `Host agent ${host.host_id} ${path} failed (${response.status}): ${JSON.stringify(payload)}`,
+      );
+    }
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function checkTcpReachable(host: string, port: number, timeoutMs: number) {
@@ -896,6 +1217,342 @@ app.post("/control/openclaw/provider/verify", requireAuth, async (req, res) => {
       checks,
       error: ok ? undefined : "Managed provider runtime checks failed.",
     });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post("/control/hosts/register", requireAuth, (req, res) => {
+  const body = req.body as RegisterHostBody;
+  if (
+    !body?.hostId ||
+    !body?.provider ||
+    !body?.region ||
+    !body?.apiBaseUrl ||
+    !Number.isFinite(body.capacityCpu) ||
+    !Number.isFinite(body.capacityMemMb)
+  ) {
+    res.status(400).json({
+      error:
+        "hostId, provider, region, apiBaseUrl, capacityCpu, and capacityMemMb are required.",
+    });
+    return;
+  }
+  const row = upsertHost(body);
+  log("host_registered", {
+    hostId: row.host_id,
+    provider: row.provider,
+    region: row.region,
+    status: row.status,
+    apiBaseUrl: row.api_base_url,
+  });
+  res.json({
+    ok: true,
+    host: {
+      hostId: row.host_id,
+      provider: row.provider,
+      region: row.region,
+      status: row.status,
+      capacityCpu: row.capacity_cpu,
+      capacityMemMb: row.capacity_mem_mb,
+      usedCpu: row.used_cpu,
+      usedMemMb: row.used_mem_mb,
+      updatedAt: row.updated_at,
+    },
+  });
+});
+
+app.post("/control/hosts/heartbeat", requireAuth, (req, res) => {
+  const body = req.body as HostHeartbeatBody;
+  if (!body?.hostId) {
+    res.status(400).json({ error: "hostId is required." });
+    return;
+  }
+  const row = heartbeatHost(body);
+  if (!row) {
+    res.status(404).json({ error: "Host not found." });
+    return;
+  }
+  res.json({
+    ok: true,
+    host: {
+      hostId: row.host_id,
+      status: row.status,
+      capacityCpu: row.capacity_cpu,
+      capacityMemMb: row.capacity_mem_mb,
+      usedCpu: row.used_cpu,
+      usedMemMb: row.used_mem_mb,
+      lastHeartbeatAt: row.last_heartbeat_at,
+    },
+  });
+});
+
+app.post("/control/tenant/create", requireAuth, async (req, res) => {
+  const body = req.body as CreateTenantBody;
+  if (!body?.workspaceId || !body?.jobId || !body?.region) {
+    res.status(400).json({ error: "workspaceId, jobId, and region are required." });
+    return;
+  }
+  if (!body.openclawGatewayToken || !body.filesBridgeToken) {
+    res.status(400).json({
+      error: "openclawGatewayToken and filesBridgeToken are required.",
+    });
+    return;
+  }
+  const host = pickHostForRegion(body.region);
+  if (!host) {
+    res.status(503).json({
+      ok: false,
+      error: "No active managed host available with sufficient capacity.",
+    });
+    return;
+  }
+  try {
+    const result = await hostAgentRequest(host, "/agent/runtime/create", {
+      method: "POST",
+      body: JSON.stringify({
+        workspaceId: body.workspaceId,
+        jobId: body.jobId,
+        region: body.region,
+        openclawGatewayToken: body.openclawGatewayToken,
+        filesBridgeToken: body.filesBridgeToken,
+        filesBridgePort: body.filesBridgePort ?? Number(process.env.MANAGED_FILES_BRIDGE_PORT ?? "8787"),
+        filesBridgeRootPath: body.filesBridgeRootPath ?? process.env.MANAGED_FILES_BRIDGE_ROOT_PATH ?? "/root/.openclaw",
+        upstreamPort: body.upstreamPort ?? UPSTREAM_WS_PORT_DEFAULT,
+        resourceProfile: body.resourceProfile ?? "default",
+        controlUiAllowedOrigins: Array.isArray(body.controlUiAllowedOrigins)
+          ? body.controlUiAllowedOrigins
+          : [],
+      }),
+    });
+    const runtime = upsertRuntime({
+      workspaceId: body.workspaceId,
+      hostId: host.host_id,
+      runtimeId: String(result.runtimeId ?? `${body.workspaceId}-${Date.now()}`),
+      runtimeStatus: "ready",
+      upstreamHost: String(result.upstreamHost ?? host.private_ip ?? host.public_ip ?? ""),
+      upstreamPort: Number(result.upstreamPort ?? UPSTREAM_WS_PORT_DEFAULT),
+      fsBridgeBaseUrl:
+        typeof result.fsBridgeBaseUrl === "string" ? result.fsBridgeBaseUrl : null,
+      openclawContainerId:
+        typeof result.openclawContainerId === "string" ? result.openclawContainerId : null,
+      fsBridgeContainerId:
+        typeof result.fsBridgeContainerId === "string" ? result.fsBridgeContainerId : null,
+      volumeName: typeof result.volumeName === "string" ? result.volumeName : null,
+      resourceProfile:
+        typeof result.resourceProfile === "string" ? result.resourceProfile : body.resourceProfile ?? "default",
+      lastHealthAt: Date.now(),
+      metadataJson: JSON.stringify(result),
+    });
+    log("tenant_runtime_created", {
+      workspaceId: body.workspaceId,
+      hostId: host.host_id,
+      runtimeId: runtime.runtime_id,
+      upstreamHost: runtime.upstream_host,
+      upstreamPort: runtime.upstream_port,
+    });
+    res.json({
+      ok: true,
+      hostId: host.host_id,
+      runtimeId: runtime.runtime_id,
+      upstreamHost: runtime.upstream_host,
+      upstreamPort: runtime.upstream_port,
+      fsBridgeBaseUrl: runtime.fs_bridge_base_url,
+      openclawContainerId: runtime.openclaw_container_id,
+      fsBridgeContainerId: runtime.fs_bridge_container_id,
+      volumeName: runtime.volume_name,
+      resourceProfile: runtime.resource_profile,
+    });
+  } catch (error) {
+    log("tenant_runtime_create_failed", {
+      workspaceId: body.workspaceId,
+      hostId: host.host_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.get("/control/tenant/verify", requireAuth, async (req, res) => {
+  const workspaceId = String(req.query.workspaceId ?? "").trim();
+  if (!workspaceId) {
+    res.status(400).json({ error: "workspaceId query param is required." });
+    return;
+  }
+  const runtime = getRuntime(workspaceId);
+  if (!runtime) {
+    res.status(404).json({ ok: false, error: "Runtime not found." });
+    return;
+  }
+  const host = getHost(runtime.host_id);
+  if (!host) {
+    res.status(404).json({ ok: false, error: "Runtime host not found." });
+    return;
+  }
+  try {
+    const result = await hostAgentRequest(
+      host,
+      `/agent/runtime/status?workspaceId=${encodeURIComponent(workspaceId)}`,
+      { method: "GET" },
+    );
+    const ready = Boolean(result.ok !== false && result.runtimeStatus !== "failed");
+    upsertRuntime({
+      workspaceId,
+      hostId: runtime.host_id,
+      runtimeId: runtime.runtime_id,
+      runtimeStatus: ready ? "ready" : "degraded",
+      upstreamHost: String(result.upstreamHost ?? runtime.upstream_host),
+      upstreamPort: Number(result.upstreamPort ?? runtime.upstream_port),
+      fsBridgeBaseUrl:
+        typeof result.fsBridgeBaseUrl === "string"
+          ? result.fsBridgeBaseUrl
+          : runtime.fs_bridge_base_url,
+      openclawContainerId:
+        typeof result.openclawContainerId === "string"
+          ? result.openclawContainerId
+          : runtime.openclaw_container_id,
+      fsBridgeContainerId:
+        typeof result.fsBridgeContainerId === "string"
+          ? result.fsBridgeContainerId
+          : runtime.fs_bridge_container_id,
+      volumeName:
+        typeof result.volumeName === "string" ? result.volumeName : runtime.volume_name,
+      resourceProfile:
+        typeof result.resourceProfile === "string"
+          ? result.resourceProfile
+          : runtime.resource_profile,
+      lastHealthAt: Date.now(),
+      metadataJson: JSON.stringify(result),
+    });
+    res.json({
+      ok: ready,
+      checks: {
+        runtimeExists: true,
+        hostReachable: true,
+        runtimeReady: ready,
+      },
+      runtime: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post("/control/tenant/delete", requireAuth, async (req, res) => {
+  const workspaceId = String(req.body?.workspaceId ?? "").trim();
+  if (!workspaceId) {
+    res.status(400).json({ error: "workspaceId is required." });
+    return;
+  }
+  const runtime = getRuntime(workspaceId);
+  if (!runtime) {
+    res.json({ ok: true, deleted: false });
+    return;
+  }
+  const host = getHost(runtime.host_id);
+  if (!host) {
+    upsertRuntime({
+      workspaceId,
+      hostId: runtime.host_id,
+      runtimeId: runtime.runtime_id,
+      runtimeStatus: "deleted",
+      upstreamHost: runtime.upstream_host,
+      upstreamPort: runtime.upstream_port,
+      fsBridgeBaseUrl: runtime.fs_bridge_base_url,
+      openclawContainerId: runtime.openclaw_container_id,
+      fsBridgeContainerId: runtime.fs_bridge_container_id,
+      volumeName: runtime.volume_name,
+      resourceProfile: runtime.resource_profile,
+      metadataJson: runtime.metadata_json,
+    });
+    res.json({ ok: true, deleted: true, hostMissing: true });
+    return;
+  }
+  try {
+    await hostAgentRequest(host, "/agent/runtime/delete", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId }),
+    });
+  } catch {
+    // proceed: mark deleted in control plane so users can recreate cleanly
+  }
+  upsertRuntime({
+    workspaceId,
+    hostId: runtime.host_id,
+    runtimeId: runtime.runtime_id,
+    runtimeStatus: "deleted",
+    upstreamHost: runtime.upstream_host,
+    upstreamPort: runtime.upstream_port,
+    fsBridgeBaseUrl: runtime.fs_bridge_base_url,
+    openclawContainerId: runtime.openclaw_container_id,
+    fsBridgeContainerId: runtime.fs_bridge_container_id,
+    volumeName: runtime.volume_name,
+    resourceProfile: runtime.resource_profile,
+    metadataJson: runtime.metadata_json,
+  });
+  deleteRoute(workspaceId);
+  res.json({ ok: true, deleted: true });
+});
+
+app.post("/control/tenant/restart", requireAuth, async (req, res) => {
+  const workspaceId = String(req.body?.workspaceId ?? "").trim();
+  if (!workspaceId) {
+    res.status(400).json({ error: "workspaceId is required." });
+    return;
+  }
+  const runtime = getRuntime(workspaceId);
+  if (!runtime) {
+    res.status(404).json({ ok: false, error: "Runtime not found." });
+    return;
+  }
+  const host = getHost(runtime.host_id);
+  if (!host) {
+    res.status(404).json({ ok: false, error: "Runtime host not found." });
+    return;
+  }
+  try {
+    const result = await hostAgentRequest(host, "/agent/runtime/restart", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId }),
+    });
+    upsertRuntime({
+      workspaceId,
+      hostId: runtime.host_id,
+      runtimeId: runtime.runtime_id,
+      runtimeStatus: "ready",
+      upstreamHost: String(result.upstreamHost ?? runtime.upstream_host),
+      upstreamPort: Number(result.upstreamPort ?? runtime.upstream_port),
+      fsBridgeBaseUrl:
+        typeof result.fsBridgeBaseUrl === "string"
+          ? result.fsBridgeBaseUrl
+          : runtime.fs_bridge_base_url,
+      openclawContainerId:
+        typeof result.openclawContainerId === "string"
+          ? result.openclawContainerId
+          : runtime.openclaw_container_id,
+      fsBridgeContainerId:
+        typeof result.fsBridgeContainerId === "string"
+          ? result.fsBridgeContainerId
+          : runtime.fs_bridge_container_id,
+      volumeName:
+        typeof result.volumeName === "string" ? result.volumeName : runtime.volume_name,
+      resourceProfile:
+        typeof result.resourceProfile === "string"
+          ? result.resourceProfile
+          : runtime.resource_profile,
+      lastHealthAt: Date.now(),
+      metadataJson: JSON.stringify(result),
+    });
+    res.json({ ok: true, runtime: result });
   } catch (error) {
     res.status(500).json({
       ok: false,

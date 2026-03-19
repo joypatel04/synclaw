@@ -1,23 +1,19 @@
-export type ManagedRegionCode = "eu_central_hil" | "eu_central_nbg";
+/** Region = Hostinger datacenter id from listHostingerDatacenters (e.g. lt, de, uk, us). */
+export type ManagedRegionCode = string;
 
+/** Fallback when Hostinger API returns no datacenters (e.g. token not set). */
 export const MANAGED_REGION_OPTIONS: Array<{
   code: ManagedRegionCode;
   label: string;
   hint?: string;
-}> = [
-  {
-    code: "eu_central_hil",
-    label: "EU Central (Helsinki)",
-    hint: "Lower-cost test region",
-  },
-  {
-    code: "eu_central_nbg",
-    label: "EU Central (Nuremberg)",
-    hint: "Lower-cost test region",
-  },
-];
+}> = [];
 
-export function managedRegionLabel(code?: string | null): string {
+export function managedRegionLabel(
+  code?: string | null,
+  extraOptions?: Array<{ code: string; label: string }>,
+): string {
   if (!code) return "Not selected";
-  return MANAGED_REGION_OPTIONS.find((r) => r.code === code)?.label ?? code;
+  const fromExtra = extraOptions?.find((r) => r.code === code)?.label;
+  if (fromExtra) return fromExtra;
+  return code;
 }

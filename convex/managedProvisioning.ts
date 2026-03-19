@@ -20,10 +20,7 @@ import {
   type ManagedServerProfileCode,
 } from "../lib/managedServerProfiles";
 
-const managedRegionValidator = v.union(
-  v.literal("eu_central_hil"),
-  v.literal("eu_central_nbg"),
-);
+const managedRegionValidator = v.string(); // Hostinger datacenter id from listHostingerDatacenters
 
 const serviceTierValidator = v.union(
   v.literal("self_serve"),
@@ -36,15 +33,13 @@ const managedServerProfileValidator = v.union(
   v.literal("performance"),
 );
 
-const fallbackOrder: Record<string, string[]> = {
-  eu_central_hil: ["eu_central_hil", "eu_central_nbg"],
-  eu_central_nbg: ["eu_central_nbg", "eu_central_hil"],
-};
+const DEFAULT_MANAGED_REGION = (): string =>
+  process.env.MANAGED_HOSTINGER_DEFAULT_REGION?.trim() ?? "lt";
 
 type ServiceTier = "self_serve" | "assisted";
 
 type ManagedCloudProvisioning = {
-  provider: "hetzner" | "aws";
+  provider: "aws" | "hostinger" | "digitalocean";
   instanceId: string;
   host: string;
   serverTypeUsed?: string;
@@ -59,9 +54,13 @@ type ManagedFailureCode =
 
 type ManagedStep =
   | "infra_provisioning"
+  | "host_placement"
   | "bootstrap_openclaw"
+  | "tenant_runtime_create"
   | "gateway_route_config"
+  | "tenant_route_config"
   | "health_verification"
+  | "tenant_health_verification"
   | "synclaw_connected";
 
 type ManagedProviderId = "openai" | "anthropic" | "gemini";
@@ -79,19 +78,17 @@ const MANAGED_PROVIDER_DEFAULT_MODEL: Record<ManagedProviderId, string> = {
 };
 
 function isRegionAvailable(region: string): boolean {
-  return region === "eu_central_hil" || region === "eu_central_nbg";
+  return typeof region === "string" && region.length >= 1 && region.length <= 64;
 }
 
 function resolveRegionWithFallback(requested: string) {
-  const candidates = fallbackOrder[requested] ?? [requested, "eu_central_hil"];
-  for (const region of candidates) {
-    if (isRegionAvailable(region)) {
-      return { resolvedRegion: region, fallbackApplied: region !== requested };
-    }
+  if (isRegionAvailable(requested)) {
+    return { resolvedRegion: requested, fallbackApplied: false };
   }
+  const fallback = DEFAULT_MANAGED_REGION();
   return {
-    resolvedRegion: "eu_central_hil",
-    fallbackApplied: requested !== "eu_central_hil",
+    resolvedRegion: fallback,
+    fallbackApplied: requested !== fallback,
   };
 }
 
@@ -171,30 +168,29 @@ function managedControlUiAllowedOrigins(): string[] {
   return Array.from(new Set(merged));
 }
 
-function providerForManagedCloud(): "hetzner" | "aws" {
-  const raw = (process.env.MANAGED_CLOUD_PROVIDER ?? "hetzner").trim().toLowerCase();
+function providerForManagedCloud(): "aws" | "hostinger" | "digitalocean" {
+  const raw = (process.env.MANAGED_CLOUD_PROVIDER ?? "hostinger").trim().toLowerCase();
   if (raw === "aws") return "aws";
-  return "hetzner";
+  if (raw === "digitalocean" || raw === "do") return "digitalocean";
+  return "hostinger";
 }
 
-function hetznerLocationForRegion(region: string): string {
-  const map: Record<string, string> = {
-    eu_central_hil:
-      process.env.MANAGED_HETZNER_LOCATION_EU_CENTRAL_HIL?.trim() || "hel1",
-    eu_central_nbg:
-      process.env.MANAGED_HETZNER_LOCATION_EU_CENTRAL_NBG?.trim() || "nbg1",
-  };
-  return map[region] ?? map.eu_central_hil;
+function awsRegionForFriendlyRegion(_region: string): string {
+  return process.env.MANAGED_AWS_REGION?.trim() ?? "eu-central-1";
 }
 
-function awsRegionForFriendlyRegion(region: string): string {
-  const map: Record<string, string> = {
-    eu_central_hil:
-      process.env.MANAGED_AWS_REGION_EU_CENTRAL_HIL?.trim() || "eu-central-1",
-    eu_central_nbg:
-      process.env.MANAGED_AWS_REGION_EU_CENTRAL_NBG?.trim() || "eu-central-1",
-  };
-  return map[region] ?? map.eu_central_hil;
+/** Region string is the Hostinger datacenter id from listHostingerDatacenters. */
+function hostingerLocationForRegion(region: string): string {
+  return region;
+}
+
+/** Map internal region to DigitalOcean region slug (e.g. nyc1, sfo3, sgp1). */
+function digitalOceanRegionForRegion(region: string): string {
+  const envRegion = process.env.MANAGED_DO_REGION?.trim();
+  if (envRegion) return envRegion;
+  const slug = (region || "").toLowerCase();
+  if (["nyc1", "nyc2", "nyc3", "sfo2", "sfo3", "sgp1", "ams3", "lon1", "fra1", "blr1"].includes(slug)) return slug;
+  return process.env.MANAGED_DO_DEFAULT_REGION?.trim() ?? "nyc3";
 }
 
 function managedWsUrlFor(region: string, workspaceId: string, host: string): string {
@@ -206,6 +202,15 @@ function managedWsUrlFor(region: string, workspaceId: string, host: string): str
       .replaceAll("{host}", host);
   }
   return `wss://synclaw.in/ws/${workspaceId}`;
+}
+
+type ManagedRuntimeMode = "vm_legacy" | "container_pool";
+
+function managedRuntimeMode(): ManagedRuntimeMode {
+  const raw = (process.env.MANAGED_RUNTIME_MODE ?? "vm_legacy")
+    .trim()
+    .toLowerCase();
+  return raw === "container_pool" ? "container_pool" : "vm_legacy";
 }
 
 function isoNow() {
@@ -362,93 +367,223 @@ async function provisionWithAws(region: string): Promise<ManagedCloudProvisionin
   };
 }
 
-async function provisionWithHetzner(
+/**
+ * Provision a managed instance via Hostinger VPS API.
+ * Requires HOSTINGER_API_TOKEN and MANAGED_HOSTINGER_CATALOG_ITEM_ID.
+ * See docs/HOSTINGER_MIGRATION.md and https://developers.hostinger.com for API details.
+ */
+async function provisionWithHostinger(
   region: string,
   requestedServerProfile?: string,
 ): Promise<ManagedCloudProvisioning> {
-  const token = requireEnv("HETZNER_API_TOKEN");
-  const configuredServerTypeRaw = process.env.MANAGED_HETZNER_SERVER_TYPE?.trim();
-  const fallbackServerTypeRaw =
-    process.env.MANAGED_HETZNER_FALLBACK_SERVER_TYPE?.trim();
-  const image = process.env.MANAGED_HETZNER_IMAGE?.trim() || "ubuntu-24.04";
-  const userData = process.env.MANAGED_HETZNER_CLOUD_INIT?.trim();
-  const location = hetznerLocationForRegion(region);
+  const token = requireEnv("HOSTINGER_API_TOKEN");
+  const catalogItemId = requireEnv("MANAGED_HOSTINGER_CATALOG_ITEM_ID");
+  const baseUrl = (process.env.MANAGED_HOSTINGER_API_BASE_URL ?? "https://developers.hostinger.com").replace(
+    /\/+$/,
+    "",
+  );
+  const purchasePath =
+    process.env.MANAGED_HOSTINGER_PURCHASE_PATH?.trim() ?? "/api/vps/v1/virtual-machines";
+  const vmListPath =
+    process.env.MANAGED_HOSTINGER_VM_LIST_PATH?.trim() ?? "/api/vps/v1/virtual-machines";
+  const location = hostingerLocationForRegion(region);
+  const dataCenterId = Number(location) || location;
+  const templateId = Number(process.env.MANAGED_HOSTINGER_TEMPLATE_ID ?? "1130");
+  let setup: Record<string, unknown> = {
+    data_center_id: dataCenterId,
+    template_id: templateId,
+  };
+  const setupJson = process.env.MANAGED_HOSTINGER_SETUP_JSON?.trim();
+  if (setupJson) {
+    try {
+      setup = { ...setup, ...JSON.parse(setupJson) };
+    } catch {
+      // keep default setup if JSON invalid
+    }
+  }
 
-  const isLegacyServerTypeId = (value: string | undefined) =>
-    Boolean(value && /^\d+$/.test(value));
+  const purchaseUrl = `${baseUrl}${purchasePath}`;
+  const purchaseRes = await fetch(purchaseUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      item_id: catalogItemId,
+      setup,
+    }),
+  });
+  const purchasePayload = await purchaseRes.json().catch(() => null);
+
+  if (!purchaseRes.ok) {
+    throw new Error(
+      `Hostinger API error (${purchaseRes.status}): ${JSON.stringify(purchasePayload)}`,
+    );
+  }
+
+  const instanceId =
+    purchasePayload?.virtual_machine?.id ??
+    purchasePayload?.vm_id ??
+    purchasePayload?.id ??
+    purchasePayload?.data?.id ??
+    "";
+  let host: string =
+    purchasePayload?.virtual_machine?.ip_address ??
+    purchasePayload?.virtual_machine?.ip ??
+    purchasePayload?.ip_address ??
+    purchasePayload?.ip ??
+    purchasePayload?.data?.ip_address ??
+    purchasePayload?.data?.ip ??
+    "";
+
+  if (!instanceId) {
+    throw new Error(
+      "Hostinger purchase succeeded but VM id is missing in response. " +
+        "Check MANAGED_HOSTINGER_* env and API response shape at https://developers.hostinger.com",
+    );
+  }
+
+  const pollMs = Number(process.env.MANAGED_HOSTINGER_IP_POLL_TIMEOUT_MS ?? "120000");
+  const pollIntervalMs = Number(process.env.MANAGED_HOSTINGER_IP_POLL_INTERVAL_MS ?? "10000");
+  const deadline = Date.now() + Math.min(pollMs, 300000);
+
+  while (!host && Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    const listUrl = `${baseUrl}${vmListPath}`;
+    const listRes = await fetch(listUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const listPayload = await listRes.json().catch(() => null);
+    const vms = listPayload?.virtual_machines ?? listPayload?.data ?? listPayload?.vms ?? [];
+    const vm = Array.isArray(vms)
+      ? vms.find((v: any) => String(v?.id ?? v?.vm_id) === String(instanceId))
+      : null;
+    if (vm) {
+      host =
+        vm.ip_address ?? vm.ip ?? vm.public_ip ?? "";
+    }
+  }
+
+  if (!host) {
+    host = `${instanceId}.hostinger.internal`;
+  }
+
   const selectedProfile = managedServerProfileByCode(
     requestedServerProfile ??
       process.env.MANAGED_DEFAULT_SERVER_PROFILE?.trim() ??
       DEFAULT_MANAGED_SERVER_PROFILE,
   );
-  const configuredServerType =
-    configuredServerTypeRaw && !isLegacyServerTypeId(configuredServerTypeRaw)
-      ? configuredServerTypeRaw
-      : selectedProfile.serverType;
-  const fallbackServerType =
-    fallbackServerTypeRaw && !isLegacyServerTypeId(fallbackServerTypeRaw)
-      ? fallbackServerTypeRaw
-      : selectedProfile.serverType;
-  const serverTypeCandidates = Array.from(
-    new Set([configuredServerType, fallbackServerType]),
-  );
-  const createServer = async (serverType: string) => {
-    const response = await fetch("https://api.hetzner.cloud/v1/servers", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: `synclaw-managed-${Date.now()}`,
-        server_type: serverType,
-        image,
-        location,
-        user_data: userData,
-        start_after_create: true,
-      }),
-    });
-    const payload = await response.json().catch(() => null);
-    return { response, payload };
+
+  return {
+    provider: "hostinger",
+    instanceId: String(instanceId),
+    host,
+    serverTypeUsed: process.env.MANAGED_HOSTINGER_SERVER_TYPE?.trim() ?? selectedProfile.serverType,
   };
+}
 
-  let attemptedServerType = serverTypeCandidates[0]!;
-  let response: Response | null = null;
-  let payload: any = null;
-
-  for (const candidate of serverTypeCandidates) {
-    attemptedServerType = candidate;
-    ({ response, payload } = await createServer(candidate));
-    if (response.ok) break;
-    const message = String(payload?.error?.message ?? "").toLowerCase();
-    const hasServerTypeError =
-      response.status === 422 &&
-      (message.includes("server type") ||
-        message.includes("deprecated") ||
-        message.includes("invalid"));
-    if (!hasServerTypeError) {
-      break;
-    }
-  }
-
-  if (!response || !response.ok) {
+/**
+ * Provision a managed instance via DigitalOcean Droplets API (usage-based, hourly billing).
+ * Billing starts when the droplet is created and stops when it is destroyed. No monthly upfront.
+ * Requires DIGITALOCEAN_TOKEN (or MANAGED_DO_TOKEN). See docs/MANAGED_PROVIDERS.md.
+ */
+async function provisionWithDigitalOcean(
+  region: string,
+  requestedServerProfile?: string,
+): Promise<ManagedCloudProvisioning> {
+  const token = process.env.MANAGED_DO_TOKEN?.trim() || process.env.DIGITALOCEAN_TOKEN?.trim();
+  if (!token) {
     throw new Error(
-      `Hetzner API error (${response?.status ?? "unknown"}): ${JSON.stringify(payload)}`,
+      "DigitalOcean provisioning requires MANAGED_DO_TOKEN or DIGITALOCEAN_TOKEN. " +
+        "Create a token at https://cloud.digitalocean.com/account/api/tokens",
+    );
+  }
+  const doRegion = digitalOceanRegionForRegion(region);
+  const size = process.env.MANAGED_DO_SIZE?.trim() ?? "s-1vcpu-1gb";
+  const image = process.env.MANAGED_DO_IMAGE?.trim() ?? "ubuntu-22-04-x64";
+  const name =
+    process.env.MANAGED_DO_DROPLET_NAME_PREFIX?.trim() ?? "openclaw";
+  const uniqueName = `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const createRes = await fetch("https://api.digitalocean.com/v2/droplets", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      name: uniqueName,
+      region: doRegion,
+      size,
+      image,
+      user_data: process.env.MANAGED_DO_USER_DATA?.trim() || undefined,
+      ssh_keys: (process.env.MANAGED_DO_SSH_KEY_IDS?.trim() || "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+      tags: ["openclaw-managed"].concat(
+        (process.env.MANAGED_DO_TAGS?.trim() || "").split(",").map((t) => t.trim()).filter(Boolean),
+      ),
+    }),
+  });
+
+  const createPayload = await createRes.json().catch(() => null);
+  if (!createRes.ok) {
+    throw new Error(
+      `DigitalOcean API error (${createRes.status}): ${JSON.stringify(createPayload?.message ?? createPayload)}`,
     );
   }
 
-  const instanceId = String(payload?.server?.id ?? "");
-  const host =
-    payload?.server?.public_net?.ipv4?.ip || payload?.server?.name || "unknown";
+  const droplet = createPayload?.droplet;
+  const instanceId = droplet?.id;
   if (!instanceId) {
-    throw new Error("Hetzner server creation succeeded but server id is missing.");
+    throw new Error(
+      "DigitalOcean create succeeded but droplet id missing. " +
+        JSON.stringify(createPayload),
+    );
   }
 
+  let host = "";
+  const v4 = droplet?.networks?.v4;
+  if (Array.isArray(v4)) {
+    const publicNet = v4.find((n: { type?: string }) => n?.type === "public");
+    host = publicNet?.ip_address ?? v4[0]?.ip_address ?? "";
+  }
+
+  const pollMs = Number(process.env.MANAGED_DO_IP_POLL_TIMEOUT_MS ?? "120000");
+  const pollIntervalMs = Number(process.env.MANAGED_DO_IP_POLL_INTERVAL_MS ?? "5000");
+  const deadline = Date.now() + Math.min(pollMs, 300000);
+
+  while (!host && Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    const getRes = await fetch(`https://api.digitalocean.com/v2/droplets/${instanceId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const getPayload = await getRes.json().catch(() => null);
+    const d = getPayload?.droplet;
+    const v4Get = d?.networks?.v4;
+    if (Array.isArray(v4Get)) {
+      const publicNet = v4Get.find((n: { type?: string }) => n?.type === "public");
+      host = publicNet?.ip_address ?? v4Get[0]?.ip_address ?? "";
+    }
+  }
+
+  if (!host) {
+    host = `${instanceId}.digitalocean.internal`;
+  }
+
+  const selectedProfile = managedServerProfileByCode(
+    requestedServerProfile ??
+      process.env.MANAGED_DEFAULT_SERVER_PROFILE?.trim() ??
+      DEFAULT_MANAGED_SERVER_PROFILE,
+  );
+
   return {
-    provider: "hetzner",
-    instanceId,
+    provider: "digitalocean",
+    instanceId: String(instanceId),
     host,
-    serverTypeUsed: attemptedServerType,
+    serverTypeUsed: process.env.MANAGED_DO_SERVER_TYPE?.trim() ?? selectedProfile.serverType,
   };
 }
 
@@ -461,7 +596,10 @@ async function provisionManagedInstance(
     const awsRegion = awsRegionForFriendlyRegion(region);
     return await provisionWithAws(awsRegion);
   }
-  return await provisionWithHetzner(region, requestedServerProfile);
+  if (provider === "digitalocean") {
+    return await provisionWithDigitalOcean(region, requestedServerProfile);
+  }
+  return await provisionWithHostinger(region, requestedServerProfile);
 }
 
 async function fetchJsonWithTimeout(
@@ -487,7 +625,7 @@ export const _bootstrapOpenClawInstance = internalAction({
   args: {
     workspaceId: v.id("workspaces"),
     jobId: v.id("openclawProvisioningJobs"),
-    provider: v.union(v.literal("hetzner"), v.literal("aws")),
+    provider: v.union(v.literal("aws"), v.literal("hostinger"), v.literal("digitalocean")),
     instanceId: v.string(),
     host: v.string(),
     resolvedRegion: v.string(),
@@ -542,6 +680,197 @@ export const _bootstrapOpenClawInstance = internalAction({
       timeoutMs,
     );
     return { ok: true, simulated: false, payload };
+  },
+});
+
+/**
+ * Deploy OpenClaw on a Hostinger VPS via VPS_createNewProjectV1 (Docker Compose).
+ * No SSH or bootstrap script; we pass compose URL or raw YAML + env vars to Hostinger API.
+ */
+export const _hostingerCreateDockerProject = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+    instanceId: v.string(),
+    host: v.string(),
+    resolvedRegion: v.string(),
+    openclawGatewayToken: v.string(),
+    filesBridgeToken: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const token = requireEnv("HOSTINGER_API_TOKEN");
+    const baseUrl = (process.env.MANAGED_HOSTINGER_API_BASE_URL ?? "https://developers.hostinger.com").replace(
+      /\/+$/,
+      "",
+    );
+    const vmId = Number(args.instanceId);
+    if (!Number.isFinite(vmId)) {
+      throw new Error(
+        `Hostinger VM id must be numeric; got: ${args.instanceId}`,
+      );
+    }
+    const projectPathTemplate =
+      process.env.MANAGED_HOSTINGER_PROJECT_CREATE_PATH?.trim() ?? "/api/vps/v1/virtual-machines/{virtualMachineId}/docker";
+    const projectPath = projectPathTemplate.replace("{virtualMachineId}", String(vmId));
+    const projectName =
+      process.env.MANAGED_HOSTINGER_PROJECT_NAME?.trim() ?? "openclaw-managed";
+    const composeUrl = process.env.MANAGED_HOSTINGER_DOCKER_COMPOSE_URL?.trim();
+    const composeRaw = process.env.MANAGED_HOSTINGER_DOCKER_COMPOSE_RAW?.trim();
+    const content = composeUrl || composeRaw;
+    if (!content) {
+      throw new Error(
+        "Hostinger Docker deploy enabled but neither MANAGED_HOSTINGER_DOCKER_COMPOSE_URL nor MANAGED_HOSTINGER_DOCKER_COMPOSE_RAW is set.",
+      );
+    }
+    const upstreamPort = Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789");
+    const envObj: Record<string, string> = {
+      OPENCLAW_GATEWAY_TOKEN: args.openclawGatewayToken,
+      OPENCLAW_GATEWAY_PORT: String(upstreamPort),
+      OPENCLAW_WORKSPACE_ID: String(args.workspaceId),
+      OPENCLAW_MANAGED_REGION: args.resolvedRegion,
+      OPENCLAW_MANAGED_INSTANCE_ID: args.instanceId,
+      FS_BRIDGE_TOKEN: args.filesBridgeToken,
+      FS_BRIDGE_PORT: String(Number(optionalEnv("MANAGED_FILES_BRIDGE_PORT") ?? "8787")),
+      FS_BRIDGE_ROOT_PATH:
+        optionalEnv("MANAGED_FILES_BRIDGE_ROOT_PATH") ?? "/root/.openclaw",
+    };
+    const environment = JSON.stringify(envObj);
+    const url = `${baseUrl}${projectPath}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        project_name: projectName,
+        content,
+        environment,
+      }),
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(
+        `Hostinger createNewProject error (${res.status}): ${JSON.stringify(payload)}`,
+      );
+    }
+    return { ok: true, payload };
+  },
+});
+
+export const _createTenantRuntime = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+    resolvedRegion: v.string(),
+    openclawGatewayToken: v.string(),
+    filesBridgeToken: v.string(),
+    resourceProfile: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const apiBase = controlPlaneBaseUrl("gateway");
+    if (!apiBase) {
+      throw new Error(
+        "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required for container_pool runtime mode.",
+      );
+    }
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    if (!token) {
+      throw new Error("MANAGED_GATEWAY_API_TOKEN is required for container_pool runtime mode.");
+    }
+    const timeoutMs = timeoutMsFromEnv("MANAGED_BOOTSTRAP_TIMEOUT_MS", 120000);
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/tenant/create`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          jobId: String(args.jobId),
+          region: args.resolvedRegion,
+          openclawGatewayToken: args.openclawGatewayToken,
+          filesBridgeToken: args.filesBridgeToken,
+          filesBridgePort: Number(optionalEnv("MANAGED_FILES_BRIDGE_PORT") ?? "8787"),
+          filesBridgeRootPath:
+            optionalEnv("MANAGED_FILES_BRIDGE_ROOT_PATH") ?? "/root/.openclaw",
+          upstreamPort: Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789"),
+          resourceProfile:
+            args.resourceProfile ??
+            optionalEnv("MANAGED_RUNTIME_RESOURCE_PROFILE") ??
+            "default",
+          controlUiAllowedOrigins: managedControlUiAllowedOrigins(),
+        }),
+      },
+      timeoutMs,
+    );
+    return { ok: true, payload };
+  },
+});
+
+export const _verifyTenantRuntime = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const apiBase = controlPlaneBaseUrl("gateway");
+    if (!apiBase) {
+      throw new Error(
+        "MANAGED_CONTROL_PLANE_BASE_URL (or MANAGED_GATEWAY_API_BASE_URL) is required for container_pool runtime mode.",
+      );
+    }
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    if (!token) {
+      throw new Error("MANAGED_GATEWAY_API_TOKEN is required for container_pool runtime mode.");
+    }
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/tenant/verify?workspaceId=${encodeURIComponent(String(args.workspaceId))}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      timeoutMs,
+    );
+    return { ok: true, payload };
+  },
+});
+
+export const _deleteTenantRuntime = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    jobId: v.id("openclawProvisioningJobs"),
+  },
+  handler: async (_ctx, args) => {
+    requireEnabledCapability("managedProvisioning");
+    const apiBase = controlPlaneBaseUrl("gateway");
+    if (!apiBase) return { ok: true, skipped: true };
+    const token = optionalEnv("MANAGED_GATEWAY_API_TOKEN");
+    if (!token) return { ok: true, skipped: true };
+    const timeoutMs = timeoutMsFromEnv("MANAGED_HEALTHCHECK_TIMEOUT_MS", 60000);
+    const payload = await fetchJsonWithTimeout(
+      `${apiBase}/tenant/delete`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          workspaceId: String(args.workspaceId),
+          jobId: String(args.jobId),
+        }),
+      },
+      timeoutMs,
+    );
+    return { ok: true, payload };
   },
 });
 
@@ -826,9 +1155,13 @@ export const _markStepStatus = internalMutation({
     jobId: v.id("openclawProvisioningJobs"),
     step: v.union(
       v.literal("infra_provisioning"),
+      v.literal("host_placement"),
       v.literal("bootstrap_openclaw"),
+      v.literal("tenant_runtime_create"),
       v.literal("gateway_route_config"),
+      v.literal("tenant_route_config"),
       v.literal("health_verification"),
+      v.literal("tenant_health_verification"),
       v.literal("synclaw_connected"),
     ),
     status: v.union(v.literal("running"), v.literal("ready"), v.literal("failed")),
@@ -846,15 +1179,15 @@ export const _markStepStatus = internalMutation({
     };
     if (args.status === "running") patch.status = "running";
 
-    if (args.step === "bootstrap_openclaw") {
+    if (args.step === "bootstrap_openclaw" || args.step === "tenant_runtime_create") {
       patch.bootstrapStatus =
         args.status === "running" ? "running" : args.status === "ready" ? "ready" : "failed";
     }
-    if (args.step === "gateway_route_config") {
+    if (args.step === "gateway_route_config" || args.step === "tenant_route_config") {
       patch.gatewayRouteStatus =
         args.status === "running" ? "running" : args.status === "ready" ? "ready" : "failed";
     }
-    if (args.step === "health_verification") {
+    if (args.step === "health_verification" || args.step === "tenant_health_verification") {
       patch.healthcheckStatus =
         args.status === "running" ? "running" : args.status === "ready" ? "ready" : "failed";
     }
@@ -866,10 +1199,16 @@ export const _markStepStatus = internalMutation({
       .first();
     if (!cfg) return;
     const cfgPatch: Record<string, any> = { updatedAt: now };
-    if (args.step === "bootstrap_openclaw" && args.status === "ready") {
+    if (
+      (args.step === "bootstrap_openclaw" || args.step === "tenant_runtime_create") &&
+      args.status === "ready"
+    ) {
       cfgPatch.managedBootstrapReadyAt = now;
     }
-    if (args.step === "gateway_route_config" && args.status === "ready") {
+    if (
+      (args.step === "gateway_route_config" || args.step === "tenant_route_config") &&
+      args.status === "ready"
+    ) {
       cfgPatch.managedGatewayReadyAt = now;
     }
     if (args.status === "failed") {
@@ -929,6 +1268,76 @@ export const _markManagedJobFailed = internalMutation({
         updatedBy: cfg.updatedBy,
       } as any);
     }
+    const runtime = await ctx.db
+      .query("managedWorkspaceRuntimes")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .first();
+    if (runtime) {
+      await ctx.db.patch(runtime._id, {
+        runtimeStatus: "failed",
+        failureCode: args.failureCode,
+        updatedAt: now,
+      } as any);
+    }
+  },
+});
+
+export const _upsertManagedRuntimePlacement = internalMutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    hostId: v.string(),
+    runtimeId: v.string(),
+    runtimeStatus: v.union(
+      v.literal("creating"),
+      v.literal("ready"),
+      v.literal("degraded"),
+      v.literal("failed"),
+      v.literal("deleted"),
+    ),
+    upstreamHost: v.string(),
+    upstreamPort: v.number(),
+    fsBridgeBaseUrl: v.optional(v.string()),
+    openclawContainerId: v.optional(v.string()),
+    fsBridgeContainerId: v.optional(v.string()),
+    volumeName: v.optional(v.string()),
+    resourceProfile: v.optional(v.string()),
+    failureCode: v.optional(v.string()),
+    metadataJson: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("managedWorkspaceRuntimes")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .first();
+    const patch = {
+      hostId: args.hostId,
+      runtimeId: args.runtimeId,
+      runtimeStatus: args.runtimeStatus,
+      openclawContainerId: args.openclawContainerId,
+      fsBridgeContainerId: args.fsBridgeContainerId,
+      upstreamHost: args.upstreamHost,
+      upstreamPort: args.upstreamPort,
+      fsBridgeBaseUrl: args.fsBridgeBaseUrl,
+      volumeName: args.volumeName,
+      resourceProfile: args.resourceProfile,
+      lastHealthAt:
+        args.runtimeStatus === "ready" || args.runtimeStatus === "degraded"
+          ? now
+          : undefined,
+      failureCode: args.failureCode,
+      metadataJson: args.metadataJson,
+      updatedAt: now,
+    };
+    if (existing) {
+      await ctx.db.patch(existing._id, patch as any);
+      return existing._id;
+    }
+    return await ctx.db.insert("managedWorkspaceRuntimes", {
+      workspaceId: args.workspaceId,
+      ...patch,
+      createdAt: now,
+    } as any);
   },
 });
 
@@ -939,7 +1348,7 @@ export const _finalizeManagedConnection = internalMutation({
     resolvedRegion: v.string(),
     instanceId: v.string(),
     host: v.string(),
-    provider: v.union(v.literal("hetzner"), v.literal("aws")),
+    provider: v.union(v.literal("aws"), v.literal("hostinger"), v.literal("digitalocean")),
     serverTypeUsed: v.optional(v.string()),
     upstreamHost: v.optional(v.string()),
     upstreamPort: v.optional(v.number()),
@@ -1074,72 +1483,192 @@ export const executeManagedProvisioning = internalAction({
         log: "Provisioning isolated infrastructure host.",
       });
 
-      let provisioned: ManagedCloudProvisioning;
-      try {
-        provisioned = await provisionManagedInstance(
-          job.resolvedRegion || "eu_central_hil",
-          job.requestedServerProfile,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return await fail("PROVISION_FAILED", message, "infra_provisioning");
-      }
+      const runtimeMode = managedRuntimeMode();
+      let provisioned: ManagedCloudProvisioning | null = null;
+      let runtimePayload: any = null;
+      if (runtimeMode === "container_pool") {
+        await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step: "host_placement",
+          status: "running",
+          log: "Selecting the best managed runtime host from pool.",
+        });
+      } else {
+        try {
+          provisioned = await provisionManagedInstance(
+            job.resolvedRegion || DEFAULT_MANAGED_REGION(),
+            job.requestedServerProfile,
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return await fail("PROVISION_FAILED", message, "infra_provisioning");
+        }
 
-      await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
-        workspaceId: args.workspaceId,
-        jobId: args.jobId,
-        step: "infra_provisioning",
-        status: "running",
-        log:
-          `Instance ready (${provisioned.provider}:${provisioned.instanceId}` +
-          `${provisioned.serverTypeUsed ? ` / ${provisioned.serverTypeUsed}` : ""}).`,
-      });
+        await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
+          workspaceId: args.workspaceId,
+          jobId: args.jobId,
+          step: "infra_provisioning",
+          status: "running",
+          log:
+            `Instance ready (${provisioned.provider}:${provisioned.instanceId}` +
+            `${provisioned.serverTypeUsed ? ` / ${provisioned.serverTypeUsed}` : ""}).`,
+        });
+      }
 
       await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "bootstrap_openclaw",
+        step: runtimeMode === "container_pool" ? "tenant_runtime_create" : "bootstrap_openclaw",
         status: "running",
-        log: "Bootstrapping OpenClaw runtime on provisioned instance.",
+        log:
+          runtimeMode === "container_pool"
+            ? "Creating isolated OpenClaw + fs-bridge tenant runtime on managed host."
+            : provisioned?.provider === "hostinger" &&
+                boolEnv("MANAGED_HOSTINGER_DOCKER_DEPLOY_ENABLED", false)
+              ? "Deploying OpenClaw via Hostinger Docker API (no SSH)."
+              : "Bootstrapping OpenClaw runtime on provisioned instance.",
       });
       const managedGatewayToken = generateManagedGatewayTokenHex(32);
       const filesBridgeToken = generateManagedGatewayTokenHex(32);
       try {
-        await ctx.runAction(internal.managedProvisioning._bootstrapOpenClawInstance, {
-          workspaceId: args.workspaceId,
-          jobId: args.jobId,
-          provider: provisioned.provider,
-          instanceId: provisioned.instanceId,
-          host: provisioned.host,
-          resolvedRegion: job.resolvedRegion || "eu_central_hil",
-          openclawGatewayToken: managedGatewayToken,
-          filesBridgeToken,
-        });
-        await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
-          workspaceId: args.workspaceId,
-          jobId: args.jobId,
-          step: "bootstrap_openclaw",
-          status: "ready",
-          log: "OpenClaw bootstrap completed.",
-        });
+        if (runtimeMode === "container_pool") {
+          const createResult = await ctx.runAction(
+            internal.managedProvisioning._createTenantRuntime,
+            {
+              workspaceId: args.workspaceId,
+              jobId: args.jobId,
+              resolvedRegion: job.resolvedRegion || DEFAULT_MANAGED_REGION(),
+              openclawGatewayToken: managedGatewayToken,
+              filesBridgeToken,
+              resourceProfile:
+                process.env.MANAGED_RUNTIME_RESOURCE_PROFILE?.trim() ?? "default",
+            },
+          );
+          runtimePayload = (createResult as any)?.payload ?? {};
+
+          await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+            workspaceId: args.workspaceId,
+            jobId: args.jobId,
+            step: "host_placement",
+            status: "ready",
+            log: `Host selected (${String(runtimePayload.hostId ?? "unknown")}).`,
+          });
+
+          await ctx.runMutation(internal.managedProvisioning._upsertManagedRuntimePlacement, {
+            workspaceId: args.workspaceId,
+            hostId: String(runtimePayload.hostId ?? "unknown"),
+            runtimeId: String(runtimePayload.runtimeId ?? `runtime-${args.jobId}`),
+            runtimeStatus: "ready",
+            upstreamHost: String(runtimePayload.upstreamHost ?? ""),
+            upstreamPort: Number(
+              runtimePayload.upstreamPort ??
+                Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789"),
+            ),
+            fsBridgeBaseUrl:
+              typeof runtimePayload.fsBridgeBaseUrl === "string"
+                ? runtimePayload.fsBridgeBaseUrl
+                : undefined,
+            openclawContainerId:
+              typeof runtimePayload.openclawContainerId === "string"
+                ? runtimePayload.openclawContainerId
+                : undefined,
+            fsBridgeContainerId:
+              typeof runtimePayload.fsBridgeContainerId === "string"
+                ? runtimePayload.fsBridgeContainerId
+                : undefined,
+            volumeName:
+              typeof runtimePayload.volumeName === "string"
+                ? runtimePayload.volumeName
+                : undefined,
+            resourceProfile:
+              typeof runtimePayload.resourceProfile === "string"
+                ? runtimePayload.resourceProfile
+                : "default",
+            metadataJson: JSON.stringify(runtimePayload),
+          });
+
+          await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+            workspaceId: args.workspaceId,
+            jobId: args.jobId,
+            step: "tenant_runtime_create",
+            status: "ready",
+            log: "Tenant runtime created on managed host pool.",
+          });
+        } else {
+          const useHostingerDocker =
+            provisioned?.provider === "hostinger" &&
+            boolEnv("MANAGED_HOSTINGER_DOCKER_DEPLOY_ENABLED", false);
+          if (useHostingerDocker) {
+            await ctx.runAction(
+              internal.managedProvisioning._hostingerCreateDockerProject,
+              {
+                workspaceId: args.workspaceId,
+                jobId: args.jobId,
+                instanceId: provisioned!.instanceId,
+                host: provisioned!.host,
+                resolvedRegion: job.resolvedRegion || DEFAULT_MANAGED_REGION(),
+                openclawGatewayToken: managedGatewayToken,
+                filesBridgeToken,
+              },
+            );
+          } else {
+            await ctx.runAction(internal.managedProvisioning._bootstrapOpenClawInstance, {
+              workspaceId: args.workspaceId,
+              jobId: args.jobId,
+              provider: provisioned!.provider,
+              instanceId: provisioned!.instanceId,
+              host: provisioned!.host,
+              resolvedRegion: job.resolvedRegion || DEFAULT_MANAGED_REGION(),
+              openclawGatewayToken: managedGatewayToken,
+              filesBridgeToken,
+            });
+          }
+          await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
+            workspaceId: args.workspaceId,
+            jobId: args.jobId,
+            step: "bootstrap_openclaw",
+            status: "ready",
+            log: "OpenClaw bootstrap completed.",
+          });
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return await fail("BOOTSTRAP_FAILED", message, "bootstrap_openclaw");
+        return await fail(
+          "BOOTSTRAP_FAILED",
+          message,
+          runtimeMode === "container_pool"
+            ? "tenant_runtime_create"
+            : "bootstrap_openclaw",
+        );
       }
 
       const managedWsUrl = managedWsUrlFor(
-        job.resolvedRegion || "eu_central_hil",
+        job.resolvedRegion || DEFAULT_MANAGED_REGION(),
         String(args.workspaceId),
-        provisioned.host,
+        runtimeMode === "container_pool"
+          ? String(runtimePayload?.upstreamHost ?? "")
+          : provisioned!.host,
       );
-      let routedUpstreamHost = provisioned.host;
+      let routedUpstreamHost =
+        runtimeMode === "container_pool"
+          ? String(runtimePayload?.upstreamHost ?? "")
+          : provisioned!.host;
       let routedUpstreamPort = Number(optionalEnv("MANAGED_UPSTREAM_WS_PORT") ?? "18789");
       let routedVersion: number | undefined = undefined;
+      const routeStep: ManagedStep =
+        runtimeMode === "container_pool"
+          ? "tenant_route_config"
+          : "gateway_route_config";
+      const healthStep: ManagedStep =
+        runtimeMode === "container_pool"
+          ? "tenant_health_verification"
+          : "health_verification";
 
       await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "gateway_route_config",
+        step: routeStep,
         status: "running",
         log: "Removing any stale workspace route before re-registering.",
       });
@@ -1151,7 +1680,7 @@ export const executeManagedProvisioning = internalAction({
       await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "gateway_route_config",
+        step: routeStep,
         status: "running",
         log: "Configuring central gateway workspace route.",
       });
@@ -1161,14 +1690,17 @@ export const executeManagedProvisioning = internalAction({
           {
             workspaceId: args.workspaceId,
             jobId: args.jobId,
-            host: provisioned.host,
-            resolvedRegion: job.resolvedRegion || "eu_central_hil",
+            host:
+              runtimeMode === "container_pool"
+                ? String(runtimePayload?.upstreamHost ?? "")
+                : provisioned!.host,
+            resolvedRegion: job.resolvedRegion || DEFAULT_MANAGED_REGION(),
             managedWsUrl,
           },
         );
         const routePayload = (routeResult as any)?.payload ?? {};
         const upstreamHost = String(
-          routePayload.upstreamHost ?? routePayload.host ?? provisioned.host,
+          routePayload.upstreamHost ?? routePayload.host ?? routedUpstreamHost,
         );
         const upstreamPortRaw = routePayload.upstreamPort ?? routePayload.port;
         const upstreamPort =
@@ -1185,30 +1717,45 @@ export const executeManagedProvisioning = internalAction({
         await ctx.runMutation(internal.managedProvisioning._appendManagedJobLog, {
           workspaceId: args.workspaceId,
           jobId: args.jobId,
-          step: "gateway_route_config",
+          step: routeStep,
           status: "running",
           log: `Workspace route active -> ${upstreamHost}:${upstreamPort}.`,
         });
         await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
           workspaceId: args.workspaceId,
           jobId: args.jobId,
-          step: "gateway_route_config",
+          step: routeStep,
           status: "ready",
           log: `Gateway route configured (${managedWsUrl}).`,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return await fail("GATEWAY_ROUTE_FAILED", message, "gateway_route_config");
+        return await fail("GATEWAY_ROUTE_FAILED", message, routeStep);
       }
 
       await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
         workspaceId: args.workspaceId,
         jobId: args.jobId,
-        step: "health_verification",
+        step: healthStep,
         status: "running",
         log: "Running managed OpenClaw health and connectivity checks.",
       });
       try {
+        if (runtimeMode === "container_pool") {
+          const tenantVerifyResult = await ctx.runAction(
+            internal.managedProvisioning._verifyTenantRuntime,
+            { workspaceId: args.workspaceId },
+          );
+          const tenantVerifyPayload = (tenantVerifyResult as any)?.payload ?? {};
+          if (tenantVerifyPayload.ok === false) {
+            throw new Error(
+              String(
+                tenantVerifyPayload.error ??
+                  "Tenant runtime verification failed.",
+              ),
+            );
+          }
+        }
         await ctx.runAction(internal.managedProvisioning._runManagedHealthChecks, {
           workspaceId: args.workspaceId,
           jobId: args.jobId,
@@ -1218,13 +1765,13 @@ export const executeManagedProvisioning = internalAction({
         await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
           workspaceId: args.workspaceId,
           jobId: args.jobId,
-          step: "health_verification",
+          step: healthStep,
           status: "ready",
           log: "Health verification passed.",
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return await fail("HEALTHCHECK_FAILED", message, "health_verification");
+        return await fail("HEALTHCHECK_FAILED", message, healthStep);
       }
 
       await ctx.runMutation(internal.managedProvisioning._markStepStatus, {
@@ -1238,11 +1785,21 @@ export const executeManagedProvisioning = internalAction({
         await ctx.runMutation(internal.managedProvisioning._finalizeManagedConnection, {
           workspaceId: args.workspaceId,
           jobId: args.jobId,
-          resolvedRegion: job.resolvedRegion || "eu_central_hil",
-          instanceId: provisioned.instanceId,
-          host: provisioned.host,
-          provider: provisioned.provider,
-          serverTypeUsed: provisioned.serverTypeUsed,
+          resolvedRegion: job.resolvedRegion || DEFAULT_MANAGED_REGION(),
+          instanceId:
+            runtimeMode === "container_pool"
+              ? String(runtimePayload?.runtimeId ?? `runtime-${args.jobId}`)
+              : provisioned!.instanceId,
+          host: routedUpstreamHost,
+          provider: runtimeMode === "container_pool" ? "digitalocean" : provisioned!.provider,
+          serverTypeUsed:
+            runtimeMode === "container_pool"
+              ? String(
+                  runtimePayload?.resourceProfile ??
+                    process.env.MANAGED_RUNTIME_RESOURCE_PROFILE?.trim() ??
+                    "default",
+                )
+              : provisioned!.serverTypeUsed,
           upstreamHost: routedUpstreamHost,
           upstreamPort: routedUpstreamPort,
           routeVersion: routedVersion,
@@ -1256,8 +1813,14 @@ export const executeManagedProvisioning = internalAction({
 
       return {
         ok: true,
-        provider: provisioned.provider,
-        instanceId: provisioned.instanceId,
+        provider:
+          runtimeMode === "container_pool"
+            ? "digitalocean"
+            : provisioned!.provider,
+        instanceId:
+          runtimeMode === "container_pool"
+            ? String(runtimePayload?.runtimeId ?? `runtime-${args.jobId}`)
+            : provisioned!.instanceId,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -1436,11 +1999,11 @@ export const autoConnectWorkspace = mutation({
           workspaceId: args.workspaceId,
           provider: "sutraha-managed",
           targetHostType: "sutraha_managed",
-          requestedRegion: cfg.managedRegionRequested ?? "eu_central_hil",
+          requestedRegion: cfg.managedRegionRequested ?? DEFAULT_MANAGED_REGION(),
           resolvedRegion:
             cfg.managedRegionResolved ??
             cfg.managedRegionRequested ??
-            "eu_central_hil",
+            DEFAULT_MANAGED_REGION(),
           requestedServerProfile:
             cfg.managedServerProfile ?? DEFAULT_MANAGED_SERVER_PROFILE,
           requestedServerType: managedServerProfileByCode(
@@ -1483,6 +2046,10 @@ export const getManagedStatus = query({
       .withIndex("byWorkspaceAndCreatedAt", (q) => q.eq("workspaceId", args.workspaceId))
       .order("desc")
       .first();
+    const runtime = await ctx.db
+      .query("managedWorkspaceRuntimes")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .first();
     if (!cfg) return null;
     return {
       deploymentMode: cfg.deploymentMode ?? "manual",
@@ -1509,8 +2076,146 @@ export const getManagedStatus = query({
       fallbackApplied: Boolean(cfg.managedAutoFallbackUsed),
       managedConnectedAt: cfg.managedConnectedAt ?? null,
       setupStatus: cfg.setupStatus ?? "not_started",
+      runtimeMode: managedRuntimeMode(),
+      runtime:
+        runtime
+          ? {
+              hostId: runtime.hostId,
+              runtimeStatus: runtime.runtimeStatus,
+              openclawContainerId: runtime.openclawContainerId ?? null,
+              fsBridgeContainerId: runtime.fsBridgeContainerId ?? null,
+              upstreamHost: runtime.upstreamHost,
+              upstreamPort: runtime.upstreamPort,
+              fsBridgeBaseUrl: runtime.fsBridgeBaseUrl ?? null,
+              resourceProfile: runtime.resourceProfile ?? null,
+              lastHealthAt: runtime.lastHealthAt ?? null,
+            }
+          : null,
       latestJob,
     };
+  },
+});
+
+const HOSTINGER_DATACENTERS_PATH =
+  process.env.MANAGED_HOSTINGER_DATACENTERS_PATH?.trim() ?? "/api/vps/v1/data-centers";
+const HOSTINGER_CATALOG_PATH =
+  process.env.MANAGED_HOSTINGER_CATALOG_PATH?.trim() ?? "/api/billing/v1/catalog";
+
+/**
+ * Fetch available Hostinger VPS datacenters for region selector.
+ * Requires HOSTINGER_API_TOKEN. Used by the UI to show all regions (and optionally latency).
+ */
+export const listHostingerDatacenters = action({
+  args: {},
+  handler: async () => {
+    if (!isCommercialCapabilityEnabled("managedProvisioning")) {
+      return { ok: false, error: "Managed provisioning not enabled", datacenters: [] };
+    }
+    const token = optionalEnv("HOSTINGER_API_TOKEN");
+    if (!token) {
+      return { ok: false, error: "HOSTINGER_API_TOKEN not set", datacenters: [] };
+    }
+    const baseUrl = (process.env.MANAGED_HOSTINGER_API_BASE_URL ?? "https://developers.hostinger.com").replace(/\/+$/, "");
+    const url = `${baseUrl}${HOSTINGER_DATACENTERS_PATH}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `Hostinger API ${res.status}: ${JSON.stringify(data)}`,
+        datacenters: [],
+      };
+    }
+    const rawList = data?.data ?? data?.datacenters ?? data?.items ?? Array.isArray(data) ? data : [];
+    const datacenters = (Array.isArray(rawList) ? rawList : []).map((dc: any) => ({
+      id: String(dc?.id ?? dc?.datacenter_id ?? dc?.slug ?? ""),
+      name: String(dc?.name ?? dc?.location ?? dc?.city ?? ""),
+      country: dc?.country ?? dc?.country_code ?? "",
+      city: dc?.city ?? "",
+    })).filter((dc: { id: string }) => dc.id.length > 0);
+    return { ok: true, datacenters };
+  },
+});
+
+/**
+ * Measure round-trip time from Convex to Hostinger API (single fetch).
+ * Use in the UI to show "API latency: X ms". Per-datacenter latency would require Hostinger to expose regional ping URLs.
+ */
+export const measureHostingerApiLatency = action({
+  args: {},
+  handler: async () => {
+    if (!isCommercialCapabilityEnabled("managedProvisioning")) {
+      return { ok: false, error: "Managed provisioning not enabled", latencyMs: null };
+    }
+    const token = optionalEnv("HOSTINGER_API_TOKEN");
+    if (!token) {
+      return { ok: false, error: "HOSTINGER_API_TOKEN not set", latencyMs: null };
+    }
+    const baseUrl = (process.env.MANAGED_HOSTINGER_API_BASE_URL ?? "https://developers.hostinger.com").replace(/\/+$/, "");
+    const path = process.env.MANAGED_HOSTINGER_DATACENTERS_PATH?.trim() ?? "/api/vps/v1/data-centers";
+    const url = `${baseUrl}${path}`;
+    const start = Date.now();
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      void res.arrayBuffer();
+      const latencyMs = Date.now() - start;
+      return { ok: true, latencyMs };
+    } catch (e) {
+      const latencyMs = Date.now() - start;
+      return { ok: false, error: e instanceof Error ? e.message : String(e), latencyMs };
+    }
+  },
+});
+
+/**
+ * Fetch Hostinger catalog items (e.g. VPS plans) for plan builder.
+ * Use category/name to filter. Prices in catalog are typically in cents.
+ * Build your plans with margin: your_price = catalog_price + margin (Vercel, time, Razorpay later).
+ */
+export const listHostingerCatalogItems = action({
+  args: {
+    category: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    if (!isCommercialCapabilityEnabled("managedProvisioning")) {
+      return { ok: false, error: "Managed provisioning not enabled", items: [] };
+    }
+    const token = optionalEnv("HOSTINGER_API_TOKEN");
+    if (!token) {
+      return { ok: false, error: "HOSTINGER_API_TOKEN not set", items: [] };
+    }
+    const baseUrl = (process.env.MANAGED_HOSTINGER_API_BASE_URL ?? "https://developers.hostinger.com").replace(/\/+$/, "");
+    const params = new URLSearchParams();
+    if (args.category) params.set("category", args.category);
+    if (args.name) params.set("name", args.name);
+    const qs = params.toString();
+    const url = `${baseUrl}${HOSTINGER_CATALOG_PATH}${qs ? `?${qs}` : ""}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `Hostinger API ${res.status}: ${JSON.stringify(data)}`,
+        items: [],
+      };
+    }
+    const rawList = data?.data ?? data?.items ?? data?.catalog ?? Array.isArray(data) ? data : [];
+    const items = (Array.isArray(rawList) ? rawList : []).map((item: any) => ({
+      id: String(item?.id ?? item?.item_id ?? ""),
+      name: String(item?.name ?? ""),
+      category: item?.category ?? "",
+      priceCents: typeof item?.price_cents === "number" ? item.price_cents : item?.price ?? 0,
+      currency: item?.currency ?? "USD",
+    })).filter((item: { id: string }) => item.id.length > 0);
+    return { ok: true, items };
   },
 });
 
@@ -1545,9 +2250,7 @@ export const retryJob = mutation({
       .first();
     const serviceTier: ServiceTier =
       cfg?.serviceTier === "assisted" ? "assisted" : "self_serve";
-    const requestedRegion = (job.requestedRegion ?? "eu_central_hil") as
-      | "eu_central_hil"
-      | "eu_central_nbg";
+    const requestedRegion = (job.requestedRegion ?? DEFAULT_MANAGED_REGION()) as string;
     const requestedServerProfile = (job.requestedServerProfile ??
       cfg?.managedServerProfile ??
       DEFAULT_MANAGED_SERVER_PROFILE) as ManagedServerProfileCode;

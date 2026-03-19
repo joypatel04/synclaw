@@ -327,9 +327,13 @@ export default defineSchema({
     step: v.union(
       v.literal("queued"),
       v.literal("infra_provisioning"),
+      v.literal("host_placement"),
       v.literal("bootstrap_openclaw"),
+      v.literal("tenant_runtime_create"),
       v.literal("gateway_route_config"),
+      v.literal("tenant_route_config"),
       v.literal("health_verification"),
+      v.literal("tenant_health_verification"),
       v.literal("openclaw_install"),
       v.literal("gateway_config"),
       v.literal("security_hardening"),
@@ -359,6 +363,63 @@ export default defineSchema({
     .index("byWorkspace", ["workspaceId"])
     .index("byWorkspaceAndCreatedAt", ["workspaceId", "createdAt"])
     .index("byWorkspaceAndStatus", ["workspaceId", "status"]),
+
+  // ─── Managed host pool (commercial managed runtime) ────────────
+  managedHosts: defineTable({
+    hostId: v.string(),
+    provider: v.string(),
+    region: v.string(),
+    apiBaseUrl: v.optional(v.string()),
+    publicIp: v.optional(v.string()),
+    privateIp: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("degraded"),
+      v.literal("draining"),
+      v.literal("offline"),
+    ),
+    capacityCpu: v.number(),
+    capacityMemMb: v.number(),
+    usedCpu: v.optional(v.number()),
+    usedMemMb: v.optional(v.number()),
+    agentVersion: v.optional(v.string()),
+    lastHeartbeatAt: v.number(),
+    metadataJson: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byHostId", ["hostId"])
+    .index("byStatusAndRegion", ["status", "region"])
+    .index("byUpdatedAt", ["updatedAt"]),
+
+  // ─── Managed workspace runtime placement (commercial managed runtime) ──
+  managedWorkspaceRuntimes: defineTable({
+    workspaceId: v.id("workspaces"),
+    hostId: v.string(),
+    runtimeId: v.optional(v.string()),
+    runtimeStatus: v.union(
+      v.literal("creating"),
+      v.literal("ready"),
+      v.literal("degraded"),
+      v.literal("failed"),
+      v.literal("deleted"),
+    ),
+    openclawContainerId: v.optional(v.string()),
+    fsBridgeContainerId: v.optional(v.string()),
+    upstreamHost: v.string(),
+    upstreamPort: v.number(),
+    fsBridgeBaseUrl: v.optional(v.string()),
+    volumeName: v.optional(v.string()),
+    resourceProfile: v.optional(v.string()),
+    lastHealthAt: v.optional(v.number()),
+    failureCode: v.optional(v.string()),
+    metadataJson: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byHostId", ["hostId"])
+    .index("byRuntimeStatus", ["runtimeStatus"]),
 
   // ─── Assisted setup sessions (workspace-scoped) ────────────────
   openclawSupportSessions: defineTable({

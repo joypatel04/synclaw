@@ -1,6 +1,8 @@
-# Managed Gateway Manual Setup (Hetzner)
+# Managed Gateway Manual Setup
 
 This guide is for phase 1: manually creating and running the managed gateway VM.
+
+**Using Hostinger for the gateway server?** See **[HOSTINGER_GATEWAY_SETUP.md](HOSTINGER_GATEWAY_SETUP.md)** for step-by-step Hostinger setup and reverse proxy checklist.
 
 ## Goal
 
@@ -10,25 +12,20 @@ Stand up one always-on VM that serves:
 
 Recommended initial domain: `managed.synclaw.in`.
 
-## 1) Create the Hetzner server (manual)
+## 1) Create the gateway server (manual)
 
-Use these values in Hetzner Cloud Console:
+Create a VM with any provider (e.g. Hostinger, AWS, or another VPS). Use:
 
-1. Location: `Nuremberg (nbg1)` or closest region to your users.
+1. Location: closest region to your users (e.g. EU if your managed workspaces are in EU).
 2. Image: `Ubuntu 24.04` (recommended).
-3. Type: `cx22` (good starter for low traffic).
-4. Networking: Public IPv4 enabled (default).
-5. SSH: Add your SSH public key (recommended, no password emails).
-6. Volumes: None for now.
-7. Firewall: Attach one with minimum rules:
-- Inbound TCP `22` from your IP only.
-- Inbound TCP `80` from `0.0.0.0/0`.
-- Inbound TCP `443` from `0.0.0.0/0`.
-8. Backups: Optional for beta; recommended once stable.
+3. Type: at least 2 vCPU / 4 GB RAM for low traffic.
+4. Networking: Public IPv4 enabled.
+5. SSH: Add your SSH public key (recommended).
+6. Firewall: Inbound TCP `22` (your IP), `80` and `443` from `0.0.0.0/0`.
 
 Notes:
 - This VM is only for gateway/control-plane in phase 1.
-- Managed workspace servers are created separately by your Convex flow.
+- Managed workspace servers are created separately by your Convex flow (Hostinger by default).
 
 ## 2) Point DNS
 
@@ -105,18 +102,11 @@ bunx convex env set MANAGED_BOOTSTRAP_API_TOKEN <same-token> --dev
 bunx convex env set MANAGED_OPENCLAW_WSS_TEMPLATE wss://managed.synclaw.in/ws/{workspaceId} --dev
 ```
 
-Also ensure:
-- `HETZNER_API_TOKEN` is set.
-- `MANAGED_HETZNER_SERVER_TYPE=cx22`
-- `MANAGED_HETZNER_FALLBACK_SERVER_TYPE=cx22`
+Also ensure Hostinger (or your provider) env vars are set in Convex — see [HOSTINGER_MIGRATION.md](HOSTINGER_MIGRATION.md) for `HOSTINGER_API_TOKEN`, `MANAGED_HOSTINGER_CATALOG_ITEM_ID`, etc.
 
-## 6) SSH/bootstrap prerequisite for managed created servers
+## 6) SSH/bootstrap prerequisite for managed created servers (when not using Hostinger Docker deploy)
 
-You must inject your bootstrap public key into newly created servers via cloud-init:
-- Convex uses `MANAGED_HETZNER_CLOUD_INIT` for this.
-- Convex sends `MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY` to `/control/bootstrap`.
-
-If this is missing, provisioning reaches create-server but fails at bootstrap SSH step.
+When using SSH bootstrap (not Hostinger 1-click Docker), you must inject your bootstrap public key into newly created servers (e.g. via cloud-init). Convex sends `MANAGED_BOOTSTRAP_SSH_PRIVATE_KEY` to `/control/bootstrap`. If using Hostinger with `MANAGED_HOSTINGER_DOCKER_DEPLOY_ENABLED=true`, SSH is not required for new VMs.
 
 ## 7) Real bootstrap requirement (important)
 

@@ -8,6 +8,12 @@ Single-domain managed control plane + WebSocket gateway for path-based workspace
 - `POST /control/bootstrap`
 - `POST /control/openclaw/provider/apply`
 - `POST /control/openclaw/provider/verify`
+- `POST /control/hosts/register`
+- `POST /control/hosts/heartbeat`
+- `POST /control/tenant/create`
+- `POST /control/tenant/delete`
+- `POST /control/tenant/restart`
+- `GET /control/tenant/verify?workspaceId=...`
 - `POST /control/routes`
 - `POST /control/routes/delete`
 - `GET /control/routes/verify?workspaceId=...`
@@ -40,6 +46,9 @@ npm start
 - `MANAGED_REQUIRE_CUSTOM_BOOTSTRAP_SCRIPT` (default: `true`)
 - `MANAGED_BOOTSTRAP_SCRIPT` (required in real mode; custom SSH bootstrap script)
 - `MANAGED_BOOTSTRAP_SCRIPT_FILE` (optional path to script file on VM)
+- `MANAGED_HOST_AGENT_SHARED_TOKEN` (shared token to call host agents)
+- `MANAGED_HOST_AGENT_TIMEOUT_MS` (default: `45000`)
+- `MANAGED_HOST_POOL_MAX_UTILIZATION` (default: `0.75`)
 - `MANAGED_FILES_BRIDGE_PORT` (default: `8787`)
 - `MANAGED_FILES_BRIDGE_ROOT_PATH` (default: `/root/.openclaw`)
 
@@ -88,7 +97,7 @@ This repo includes a hardened template at:
 
 ## Deployment
 
-Use `docker-compose.yml` in this folder on your Hetzner VM.
+Use `docker-compose.yml` in this folder on your gateway VM.
 
 Recommended:
 
