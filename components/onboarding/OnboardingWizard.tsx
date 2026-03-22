@@ -1,20 +1,18 @@
 "use client";
 
 import { useAction, useConvex, useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Check, LifeBuoy, Server, Settings2, Zap } from "lucide-react";
 import Link from "next/link";
-import { api } from "@/convex/_generated/api";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
-import { Check, LifeBuoy, Server, Settings2, Zap } from "lucide-react";
+import { api } from "@/convex/_generated/api";
 import { setChatDraft } from "@/lib/chatDraft";
-import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
 import { canUseCapability } from "@/lib/edition";
 import {
   AGENT_SETUP_ADVANCED_ENABLED,
@@ -23,22 +21,24 @@ import {
   MANAGED_INTERNAL_CONTROLS_ENABLED,
 } from "@/lib/features";
 import {
-  mapOpenClawSetupError,
-  OPENCLAW_METHOD_CARDS,
-  PUBLIC_WSS_SECURITY_CHECKLIST,
-  recommendTransportMode,
-  type OpenClawTransportMode,
-} from "@/lib/openclawSetupMethods";
-import {
   MANAGED_REGION_OPTIONS,
-  managedRegionLabel,
   type ManagedRegionCode,
+  managedRegionLabel,
 } from "@/lib/managedRegions";
 import {
   MANAGED_SERVER_PROFILES,
-  managedServerProfileByCode,
   type ManagedServerProfileCode,
+  managedServerProfileByCode,
 } from "@/lib/managedServerProfiles";
+import { buildMainAgentBootstrapMessage } from "@/lib/onboardingTemplates";
+import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
+import {
+  mapOpenClawSetupError,
+  OPENCLAW_METHOD_CARDS,
+  type OpenClawTransportMode,
+  PUBLIC_WSS_SECURITY_CHECKLIST,
+  recommendTransportMode,
+} from "@/lib/openclawSetupMethods";
 
 type Protocol = "req";
 type ModelProviderId =
@@ -90,7 +90,10 @@ function isManagedProviderId(
   return value === "openai" || value === "anthropic" || value === "gemini";
 }
 
-function mapOneClickSetupError(code: string | undefined, message: string): string {
+function mapOneClickSetupError(
+  code: string | undefined,
+  message: string,
+): string {
   switch (code) {
     case "BRIDGE_UNAVAILABLE":
       return "Remote files bridge is not reachable. Verify OpenClaw files bridge and retry.";
@@ -948,7 +951,7 @@ export function OnboardingWizard() {
             Workspace setup
           </h1>
           <p className="mt-0.5 text-xs text-text-muted">
-            Complete prerequisites, then continue in Agent Setup Guide.
+            Complete prerequisites, then continue in chat.
           </p>
         </div>
       </div>

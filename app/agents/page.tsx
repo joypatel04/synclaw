@@ -1,20 +1,6 @@
 "use client";
 
 import { useAction, useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import { AgentAvatar } from "@/components/shared/AgentAvatar";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Timestamp } from "@/components/shared/Timestamp";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Archive,
   ArchiveRestore,
@@ -23,22 +9,37 @@ import {
   HeartPulse,
   Pencil,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { AgentManifestPanel } from "@/components/agents/AgentManifestPanel";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { AgentAvatar } from "@/components/shared/AgentAvatar";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Timestamp } from "@/components/shared/Timestamp";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AgentManifestPanel } from "@/components/agents/AgentManifestPanel";
 
 type AgentFormData = {
   name: string;
@@ -482,9 +483,11 @@ function AgentsContent() {
         )}
       </div>
 
-      <div className="mb-6">
-        <AgentManifestPanel />
-      </div>
+      {AGENT_SETUP_ADVANCED_ENABLED ? (
+        <div className="mb-6">
+          <AgentManifestPanel />
+        </div>
+      ) : null}
 
       {/* Active agents */}
       <div className="space-y-4">

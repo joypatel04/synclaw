@@ -1,12 +1,13 @@
 "use client";
 
+import { Check, Copy, LifeBuoy, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Check, Copy, LifeBuoy, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 import { getPlaybook } from "@/lib/playbooks";
 
 function CopyBlock({
@@ -114,7 +115,7 @@ function PlaybookPageInner() {
                 className="bg-accent-orange hover:bg-accent-orange/90 text-white"
               >
                 <Link href={`/agents/new?recipe=${playbook.recipeId}`}>
-                  Create agent (recipe)
+                  Create & Configure Agent
                 </Link>
               </Button>
             ) : (
@@ -122,12 +123,17 @@ function PlaybookPageInner() {
                 asChild
                 className="bg-accent-orange hover:bg-accent-orange/90 text-white"
               >
-                <Link href="/help/agent-setup">Open Setup Guide</Link>
+                <Link href="/agents/new">Create & Configure Agent</Link>
               </Button>
             )}
             <Button asChild variant="outline">
-              <Link href="/help/agent-setup">Open Setup Guide</Link>
+              <Link href="/chat">Open chat</Link>
             </Button>
+            {AGENT_SETUP_ADVANCED_ENABLED ? (
+              <Button asChild variant="outline">
+                <Link href="/help/agent-setup">Setup diagnostics</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
 

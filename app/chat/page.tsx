@@ -1,13 +1,14 @@
 "use client";
 
-import { AppLayout } from "@/components/layout/AppLayout";
-import { ChatAgentSelector } from "@/components/chat/ChatAgentSelector";
-import { MessageSquare } from "lucide-react";
-import { useWorkspace } from "@/components/providers/workspace-provider";
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Button } from "@/components/ui/button";
+import { MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { ChatAgentSelector } from "@/components/chat/ChatAgentSelector";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { Button } from "@/components/ui/button";
+import { api } from "@/convex/_generated/api";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 function ChatContent() {
   const { workspaceId, canAdmin } = useWorkspace();
@@ -41,7 +42,7 @@ function ChatContent() {
               </p>
             </div>
           </div>
-          {canAdmin ? (
+          {canAdmin && AGENT_SETUP_ADVANCED_ENABLED ? (
             <Button asChild variant="outline" size="sm" className="h-8 gap-2">
               <Link href="/help/agent-setup">Setup Guide</Link>
             </Button>

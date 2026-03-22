@@ -6,13 +6,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { OPENCLAW_FILES_ENABLED } from "@/lib/features";
+import {
+  AGENT_SETUP_ADVANCED_ENABLED,
+  OPENCLAW_FILES_ENABLED,
+} from "@/lib/features";
 import { FilesystemContextMenu } from "./FilesystemContextMenu";
 import { FilesystemEditor } from "./FilesystemEditor";
 import { FilesystemSetupPanel } from "./FilesystemSetupPanel";
-import type { FilesystemNode } from "./types";
 import { FilesystemTree } from "./FilesystemTree";
 import { MobileFilesystemDrawer } from "./MobileFilesystemDrawer";
+import type { FilesystemNode } from "./types";
 
 function parentPath(path: string): string {
   const normalized = path.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -501,12 +504,14 @@ export function ScopedFilesystemPanel({
                 <li>Return here and click refresh to load the folder.</li>
               </ol>
               <div className="flex flex-wrap gap-3 text-xs">
-                <Link
-                  href="/help/agent-setup"
-                  className="text-accent-orange hover:underline"
-                >
-                  Open Agent Setup Guide
-                </Link>
+                {AGENT_SETUP_ADVANCED_ENABLED ? (
+                  <Link
+                    href="/help/agent-setup"
+                    className="text-accent-orange hover:underline"
+                  >
+                    Open Agent Setup Guide
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   className="text-accent-orange hover:underline"

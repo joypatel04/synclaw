@@ -28,6 +28,13 @@ export type AgentSetupTemplateAgent = {
   workspaceFolderPath?: string;
 };
 
+export type AgentSetupTemplateProfile = {
+  id: string;
+  title: string;
+  description: string;
+  rules: string[];
+};
+
 export type AgentSetupTemplateContext = {
   workspaceId: string;
   workspaceName: string;
@@ -37,6 +44,7 @@ export type AgentSetupTemplateContext = {
   agents: AgentSetupTemplateAgent[];
   recommendedHeartbeatMinutes: number;
   roleModule: AgentSetupRoleModule;
+  templateProfile?: AgentSetupTemplateProfile;
 };
 
 export type AgentSetupTemplateFiles = Record<RequiredAgentSetupFile, string>;

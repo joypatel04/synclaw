@@ -1,70 +1,69 @@
 "use client";
 
 import { useAction, useConvex, useMutation, useQuery } from "convex/react";
+import {
+  Activity,
+  Check,
+  Copy,
+  LifeBuoy,
+  Server,
+  Settings,
+  ShieldAlert,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
+import { canUseCapability } from "@/lib/edition";
 import {
-  OpenClawBrowserGatewayClient,
-  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
-  clearOpenClawLocalAuthState,
-  isOpenClawDeviceAuthEnabled,
-  type OpenClawConnectionStatus,
-  openClawDeviceTokenStorageKey,
-} from "@/lib/openclaw-gateway-client";
-import {
-  Settings,
-  ShieldAlert,
-  Activity,
-  Check,
-  Copy,
-  LifeBuoy,
-  Server,
-} from "lucide-react";
-import {
-  buildMainAgentBootstrapMessage,
-  buildSpecialistAgentBootstrapMessage,
-  buildMcpServerConfigTemplate,
-  CANONICAL_AGENT_TEMPLATES,
-} from "@/lib/onboardingTemplates";
-import {
-  buildSynclawProtocolMd,
-  SYNCLAW_PROTOCOL_FILENAME,
-} from "@/lib/synclawProtocol";
-import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
-// import { setChatDraft } from "@/lib/chatDraft";
-import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
-import {
+  AGENT_SETUP_ADVANCED_ENABLED,
   ASSISTED_LAUNCH_BETA_ENABLED,
   BILLING_ENABLED,
   MANAGED_BETA_ENABLED,
   MANAGED_INTERNAL_CONTROLS_ENABLED,
   WEBHOOKS_ENABLED,
 } from "@/lib/features";
-import { canUseCapability } from "@/lib/edition";
-import {
-  mapOpenClawSetupError,
-  OPENCLAW_METHOD_CARDS,
-  PUBLIC_WSS_SECURITY_CHECKLIST,
-  recommendTransportMode,
-  type OpenClawTransportMode,
-} from "@/lib/openclawSetupMethods";
 import {
   MANAGED_REGION_OPTIONS,
-  managedRegionLabel,
   type ManagedRegionCode,
+  managedRegionLabel,
 } from "@/lib/managedRegions";
 import {
   MANAGED_SERVER_PROFILES,
-  managedServerProfileByCode,
   type ManagedServerProfileCode,
+  managedServerProfileByCode,
 } from "@/lib/managedServerProfiles";
+import {
+  buildMainAgentBootstrapMessage,
+  buildMcpServerConfigTemplate,
+} from "@/lib/onboardingTemplates";
+// import { setChatDraft } from "@/lib/chatDraft";
+import { readStoredDeviceIdentityV2 } from "@/lib/openclaw/device-auth-v3";
+import {
+  clearOpenClawLocalAuthState,
+  isOpenClawDeviceAuthEnabled,
+  OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY,
+  OpenClawBrowserGatewayClient,
+  type OpenClawConnectionStatus,
+  openClawDeviceTokenStorageKey,
+} from "@/lib/openclaw-gateway-client";
+import {
+  mapOpenClawSetupError,
+  OPENCLAW_METHOD_CARDS,
+  type OpenClawTransportMode,
+  PUBLIC_WSS_SECURITY_CHECKLIST,
+  recommendTransportMode,
+} from "@/lib/openclawSetupMethods";
+import {
+  buildSynclawProtocolMd,
+  SYNCLAW_PROTOCOL_FILENAME,
+} from "@/lib/synclawProtocol";
 
 const FIXED_GATEWAY_ROLE = "operator";
 const FIXED_GATEWAY_SCOPES = [
@@ -131,11 +130,6 @@ function OpenClawSettingsContent() {
     canUseCapability("assistedLaunch") && ASSISTED_LAUNCH_BETA_ENABLED;
 
   const summary = useQuery(api.openclaw.getConfigSummary, { workspaceId });
-  const agents =
-    useQuery(
-      api.agents.list,
-      canAdmin ? { workspaceId, includeArchived: true } : "skip",
-    ) ?? [];
   const upsert = useMutation(api.openclaw.upsertConfig);
   const confirmSecurityChecklist = useMutation(
     api.openclaw.confirmSecurityChecklist,
@@ -158,7 +152,6 @@ function OpenClawSettingsContent() {
     managedProvisioningEnabled ? { workspaceId } : "skip",
   );
   const createAssistedSession = useMutation(api.support.createAssistedSession);
-  const createAgent = useMutation(api.agents.create);
   const assistedSessions =
     useQuery(
       api.support.listAssistedSessions,
@@ -254,6 +247,7 @@ function OpenClawSettingsContent() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: this effect intentionally rehydrates form state from the latest summary snapshot.
   useEffect(() => {
     if (!summary) return;
     const nextMode =
@@ -358,6 +352,7 @@ function OpenClawSettingsContent() {
     [isHttpsPage, wsUrl],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localAuthRev intentionally forces storage re-read after explicit reset actions.
   const localAuthState = useMemo(() => {
     if (typeof window === "undefined") {
       return { hasDeviceIdentity: false, hasDeviceToken: false };
@@ -377,6 +372,7 @@ function OpenClawSettingsContent() {
     }
   }, [wsUrl, localAuthRev]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localAuthRev intentionally forces storage re-read after explicit reset actions.
   const localIdentity = useMemo(
     () => readStoredDeviceIdentityV2(),
     [localAuthRev],
@@ -410,70 +406,6 @@ function OpenClawSettingsContent() {
       convexSiteUrl,
     });
   }, [workspaceId]);
-
-  const canonicalSpecialists = useMemo(() => {
-    return CANONICAL_AGENT_TEMPLATES.filter((a) => a.id !== "main");
-  }, []);
-
-  const existingSessionKeys = useMemo(() => {
-    return new Set(agents.map((a: any) => a.sessionKey));
-  }, [agents]);
-
-  const mainAgent = useMemo(() => {
-    return agents.find((a: any) => a.sessionKey === "agent:main:main") ?? null;
-  }, [agents]);
-
-  const missingSpecialists = useMemo(() => {
-    return canonicalSpecialists.filter(
-      (a) => !existingSessionKeys.has(a.sessionKey),
-    );
-  }, [canonicalSpecialists, existingSessionKeys]);
-
-  const specialistPrompts = useMemo(() => {
-    return canonicalSpecialists.map((agent) => {
-      return {
-        id: `bootstrap:${agent.id}`,
-        title: `${agent.name} Bootstrap Prompt (${agent.sessionKey})`,
-        value: buildSpecialistAgentBootstrapMessage({
-          workspaceName: workspace.name,
-          workspaceId: String(workspaceId),
-          agent,
-        }),
-      };
-    });
-  }, [canonicalSpecialists, workspace.name, workspaceId]);
-
-  const [creatingSquad, setCreatingSquad] = useState(false);
-  const [squadError, setSquadError] = useState<string | null>(null);
-  const [squadOk, setSquadOk] = useState(false);
-
-  const onCreateSquad = async () => {
-    if (!canAdmin) return;
-    if (creatingSquad) return;
-    if (missingSpecialists.length === 0) return;
-
-    setCreatingSquad(true);
-    setSquadError(null);
-    setSquadOk(false);
-    try {
-      for (const agent of missingSpecialists) {
-        await createAgent({
-          workspaceId,
-          name: agent.name,
-          role: agent.role,
-          emoji: agent.emoji,
-          sessionKey: agent.sessionKey,
-          externalAgentId: agent.sessionKey,
-        });
-      }
-      setSquadOk(true);
-      setTimeout(() => setSquadOk(false), 2000);
-    } catch (e) {
-      setSquadError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCreatingSquad(false);
-    }
-  };
 
   const onSave = async () => {
     if (!canAdmin) return;
@@ -1887,16 +1819,15 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           </div>
         </details>
 
-        {summary ? (
+        {summary && AGENT_SETUP_ADVANCED_ENABLED ? (
           <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-text-primary">
-                  Setup guide
+                  Setup diagnostics
                 </h2>
                 <p className="mt-1 text-xs text-text-muted">
-                  Open Setup Guide for the canonical workflow. Templates below
-                  are minimal references.
+                  Internal setup references and diagnostic templates.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="h-8">

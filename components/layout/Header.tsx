@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
 import {
   Activity,
   Bot,
@@ -17,25 +18,15 @@ import {
   Radio,
   Settings,
   Users,
-  Zap,
   Webhook,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useState } from "react";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -43,14 +34,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   BILLING_ENABLED,
   OPENCLAW_FILES_ENABLED,
   WEBHOOKS_ENABLED,
 } from "@/lib/features";
+import { cn } from "@/lib/utils";
 
 const baseNavItems = [
   { href: "/", label: "Dashboard", icon: Activity },
@@ -99,7 +99,10 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
             {/* Workspace Switcher */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-text-primary hover:bg-bg-hover transition-smooth">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-text-primary hover:bg-bg-hover transition-smooth"
+                >
                   {workspace.name}
                   <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
                 </button>

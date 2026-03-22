@@ -1,26 +1,27 @@
 "use client";
 
+import {
+  BookOpen,
+  Bot,
+  Bug,
+  ClipboardList,
+  Cloud,
+  Code,
+  Coins,
+  HardDrive,
+  HelpCircle,
+  LifeBuoy,
+  PlugZap,
+  Rocket,
+  Search,
+  ShieldCheck,
+  TrendingUp,
+  Wrench,
+} from "lucide-react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import {
-  LifeBuoy,
-  PlugZap,
-  ClipboardList,
-  Bot,
-  Wrench,
-  Search,
-  Bug,
-  Code,
-  ShieldCheck,
-  TrendingUp,
-  Rocket,
-  BookOpen,
-  Cloud,
-  HardDrive,
-  Coins,
-  HelpCircle,
-} from "lucide-react";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 type UseCase = {
   id: string;
@@ -138,29 +139,31 @@ function HelpContent() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary">
-            Canonical setup flow
+            Canonical launch flow
           </h2>
           <ol className="mt-3 list-decimal pl-5 space-y-2 text-sm text-text-secondary">
             <li>
               Complete prerequisites in{" "}
               <span className="font-mono text-xs">/onboarding</span>.
             </li>
-            <li>Create new agents from recipe flow.</li>
-            <li>Open Agent Setup Guide and complete strict validation.</li>
+            <li>Create an agent with one-click setup.</li>
+            <li>Continue in chat and start execution.</li>
           </ol>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Button
               asChild
               className="bg-accent-orange hover:bg-accent-orange/90 text-white"
             >
-              <Link href="/help/agent-setup">Open Setup Guide</Link>
+              <Link href="/agents/new">Create & Configure Agent</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/agents/new">Create agent (recipe)</Link>
+              <Link href="/chat">Open chat</Link>
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/help/agent-setup">Agent Setup Guide</Link>
-            </Button>
+            {AGENT_SETUP_ADVANCED_ENABLED ? (
+              <Button asChild variant="outline">
+                <Link href="/help/agent-setup">Setup diagnostics</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
 

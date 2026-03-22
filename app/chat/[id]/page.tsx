@@ -1,14 +1,15 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId, canAdmin } = useWorkspace();
@@ -34,7 +35,7 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
     <div className="mx-auto flex h-full min-h-0 max-w-7xl flex-col p-3 sm:p-6">
       <div className="min-w-0 flex-1 min-h-0 flex flex-col">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-          {canAdmin ? (
+          {canAdmin && AGENT_SETUP_ADVANCED_ENABLED ? (
             <Button asChild variant="outline" size="sm" className="h-8 gap-2">
               <Link href={`/agents/${agentId}/setup`}>Setup Guide</Link>
             </Button>

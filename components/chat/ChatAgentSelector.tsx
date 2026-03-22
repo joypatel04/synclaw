@@ -1,14 +1,14 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import { AgentAvatar } from "@/components/shared/AgentAvatar";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
 import { MessageSquare, Settings2 } from "lucide-react";
 import Link from "next/link";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { AgentAvatar } from "@/components/shared/AgentAvatar";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { api } from "@/convex/_generated/api";
 import { OpenClawSessionsList } from "./OpenClawSessionsList";
 
 export function ChatAgentSelector() {
@@ -65,7 +65,7 @@ export function ChatAgentSelector() {
       <EmptyState
         icon={MessageSquare}
         title="No agents yet"
-        description="Create your first agent using recipe flow, then continue in Agent Setup Guide."
+        description="Create your first agent to start chatting."
       >
         {canAdmin ? (
           <Button

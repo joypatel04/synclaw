@@ -4,8 +4,36 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { REQUIRED_AGENT_SETUP_FILES } from "@/lib/agentSetupTemplates";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 function AgentSetupGuideContent() {
+  if (!AGENT_SETUP_ADVANCED_ENABLED) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 p-3 sm:p-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h1 className="text-lg font-semibold text-text-primary sm:text-xl">
+            Setup diagnostics
+          </h1>
+          <p className="mt-2 text-sm text-text-secondary">
+            Manual setup guidance is hidden in production. Agent setup is
+            handled automatically during creation.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              asChild
+              className="bg-accent-orange text-white hover:bg-accent-orange/90"
+            >
+              <Link href="/agents/new">Create & Configure Agent</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/chat">Open chat</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const requiredFileCount = REQUIRED_AGENT_SETUP_FILES.length;
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-3 sm:p-6">

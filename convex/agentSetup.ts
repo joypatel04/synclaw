@@ -1,15 +1,17 @@
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import { action, mutation, query } from "./_generated/server";
-import { requireMember, requireRole } from "./lib/permissions";
+import { AGENT_RECIPES } from "../lib/agentRecipes";
 import {
+  type AgentSetupSource,
+  type AgentSetupTemplateProfile,
   buildAgentSetupFiles,
   deriveRoleModule,
   deriveWorkspaceFolderPath,
   REQUIRED_AGENT_SETUP_FILES,
-  type AgentSetupSource,
 } from "../lib/agentSetupTemplates";
+import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import { action, mutation, query } from "./_generated/server";
+import { requireMember, requireRole } from "./lib/permissions";
 
 const stepLiteral = v.union(
   v.literal("bootstrapPrimed"),
@@ -205,6 +207,39 @@ function contentErrorsForFile(args: {
   }
 }
 
+function resolveTemplateProfile(
+  templateId: string | undefined,
+): AgentSetupTemplateProfile | undefined {
+  const normalized = templateId?.trim();
+  if (!normalized) return undefined;
+  const recipe = AGENT_RECIPES.find((candidate) => candidate.id === normalized);
+  if (!recipe) return undefined;
+  return {
+    id: recipe.id,
+    title: recipe.title,
+    description: recipe.description,
+    rules: recipe.rules,
+  };
+}
+
+function resolveTemplateProfileFromRole(
+  role: string,
+): AgentSetupTemplateProfile | undefined {
+  const normalizedRole = role.trim().toLowerCase();
+  if (!normalizedRole) return undefined;
+  const recipe = AGENT_RECIPES.find(
+    (candidate) =>
+      candidate.defaultRole.trim().toLowerCase() === normalizedRole,
+  );
+  if (!recipe) return undefined;
+  return {
+    id: recipe.id,
+    title: recipe.title,
+    description: recipe.description,
+    rules: recipe.rules,
+  };
+}
+
 export const getStatus = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -236,6 +271,7 @@ export const getSetupPlan = query({
   args: {
     workspaceId: v.id("workspaces"),
     agentId: v.id("agents"),
+    templateId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
@@ -250,6 +286,10 @@ export const getSetupPlan = query({
       )
       .collect();
 
+    const templateProfile =
+      resolveTemplateProfile(args.templateId) ??
+      resolveTemplateProfileFromRole(agent.role);
+
     const files = buildAgentSetupFiles({
       workspaceId: String(args.workspaceId),
       workspaceName: workspace.name,
@@ -261,6 +301,7 @@ export const getSetupPlan = query({
         role: agent.role,
         sessionKey: agent.sessionKey,
       }),
+      templateProfile,
       agent: {
         id: String(agent._id),
         name: agent.name,
@@ -594,10 +635,7 @@ export const validateSetup = action({
 
 function parseCreateFailureCode(message: string): OneClickFailureCode | null {
   const lower = message.toLowerCase();
-  if (
-    lower.includes("session key") &&
-    lower.includes("already exists")
-  ) {
+  if (lower.includes("session key") && lower.includes("already exists")) {
     return "DUPLICATE_SESSION_KEY";
   }
   if (
@@ -631,6 +669,7 @@ export const createAgentOneClick = action({
     emoji: v.string(),
     sessionKey: v.string(),
     externalAgentId: v.optional(v.string()),
+    templateId: v.optional(v.string()),
     source: v.union(
       v.literal("onboarding_main"),
       v.literal("recipe"),
@@ -687,6 +726,7 @@ export const createAgentOneClick = action({
       const setupPlan = await ctx.runQuery(api.agentSetup.getSetupPlan, {
         workspaceId: args.workspaceId,
         agentId: createdAgentId,
+        templateId: args.templateId,
       });
       const basePath = setupPlan.agent.workspaceFolderPath;
       if (!basePath) {
@@ -776,12 +816,15 @@ export const createAgentOneClick = action({
       }
 
       try {
-        await ctx.runMutation(internal.agents._rollbackCreatedAgentForSetupFailure, {
-          workspaceId: args.workspaceId,
-          id: createdAgentId,
-          reason: message,
-          source: args.source,
-        });
+        await ctx.runMutation(
+          internal.agents._rollbackCreatedAgentForSetupFailure,
+          {
+            workspaceId: args.workspaceId,
+            id: createdAgentId,
+            reason: message,
+            source: args.source,
+          },
+        );
         return fail(code, message, {
           rollbackAttempted: true,
           rollbackSucceeded: true,
