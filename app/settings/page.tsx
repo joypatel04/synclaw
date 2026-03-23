@@ -7,16 +7,42 @@ import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings } from "lucide-react";
+import { AlertTriangle, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { WEBHOOKS_ENABLED } from "@/lib/features";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
 
 function SettingsContent() {
   const { workspace, role, canAdmin } = useWorkspace();
   const updateName = useMutation(api.workspaces.updateName);
+  const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace);
+  const router = useRouter();
   const [name, setName] = useState(workspace.name);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteWorkspace = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteWorkspace({ workspaceId: workspace._id });
+      router.push("/");
+    } catch (error: any) {
+      setDeleteError(error?.message ?? "Failed to delete workspace.");
+      setIsDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim() || name === workspace.name) return;
@@ -74,6 +100,12 @@ function SettingsContent() {
             Webhooks
           </Link>
         ) : null}
+        <Link
+          href="/settings/account"
+          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+        >
+          Account
+        </Link>
       </div>
 
       <div className="space-y-8">
@@ -181,7 +213,76 @@ function SettingsContent() {
             </table>
           </div>
         </div>
+
+        {/* Danger Zone — owner only */}
+        {role === "owner" && (
+          <div className="rounded-xl border border-status-blocked/30 bg-bg-secondary p-4 sm:p-6">
+            <h2 className="text-sm font-semibold text-status-blocked mb-1 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Danger Zone
+            </h2>
+            <p className="text-xs text-text-muted mb-4">
+              Permanently delete this workspace and all its data. This cannot be
+              undone.
+            </p>
+            <Button
+              onClick={() => setShowDeleteWorkspace(true)}
+              size="sm"
+              variant="outline"
+              className="border-status-blocked/50 text-status-blocked hover:bg-status-blocked/10 gap-1.5"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Workspace
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Delete Workspace Confirmation */}
+      <Dialog
+        open={showDeleteWorkspace}
+        onOpenChange={setShowDeleteWorkspace}
+      >
+        <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-text-primary">
+              Delete Workspace
+            </DialogTitle>
+            <DialogDescription className="text-text-muted">
+              This will permanently delete{" "}
+              <span className="font-semibold text-text-primary">
+                {workspace.name}
+              </span>{" "}
+              and all its agents, tasks, documents, and data. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <p className="text-xs text-status-blocked bg-status-blocked/10 rounded-lg px-3 py-2">
+              {deleteError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteWorkspace(false);
+                setDeleteError(null);
+              }}
+              className="border-border-default text-text-secondary"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteWorkspace}
+              disabled={isDeleting}
+              className="bg-status-blocked hover:bg-status-blocked/90 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete Workspace"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

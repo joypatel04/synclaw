@@ -95,7 +95,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])
-    .index("byEmail", ["email"]),
+    .index("byEmail", ["email"])
+    .index("byCreatedAt", ["createdAt"]),
 
   workspaceWebhooks: defineTable({
     workspaceId: v.id("workspaces"),
@@ -157,7 +158,8 @@ export default defineSchema({
     .index("byWebhook", ["webhookId"])
     .index("byWebhookAndReceivedAt", ["webhookId", "receivedAt"])
     .index("byWorkspaceAndStatus", ["workspaceId", "status"])
-    .index("byWebhookAndProviderEventId", ["webhookId", "providerEventId"]),
+    .index("byWebhookAndProviderEventId", ["webhookId", "providerEventId"])
+    .index("byReceivedAt", ["receivedAt"]),
 
   // ─── API Keys (server-to-server auth for OpenClaw etc.) ────────
 

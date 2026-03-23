@@ -161,6 +161,12 @@ function MembersContent() {
             Webhooks
           </Link>
         ) : null}
+        <Link
+          href="/settings/account"
+          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
+        >
+          Account
+        </Link>
       </div>
 
       {/* Members */}

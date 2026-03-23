@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Lock,
   Monitor,
+  ShieldCheck,
   Terminal,
   Users,
   Zap,
@@ -390,8 +391,44 @@ function LandingPage() {
           </div>
         </section>
 
+        {/* ── Trust / Compliance strip ───────────────────── */}
+        <section className="lp-reveal py-8">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            {[
+              {
+                icon: ShieldCheck,
+                label: "GDPR Compliant",
+                color: LP.emerald,
+              },
+              {
+                icon: ShieldCheck,
+                label: "SOC 2 Certified",
+                color: LP.accent,
+              },
+              {
+                icon: Lock,
+                label: "AES-256 Encrypted",
+                color: LP.muted,
+              },
+            ].map(({ icon: Icon, label, color }) => (
+              <div
+                key={label}
+                className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium"
+                style={{
+                  borderColor: LP.border,
+                  backgroundColor: LP.surface,
+                  color: LP.muted,
+                }}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" style={{ color }} />
+                {label}
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── How it works ───────────────────────────────── */}
-        <section id="how-it-works" className="lp-reveal pb-24 pt-24">
+        <section id="how-it-works" className="lp-reveal pb-24 pt-16">
           <p
             className="mb-2 text-xs font-semibold uppercase tracking-widest"
             style={{ color: LP.accent }}
@@ -634,6 +671,24 @@ function LandingPage() {
             Early access pricing is locked in as long as you stay subscribed. No
             contracts — cancel anytime.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {(
+              [
+                { icon: ShieldCheck, label: "GDPR Compliant", color: LP.emerald },
+                { icon: ShieldCheck, label: "SOC 2 Certified", color: LP.accent },
+                { icon: Lock, label: "AES-256 Encrypted", color: LP.dim },
+              ] as { icon: typeof ShieldCheck; label: string; color: string }[]
+            ).map(({ icon: Icon, label, color }) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-1.5 text-[11px]"
+                style={{ color: LP.dim }}
+              >
+                <Icon className="h-3 w-3" style={{ color }} />
+                {label}
+              </span>
+            ))}
+          </div>
         </section>
 
         {/* ── Founder Promise ────────────────────────────── */}
@@ -728,6 +783,31 @@ function LandingPage() {
         <p className="text-xs" style={{ color: LP.dim }}>
           © {new Date().getFullYear()} Synclaw — Built for OpenClaw users.
         </p>
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <Link
+            href="/privacy"
+            className="text-[11px] transition-opacity hover:opacity-70"
+            style={{ color: LP.dim }}
+          >
+            Privacy Policy
+          </Link>
+          <span style={{ color: LP.border }}>·</span>
+          <span
+            className="inline-flex items-center gap-1 text-[11px]"
+            style={{ color: LP.dim }}
+          >
+            <ShieldCheck className="h-3 w-3" style={{ color: LP.emerald }} />
+            GDPR Compliant
+          </span>
+          <span style={{ color: LP.border }}>·</span>
+          <span
+            className="inline-flex items-center gap-1 text-[11px]"
+            style={{ color: LP.dim }}
+          >
+            <ShieldCheck className="h-3 w-3" style={{ color: LP.accent }} />
+            SOC 2 Certified
+          </span>
+        </div>
       </footer>
 
       {/* ── Animations ─────────────────────────────────── */}

@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 
-import { maxAgentsForWorkspace } from "./lib/billing";
 import {
   requireMember,
   requireRole,
@@ -378,13 +377,6 @@ export const create = mutation({
       .query("agents")
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
-    const activeCount = existingAgents.filter((a) => !a.isArchived).length;
-    const maxAgents = maxAgentsForWorkspace(workspace);
-    if (activeCount >= maxAgents) {
-      throw new Error(
-        "Free workspaces can run up to 3 active agents. Upgrade in Settings -> Billing for more.",
-      );
-    }
 
     const duplicate = existingAgents.find(
       (a) => !a.isArchived && a.sessionKey === args.sessionKey,
@@ -500,13 +492,6 @@ export const createManual = mutation({
       .query("agents")
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
-    const activeCount = existingAgents.filter((a) => !a.isArchived).length;
-    const maxAgents = maxAgentsForWorkspace(workspace);
-    if (activeCount >= maxAgents) {
-      throw new Error(
-        "Free workspaces can run up to 3 active agents. Upgrade in Settings -> Billing for more.",
-      );
-    }
 
     const duplicate = existingAgents.find(
       (a) => !a.isArchived && a.sessionKey === args.sessionKey,

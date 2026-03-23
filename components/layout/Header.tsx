@@ -7,7 +7,6 @@ import {
   Bot,
   Check,
   ChevronDown,
-  CreditCard,
   FileText,
   FolderTree,
   Key,
@@ -46,7 +45,6 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
-  BILLING_ENABLED,
   OPENCLAW_FILES_ENABLED,
   WEBHOOKS_ENABLED,
 } from "@/lib/features";
@@ -250,17 +248,6 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     >
                       <Webhook className="h-4 w-4" />
                       Webhooks
-                    </Link>
-                  </DropdownMenuItem>
-                ) : null}
-                {BILLING_ENABLED ? (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/settings/billing"
-                      className="flex items-center gap-2 text-text-secondary"
-                    >
-                      <CreditCard className="h-4 w-4" />
-                      Billing
                     </Link>
                   </DropdownMenuItem>
                 ) : null}

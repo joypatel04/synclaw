@@ -6,7 +6,6 @@ import {
   requireMember,
   getUserDisplayName,
 } from "./lib/permissions";
-import { defaultTrialEndsAt } from "./lib/billing";
 
 // ─── Queries ─────────────────────────────────────────────────────
 
@@ -107,9 +106,6 @@ export const create = mutation({
       name: args.name.trim(),
       slug: finalSlug,
       createdAt: now,
-      plan: "free",
-      billingStatus: "trialing",
-      trialEndsAt: defaultTrialEndsAt(now),
     });
 
     // Add creator as owner
@@ -165,9 +161,6 @@ export const getOrCreateDefault = mutation({
       name,
       slug,
       createdAt: now,
-      plan: "free",
-      billingStatus: "trialing",
-      trialEndsAt: defaultTrialEndsAt(now),
     });
 
     await ctx.db.insert("workspaceMembers", {
@@ -330,29 +323,6 @@ export const cancelInvite = mutation({
   },
 });
 
-/** Internal-safe helper used by billing flows to initialize defaults for older workspaces. */
-export const setBillingDefaults = mutation({
-  args: {
-    workspaceId: v.id("workspaces"),
-    trialEndsAt: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await requireRole(ctx, args.workspaceId, "owner");
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace) throw new Error("Workspace not found");
-
-    const patch: Record<string, unknown> = {};
-    if (!workspace.plan) patch.plan = "free";
-    if (!workspace.billingStatus) patch.billingStatus = "trialing";
-    if (!workspace.trialEndsAt) {
-      patch.trialEndsAt = args.trialEndsAt ?? defaultTrialEndsAt();
-    }
-    if (Object.keys(patch).length > 0) {
-      await ctx.db.patch(args.workspaceId, patch);
-    }
-  },
-});
-
 /** Update workspace name (owner only). */
 export const updateName = mutation({
   args: {
@@ -365,38 +335,53 @@ export const updateName = mutation({
   },
 });
 
-/** Patch billing-related workspace fields (owner/admin). */
-export const patchBillingState = mutation({
-  args: {
-    workspaceId: v.id("workspaces"),
-    patch: v.object({
-      plan: v.optional(
-        v.union(v.literal("free"), v.literal("starter"), v.literal("pro")),
-      ),
-      billingStatus: v.optional(
-        v.union(
-          v.literal("trialing"),
-          v.literal("active"),
-          v.literal("past_due"),
-          v.literal("canceled"),
-          v.literal("incomplete"),
-        ),
-      ),
-      providerCustomerId: v.optional(v.string()),
-      providerSubscriptionId: v.optional(v.string()),
-      billingCurrency: v.optional(v.union(v.literal("INR"), v.literal("USD"))),
-      graceEndsAt: v.optional(v.number()),
-      currentPeriodEnd: v.optional(v.number()),
-    }),
-  },
+/**
+ * Delete a workspace and all its data (owner only). GDPR Art. 17.
+ * Deletes in batches to stay within the 1 MB mutation budget.
+ * Tables: workspaceMembers, workspaceInvites, workspaceApiKeys, workspaceModelProviderKeys,
+ *         agents, tasks, documents, folders, messages, broadcasts, activities,
+ *         activitySeenByAgent, notifications, openclawGatewayConfigs, workspaceWebhooks,
+ *         webhookPayloads, razorpayEvents, provisioning
+ */
+export const deleteWorkspace = mutation({
+  args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.workspaceId, "admin");
-    const patch: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(args.patch)) {
-      if (value !== undefined) patch[key] = value;
+    await requireRole(ctx, args.workspaceId, "owner");
+
+    const tables = [
+      "workspaceMembers",
+      "workspaceInvites",
+      "workspaceApiKeys",
+      "workspaceModelProviderKeys",
+      "agents",
+      "tasks",
+      "documents",
+      "folders",
+      "messages",
+      "broadcasts",
+      "activities",
+      "activitySeenByAgent",
+      "notifications",
+      "openclawGatewayConfigs",
+      "workspaceWebhooks",
+      "webhookPayloads",
+      "razorpayEvents",
+      "provisioning",
+    ] as const;
+
+    for (const table of tables) {
+      const rows = await (ctx.db.query(table) as any)
+        .withIndex("byWorkspace", (q: any) =>
+          q.eq("workspaceId", args.workspaceId),
+        )
+        .take(500);
+      for (const row of rows) {
+        await ctx.db.delete(row._id);
+      }
     }
-    if (Object.keys(patch).length > 0) {
-      await ctx.db.patch(args.workspaceId, patch);
-    }
+
+    // Delete workspace record last
+    await ctx.db.delete(args.workspaceId);
   },
 });
+

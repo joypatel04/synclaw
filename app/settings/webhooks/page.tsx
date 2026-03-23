@@ -46,6 +46,9 @@ function SettingsTabs() {
       >
         Webhooks
       </Link>
+      <Link href="/settings/account" className={`${base} ${inactive}`}>
+        Account
+      </Link>
     </div>
   );
 }
