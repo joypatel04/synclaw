@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Settings } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { WEBHOOKS_ENABLED } from "@/lib/features";
 
 function SettingsContent() {
   const { workspace, role, canAdmin } = useWorkspace();
@@ -72,14 +72,6 @@ function SettingsContent() {
             className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
           >
             Webhooks
-          </Link>
-        ) : null}
-        {BILLING_ENABLED ? (
-          <Link
-            href="/settings/billing"
-            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-          >
-            Billing
           </Link>
         ) : null}
       </div>

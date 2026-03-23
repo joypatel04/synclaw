@@ -24,7 +24,6 @@ import { canUseCapability } from "@/lib/edition";
 import {
   AGENT_SETUP_ADVANCED_ENABLED,
   ASSISTED_LAUNCH_BETA_ENABLED,
-  BILLING_ENABLED,
   MANAGED_BETA_ENABLED,
   MANAGED_INTERNAL_CONTROLS_ENABLED,
   WEBHOOKS_ENABLED,
@@ -75,7 +74,7 @@ const FIXED_GATEWAY_SCOPES = [
 function SettingsTabs({
   active,
 }: {
-  active: "general" | "members" | "openclaw" | "billing";
+  active: "general" | "members" | "openclaw";
 }) {
   const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
   const activeCls = "border-accent-orange text-accent-orange";
@@ -105,14 +104,6 @@ function SettingsTabs({
       {WEBHOOKS_ENABLED ? (
         <Link href="/settings/webhooks" className={`${base} ${inactiveCls}`}>
           Webhooks
-        </Link>
-      ) : null}
-      {BILLING_ENABLED ? (
-        <Link
-          href="/settings/billing"
-          className={`${base} ${active === "billing" ? activeCls : inactiveCls}`}
-        >
-          Billing
         </Link>
       ) : null}
     </div>

@@ -3,7 +3,6 @@ export type Edition = "core" | "commercial";
 export type CommercialCapability =
   | "managedProvisioning"
   | "assistedLaunch"
-  | "billing"
   | "prioritySupport"
   | "managedGatewayAutomation";
 
@@ -11,14 +10,12 @@ const CAPABILITY_MATRIX: Record<Edition, Record<CommercialCapability, boolean>> 
   core: {
     managedProvisioning: false,
     assistedLaunch: false,
-    billing: false,
     prioritySupport: false,
     managedGatewayAutomation: false,
   },
   commercial: {
     managedProvisioning: true,
     assistedLaunch: true,
-    billing: true,
     prioritySupport: true,
     managedGatewayAutomation: true,
   },

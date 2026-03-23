@@ -26,21 +26,10 @@ import { Check, Copy, Key, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
-import { canUseCapability } from "@/lib/edition";
 
 function ApiKeysContent() {
   const { workspaceId, canAdmin } = useWorkspace();
-  const billingEnabled = canUseCapability("billing");
-  const canUseApiKeys =
-    useQuery(
-      api.billing_razorpay.canUseFeature,
-      billingEnabled
-        ? {
-            workspaceId,
-            featureKey: "api_keys",
-          }
-        : "skip",
-    ) ?? !billingEnabled;
+  const canUseApiKeys = true;
   const keys = useQuery(api.apiKeys.list, { workspaceId }) ?? [];
   const createKey = useMutation(api.apiKeys.create);
   const revokeKey = useMutation(api.apiKeys.revoke);
@@ -116,27 +105,6 @@ function ApiKeysContent() {
     );
   }
 
-  if (!canUseApiKeys) {
-    return (
-      <div className="mx-auto max-w-2xl p-3 sm:p-6">
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-6 text-center">
-          <h2 className="text-base font-semibold text-text-primary">
-            API keys require Starter or Pro
-          </h2>
-          <p className="mt-2 text-sm text-text-muted">
-            Upgrade this workspace to unlock server-to-server keys for OpenClaw
-            and integrations.
-          </p>
-          <Button
-            asChild
-            className="mt-4 bg-accent-orange hover:bg-accent-orange/90 text-white"
-          >
-            <Link href="/settings/billing">Go to Billing</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto max-w-2xl p-3 sm:p-6">

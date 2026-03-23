@@ -80,7 +80,7 @@ type KanbanPreviewColumn = {
   tasks: KanbanPreviewTask[];
 };
 
-const ROTATION_INTERVAL_MS = 3500;
+const ROTATION_INTERVAL_MS = 5200;
 const TOUCH_RESUME_DELAY_MS = 900;
 
 const cardOrder: HeroCardKind[] = ["agents", "liveFeed", "kanban"];
@@ -419,9 +419,9 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
   };
 
   return (
-    <div className="lp-float relative">
+    <div className="lp-float relative isolate">
       <section
-        className="relative overflow-hidden rounded-2xl"
+        className="relative z-10 overflow-hidden rounded-2xl"
         style={{
           border: `1px solid ${palette.border}`,
           backgroundColor: "rgba(12,14,22,0.9)",
@@ -496,7 +496,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                 key={kind}
                 aria-hidden={!isActive}
                 className={cn(
-                  "absolute inset-0 p-3 transition-[opacity,transform] duration-[380ms] ease-out",
+                  "absolute inset-0 p-3 transition-[opacity,transform] duration-[560ms] ease-out",
                   isActive
                     ? "opacity-100 translate-y-0 scale-100"
                     : "pointer-events-none opacity-0 translate-y-2 scale-[0.985]",
@@ -860,7 +860,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
         </div>
       </section>
 
-      <div className="pointer-events-none absolute -right-10 top-6 z-30 hidden xl:block">
+      <div className="pointer-events-none absolute -right-10 top-6 z-50 hidden lg:block">
         <div
           className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
           style={{
@@ -885,7 +885,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute -right-12 top-1/2 z-30 hidden -translate-y-1/2 xl:block">
+      <div className="pointer-events-none absolute -right-12 top-1/2 z-50 hidden -translate-y-1/2 lg:block">
         <div
           className="rounded-2xl border px-4 py-3 shadow-2xl"
           style={{
@@ -908,7 +908,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute -bottom-7 -left-8 z-30 hidden xl:block">
+      <div className="pointer-events-none absolute -bottom-7 -left-8 z-50 hidden lg:block">
         <div
           className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
           style={{
