@@ -419,7 +419,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
   };
 
   return (
-    <div className="lp-float">
+    <div className="lp-float relative">
       <section
         className="relative overflow-hidden rounded-2xl"
         style={{
@@ -433,77 +433,6 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="pointer-events-none absolute -right-5 top-8 z-20 hidden lg:block">
-          <div
-            className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
-            style={{
-              borderColor: palette.borderStrong,
-              backgroundColor: "rgba(8,10,15,0.94)",
-            }}
-          >
-            <div className="flex items-center gap-2 text-[12px] font-medium">
-              <span
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full"
-                style={{ backgroundColor: "rgba(16,185,129,0.14)" }}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: palette.emerald }}
-                />
-              </span>
-              <span style={{ color: "rgba(255,255,255,0.86)" }}>
-                {activeData.syncLabel}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="pointer-events-none absolute -right-6 bottom-24 z-20 hidden lg:block">
-          <div
-            className="rounded-2xl border px-4 py-3 shadow-2xl"
-            style={{
-              borderColor: palette.borderStrong,
-              backgroundColor: "rgba(8,10,15,0.94)",
-            }}
-          >
-            <p
-              className="text-[11px]"
-              style={{ color: "rgba(255,255,255,0.46)" }}
-            >
-              {activeData.metricLabel}
-            </p>
-            <p
-              className="text-xl font-semibold"
-              style={{ color: palette.accent }}
-            >
-              {activeData.metricValue}
-            </p>
-          </div>
-        </div>
-
-        <div className="pointer-events-none absolute -left-5 bottom-8 z-20 hidden lg:block">
-          <div
-            className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
-            style={{
-              borderColor: palette.borderStrong,
-              backgroundColor: "rgba(8,10,15,0.94)",
-            }}
-          >
-            <p
-              className="text-[12px] font-medium"
-              style={{ color: "rgba(255,255,255,0.88)" }}
-            >
-              {activeData.noteTitle}
-            </p>
-            <p
-              className="text-[11px]"
-              style={{ color: "rgba(255,255,255,0.48)" }}
-            >
-              {activeData.noteValue}
-            </p>
-          </div>
-        </div>
-
         <div
           className="flex items-center justify-between border-b px-4 py-3"
           style={{ borderColor: palette.border }}
@@ -930,6 +859,77 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
           </span>
         </div>
       </section>
+
+      <div className="pointer-events-none absolute -right-10 top-6 z-30 hidden xl:block">
+        <div
+          className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
+          style={{
+            borderColor: palette.borderStrong,
+            backgroundColor: "rgba(8,10,15,0.94)",
+          }}
+        >
+          <div className="flex items-center gap-2 text-[12px] font-medium">
+            <span
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(16,185,129,0.14)" }}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: palette.emerald }}
+              />
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.86)" }}>
+              {activeData.syncLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute -right-12 top-1/2 z-30 hidden -translate-y-1/2 xl:block">
+        <div
+          className="rounded-2xl border px-4 py-3 shadow-2xl"
+          style={{
+            borderColor: palette.borderStrong,
+            backgroundColor: "rgba(8,10,15,0.94)",
+          }}
+        >
+          <p
+            className="text-[11px]"
+            style={{ color: "rgba(255,255,255,0.46)" }}
+          >
+            {activeData.metricLabel}
+          </p>
+          <p
+            className="text-xl font-semibold"
+            style={{ color: palette.accent }}
+          >
+            {activeData.metricValue}
+          </p>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute -bottom-7 -left-8 z-30 hidden xl:block">
+        <div
+          className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
+          style={{
+            borderColor: palette.borderStrong,
+            backgroundColor: "rgba(8,10,15,0.94)",
+          }}
+        >
+          <p
+            className="text-[12px] font-medium"
+            style={{ color: "rgba(255,255,255,0.88)" }}
+          >
+            {activeData.noteTitle}
+          </p>
+          <p
+            className="text-[11px]"
+            style={{ color: "rgba(255,255,255,0.48)" }}
+          >
+            {activeData.noteValue}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
