@@ -341,14 +341,15 @@ export const updateName = mutation({
  * Tables: workspaceMembers, workspaceInvites, workspaceApiKeys, workspaceModelProviderKeys,
  *         agents, tasks, documents, folders, messages, broadcasts, activities,
  *         activitySeenByAgent, notifications, openclawGatewayConfigs, workspaceWebhooks,
- *         webhookPayloads, razorpayEvents, provisioning
+ *         webhookPayloads, razorpayEvents, openclawProvisioningJobs
  */
 export const deleteWorkspace = mutation({
   args: { workspaceId: v.id("workspaces") },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.workspaceId, "owner");
 
-    const tables = [
+    // Tables with a "byWorkspace" index on workspaceId
+    const byWorkspaceTables = [
       "workspaceMembers",
       "workspaceInvites",
       "workspaceApiKeys",
@@ -360,24 +361,33 @@ export const deleteWorkspace = mutation({
       "messages",
       "broadcasts",
       "activities",
-      "activitySeenByAgent",
       "notifications",
       "openclawGatewayConfigs",
       "workspaceWebhooks",
       "webhookPayloads",
       "razorpayEvents",
-      "provisioning",
+      "openclawProvisioningJobs",
     ] as const;
 
-    for (const table of tables) {
-      const rows = await (ctx.db.query(table) as any)
-        .withIndex("byWorkspace", (q: any) =>
-          q.eq("workspaceId", args.workspaceId),
+    for (const table of byWorkspaceTables) {
+      const rows = await ctx.db
+        .query(table)
+        .withIndex("byWorkspace", (q) =>
+          (q as any).eq("workspaceId", args.workspaceId),
         )
         .take(500);
       for (const row of rows) {
         await ctx.db.delete(row._id);
       }
+    }
+
+    // activitySeenByAgent uses byWorkspaceAgent (workspaceId + agentId) — filter instead
+    const seenRows = await ctx.db
+      .query("activitySeenByAgent")
+      .filter((q) => q.eq(q.field("workspaceId"), args.workspaceId))
+      .take(500);
+    for (const row of seenRows) {
+      await ctx.db.delete(row._id);
     }
 
     // Delete workspace record last
