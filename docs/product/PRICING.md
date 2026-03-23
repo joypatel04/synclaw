@@ -1,36 +1,33 @@
-# Pricing
+# Pricing and Packaging
 
-## Packaging model
+## Product tracks
 
-### Cloud Starter
+### Cloud
 
-- For individuals and small teams
-- Managed product experience
-- Lower operational overhead
+Position Cloud as the default for most users:
 
-### Cloud Pro
+- fastest time-to-value
+- managed operations
+- lower setup/maintenance burden
 
-- For advanced users and business teams
-- Expanded limits and controls
-- Better fit for high-frequency workflows
+### Self-hosted
 
-### Self-hosted OSS
+Position self-hosted for technical teams:
 
-- Source-available deployment model
-- No managed infra by default
-- Best for technical teams
+- full infrastructure ownership
+- deeper customization
+- higher operational responsibility
 
-## Support tier
+## Commercial framing
 
-Offer paid support for:
+- Cloud monetizes convenience, reliability, and speed.
+- Self-hosted offers control and flexibility.
+- Paid support can cover installation, migration, and priority incident help.
 
-- setup assistance
-- migration help
-- priority troubleshooting
+## Beta-stage recommendation
 
-## Positioning summary
+Keep packaging simple:
 
-- Cloud = convenience and speed
-- Self-hosted = control and customization
-- Support = confidence for complex deployments
-
+1. One clear Cloud offer.
+2. Self-hosted available for technical adopters.
+3. Optional support add-on for high-touch customers.

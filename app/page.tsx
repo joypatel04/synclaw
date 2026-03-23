@@ -1,16 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
 import { useConvexAuth } from "convex/react";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
-import { AgentPanel } from "@/components/dashboard/AgentPanel";
-import { LiveFeed } from "@/components/dashboard/LiveFeed";
 import {
   Activity,
   ArrowRight,
-  BarChart2,
   Bot,
   Calendar,
   CheckCircle2,
@@ -21,8 +14,15 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { useState } from "react";
+import { AgentPanel } from "@/components/dashboard/AgentPanel";
+import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
+import { LiveFeed } from "@/components/dashboard/LiveFeed";
+import { HeroDashboardCarousel } from "@/components/landing/HeroDashboardCarousel";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { brand } from "@/lib/brand";
+import { cn } from "@/lib/utils";
 
 type MobileTab = "board" | "agents" | "activity";
 
@@ -82,6 +82,7 @@ function DashboardContent() {
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     "flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-smooth",
@@ -138,11 +139,6 @@ function LandingPage() {
       text: "Task management built for AI agent workflows. Assign, track, and ship from one drag-and-drop board.",
     },
     {
-      icon: BarChart2,
-      title: "Cost Tracking",
-      text: "See what you're spending on model calls, updated in real time. No more surprise bills at end of month.",
-    },
-    {
       icon: Users,
       title: "Team Access",
       text: "Role-based permissions for your whole team — owner, admin, member, or viewer. You control who sees what.",
@@ -183,7 +179,6 @@ function LandingPage() {
   const pricingFeatures = [
     "Real-time agent monitoring",
     "Kanban task management",
-    "Live cost tracking",
     "Team access (up to 10 members)",
     "Full activity audit log",
     "Secure encrypted connection",
@@ -362,194 +357,8 @@ function LandingPage() {
             </div>
           </div>
 
-          {/* Right: Dashboard mockup */}
-          <div className="lp-float">
-            <div
-              className="relative overflow-hidden rounded-2xl"
-              style={{
-                border: `1px solid ${LP.border}`,
-                backgroundColor: "rgba(12,14,22,0.9)",
-                boxShadow: `0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px ${LP.border}, inset 0 1px 0 rgba(255,255,255,0.06)`,
-              }}
-            >
-              {/* Browser chrome */}
-              <div
-                className="flex items-center justify-between border-b px-4 py-3"
-                style={{ borderColor: LP.border }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1.5">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: "#EF4444", opacity: 0.5 }}
-                    />
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: LP.amber, opacity: 0.5 }}
-                    />
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: LP.emerald, opacity: 0.5 }}
-                    />
-                  </div>
-                  <span
-                    className="rounded-md px-3 py-0.5 text-[10px]"
-                    style={{
-                      backgroundColor: LP.surface,
-                      color: "rgba(255,255,255,0.3)",
-                    }}
-                  >
-                    app.synclaw.io / dashboard
-                  </span>
-                </div>
-                <div
-                  className="flex items-center gap-1.5 text-[11px] font-medium"
-                  style={{ color: LP.emerald }}
-                >
-                  <span
-                    className="lp-pulse h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: LP.emerald }}
-                  />
-                  Live
-                </div>
-              </div>
-
-              {/* Dashboard layout */}
-              <div className="grid" style={{ gridTemplateColumns: "160px 1fr" }}>
-                {/* Agents sidebar */}
-                <div
-                  className="space-y-1.5 p-3"
-                  style={{ borderRight: `1px solid ${LP.border}` }}
-                >
-                  <p
-                    className="px-1 pb-1.5 text-[9px] font-semibold uppercase tracking-widest"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                  >
-                    Agents
-                  </p>
-                  {[
-                    { name: "Research", status: "online", cost: "$1.24" },
-                    { name: "Writer", status: "online", cost: "$0.87" },
-                    { name: "QA Agent", status: "idle", cost: "$0.12" },
-                  ].map((agent) => (
-                    <div
-                      key={agent.name}
-                      className="rounded-lg px-2.5 py-2"
-                      style={{
-                        backgroundColor: LP.surface,
-                        border: `1px solid ${LP.border}`,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{
-                            backgroundColor:
-                              agent.status === "online"
-                                ? LP.emerald
-                                : "rgba(255,255,255,0.18)",
-                          }}
-                        />
-                        <span
-                          className="flex-1 truncate text-[11px]"
-                          style={{ color: "rgba(255,255,255,0.65)" }}
-                        >
-                          {agent.name}
-                        </span>
-                      </div>
-                      <p
-                        className="mt-0.5 pl-3.5 text-[10px] font-mono"
-                        style={{ color: "rgba(255,255,255,0.25)" }}
-                      >
-                        {agent.cost}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Activity feed */}
-                <div className="space-y-2 p-3">
-                  <p
-                    className="px-1 pb-1.5 text-[9px] font-semibold uppercase tracking-widest"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                  >
-                    Live Activity
-                  </p>
-                  {[
-                    {
-                      dot: LP.emerald,
-                      text: "Task completed: Research brief",
-                      time: "2m ago",
-                    },
-                    {
-                      dot: LP.accent,
-                      text: "Writer: started new task",
-                      time: "5m ago",
-                    },
-                    {
-                      dot: LP.amber,
-                      text: "Cost: $0.08 this session",
-                      time: "5m ago",
-                    },
-                    {
-                      dot: LP.accent,
-                      text: "Task assigned → Research",
-                      time: "12m ago",
-                    },
-                    {
-                      dot: LP.emerald,
-                      text: "Agent heartbeat received",
-                      time: "14m ago",
-                    },
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2.5"
-                      style={{ opacity: i > 2 ? 0.5 : 1 }}
-                    >
-                      <span
-                        className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: item.dot }}
-                      />
-                      <div className="min-w-0">
-                        <p
-                          className="truncate text-[11px]"
-                          style={{ color: "rgba(255,255,255,0.6)" }}
-                        >
-                          {item.text}
-                        </p>
-                        <p
-                          className="text-[10px]"
-                          style={{ color: "rgba(255,255,255,0.22)" }}
-                        >
-                          {item.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bottom cost bar */}
-              <div
-                className="flex items-center justify-between border-t px-4 py-2.5"
-                style={{ borderColor: LP.border }}
-              >
-                <span
-                  className="text-[10px]"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
-                >
-                  3 agents connected
-                </span>
-                <span
-                  className="font-mono text-[10px]"
-                  style={{ color: LP.emerald }}
-                >
-                  $2.23 this week
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* Right: Dashboard carousel mockup */}
+          <HeroDashboardCarousel palette={LP} />
         </section>
 
         {/* ── Proof strip ────────────────────────────────── */}
@@ -597,7 +406,10 @@ function LandingPage() {
             <br />
             Personal by design.
           </h2>
-          <p className="mb-16 max-w-md text-base leading-relaxed" style={{ color: LP.muted }}>
+          <p
+            className="mb-16 max-w-md text-base leading-relaxed"
+            style={{ color: LP.muted }}
+          >
             {brand.marketing.operatorFlowBody}
           </p>
 
@@ -606,7 +418,10 @@ function LandingPage() {
               <div key={n}>
                 <div
                   className="mb-5 text-5xl font-bold tabular-nums leading-none tracking-[-0.04em]"
-                  style={{ color: LP.accentDim, WebkitTextStroke: `1px ${LP.accentGlow}` }}
+                  style={{
+                    color: LP.accentDim,
+                    WebkitTextStroke: `1px ${LP.accentGlow}`,
+                  }}
                 >
                   {n}
                 </div>
@@ -816,8 +631,8 @@ function LandingPage() {
           </div>
 
           <p className="mt-6 text-xs" style={{ color: LP.dim }}>
-            Early access pricing is locked in as long as you stay subscribed.
-            No contracts — cancel anytime.
+            Early access pricing is locked in as long as you stay subscribed. No
+            contracts — cancel anytime.
           </p>
         </section>
 
@@ -849,8 +664,8 @@ function LandingPage() {
               Every new customer gets a 1-on-1 setup call with me directly.
               We&apos;ll connect your OpenClaw instance, configure your agents,
               and make sure everything runs exactly the way you want it. No
-              ticket queue. No onboarding doc maze. Just a real conversation
-              and a working setup.
+              ticket queue. No onboarding doc maze. Just a real conversation and
+              a working setup.
             </p>
             <Link
               href="/login"

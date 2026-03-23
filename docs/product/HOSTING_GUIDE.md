@@ -7,12 +7,7 @@ This guide documents production-style setup for both Cloud and Self-hosted deplo
 - Cloud hosting:
   - `docs/product/CLOUD_GET_STARTED.md`
 - Self-hosted hosting:
-  - `docs/product/SELF_HOSTED_PREREQUISITES.md`
-  - `docs/product/SELF_HOSTED_SETUP_CONVEX.md`
-  - `docs/product/SELF_HOSTED_SETUP_MCP.md`
-  - `docs/product/SELF_HOSTED_SETUP_FILES_BRIDGE.md`
-  - `docs/product/SELF_HOSTED_RUN_LOCAL.md`
-  - `docs/product/SELF_HOSTED_TROUBLESHOOTING.md`
+  - `docs/product/SELF_HOSTED_GUIDE.md`
   - environment reference in app docs: `/docs/hosting/environment`
 
 ## Hosting model decision

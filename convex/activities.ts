@@ -62,15 +62,17 @@ export const recent = query({
     const limit = args.limit ?? 50;
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
+    // Use compound index to push the 7-day window into the DB query.
+    // Overfetch by 3x to account for isRelevantActivity filtering noise.
     const activities = await ctx.db
       .query("activities")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .withIndex("byWorkspaceCreatedAt", (q) =>
+        q.eq("workspaceId", args.workspaceId).gte("createdAt", sevenDaysAgo),
+      )
       .order("desc")
-      .collect();
+      .take(limit * 3);
 
-    return activities
-      .filter((a) => a.createdAt >= sevenDaysAgo && isRelevantActivity(a))
-      .slice(0, limit);
+    return activities.filter((a) => isRelevantActivity(a)).slice(0, limit);
   },
 });
 
@@ -88,12 +90,16 @@ export const getByAgent = query({
     await requireMember(ctx, args.workspaceId);
     const limit = args.limit ?? 50;
     const typeSet = args.types ? new Set(args.types) : null;
+    // Default to 7-day window if no `since` provided.
+    const floor = args.since ?? Date.now() - 7 * 24 * 60 * 60 * 1000;
 
     const activities = await ctx.db
       .query("activities")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .withIndex("byWorkspaceCreatedAt", (q) =>
+        q.eq("workspaceId", args.workspaceId).gte("createdAt", floor),
+      )
       .order("desc")
-      .collect();
+      .take(limit * 5);
 
     return activities
       .filter((activity) => {
@@ -101,8 +107,6 @@ export const getByAgent = query({
         if (args.agentId && activity.agentId !== args.agentId) return false;
         if (typeSet && !typeSet.has(activity.type)) return false;
         if (args.taskId && activity.taskId !== args.taskId) return false;
-        if (args.since !== undefined && activity.createdAt < args.since)
-          return false;
         return true;
       })
       .slice(0, limit);
@@ -120,19 +124,19 @@ export const getWithMention = query({
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
     const limit = args.limit ?? 50;
+    const floor = args.since ?? Date.now() - 7 * 24 * 60 * 60 * 1000;
 
     const activities = await ctx.db
       .query("activities")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .withIndex("byWorkspaceCreatedAt", (q) =>
+        q.eq("workspaceId", args.workspaceId).gte("createdAt", floor),
+      )
       .order("desc")
-      .collect();
+      .take(limit * 5);
 
     return activities
       .filter((activity) => {
         if (activity.type !== "message_sent") return false;
-        if (args.since !== undefined && activity.createdAt < args.since)
-          return false;
-
         const mentionedAgentIds = activity.metadata?.mentionedAgentIds;
         return (
           Array.isArray(mentionedAgentIds) &&
@@ -158,29 +162,31 @@ export const getUnseen = query({
     }
 
     const watermark = agent.lastSeenActivityAt ?? 0;
+
+    // Push watermark filter into DB using compound index.
+    // Order asc (oldest-first) so agents catch up in chronological order.
+    // Cap at 200 to bound bandwidth — agents with a recent watermark read near-zero rows.
+    const candidates = await ctx.db
+      .query("activities")
+      .withIndex("byWorkspaceCreatedAt", (q) =>
+        q.eq("workspaceId", args.workspaceId).gt("createdAt", watermark),
+      )
+      .order("asc")
+      .take(200);
+
+    if (candidates.length === 0) return [];
+
+    // Only fetch explicitly-acknowledged records when there are candidates.
+    // Cap at 500 to prevent unbounded growth of activitySeenByAgent from causing regression.
     const specificallySeen = await ctx.db
       .query("activitySeenByAgent")
       .withIndex("byWorkspaceAgent", (q) =>
         q.eq("workspaceId", args.workspaceId).eq("agentId", args.agentId),
       )
-      .collect();
+      .take(500);
     const seenIds = new Set(specificallySeen.map((row) => row.activityId));
 
-    const activities = await ctx.db
-      .query("activities")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .order("desc")
-      .collect();
-
-    // Filter to only unseen, then reverse to chronological order (oldest first)
-    return activities
-      .filter(
-        (a) =>
-          a.createdAt > watermark &&
-          isRelevantActivity(a) &&
-          !seenIds.has(a._id),
-      )
-      .reverse();
+    return candidates.filter((a) => isRelevantActivity(a) && !seenIds.has(a._id));
   },
 });
 

@@ -284,15 +284,10 @@ server.tool(
       .string()
       .optional()
       .describe("Deprecated: use telemetry.openclawVersion"),
-    totalTokensUsed: z
-      .number()
-      .optional()
-      .describe("Cumulative tokens used by this agent"),
     lastRunDurationMs: z
       .number()
       .optional()
       .describe("Duration of last run in milliseconds"),
-    lastRunCost: z.number().optional().describe("Cost of last run in USD"),
     telemetry: z
       .object({
         currentModel: z
@@ -303,15 +298,10 @@ server.tool(
           .string()
           .optional()
           .describe("OpenClaw version (e.g., '2026.2.9')"),
-        totalTokensUsed: z
-          .number()
-          .optional()
-          .describe("Cumulative tokens used by this agent"),
         lastRunDurationMs: z
           .number()
           .optional()
           .describe("Duration of last run in milliseconds"),
-        lastRunCost: z.number().optional().describe("Cost of last run in USD"),
       })
       .optional()
       .describe("Optional telemetry data"),
@@ -323,24 +313,15 @@ server.tool(
     telemetry,
     currentModel,
     openclawVersion,
-    totalTokensUsed,
     lastRunDurationMs,
-    lastRunCost,
   }) => {
     const mergedTelemetry =
-      telemetry ||
-      currentModel ||
-      openclawVersion ||
-      totalTokensUsed ||
-      lastRunDurationMs ||
-      lastRunCost
+      telemetry || currentModel || openclawVersion || lastRunDurationMs
         ? {
             ...(telemetry ?? {}),
             ...(currentModel ? { currentModel } : {}),
             ...(openclawVersion ? { openclawVersion } : {}),
-            ...(totalTokensUsed ? { totalTokensUsed } : {}),
             ...(lastRunDurationMs ? { lastRunDurationMs } : {}),
-            ...(lastRunCost ? { lastRunCost } : {}),
           }
         : undefined;
 
@@ -405,15 +386,10 @@ server.tool(
       .object({
         currentModel: z.string().optional().describe("Model name"),
         openclawVersion: z.string().optional().describe("OpenClaw version"),
-        totalTokensUsed: z
-          .number()
-          .optional()
-          .describe("Cumulative tokens used"),
         lastRunDurationMs: z
           .number()
           .optional()
           .describe("Duration of this run in milliseconds"),
-        lastRunCost: z.number().optional().describe("Cost of this run in USD"),
       })
       .optional()
       .describe("Telemetry from this run"),

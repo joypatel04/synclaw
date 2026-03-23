@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+
 import { maxAgentsForWorkspace } from "./lib/billing";
 import {
   requireMember,
@@ -11,9 +11,7 @@ import {
 const defaultTelemetry = {
   currentModel: "unknown",
   openclawVersion: "unknown",
-  totalTokensUsed: 0,
   lastRunDurationMs: 0,
-  lastRunCost: 0,
 };
 
 const MAIN_AGENT_SESSION_KEY = "agent:main:main";
@@ -173,9 +171,7 @@ export const agentPulse = mutation({
       v.object({
         currentModel: v.optional(v.string()),
         openclawVersion: v.optional(v.string()),
-        totalTokensUsed: v.optional(v.number()),
         lastRunDurationMs: v.optional(v.number()),
-        lastRunCost: v.optional(v.float64()),
       }),
     ),
   },
@@ -282,9 +278,7 @@ export const endTaskSession = mutation({
       v.object({
         currentModel: v.optional(v.string()),
         openclawVersion: v.optional(v.string()),
-        totalTokensUsed: v.optional(v.number()),
         lastRunDurationMs: v.optional(v.number()),
-        lastRunCost: v.optional(v.float64()),
       }),
     ),
     runSummary: v.optional(v.string()),
@@ -298,7 +292,6 @@ export const endTaskSession = mutation({
       ...defaultTelemetry,
       ...(agent.telemetry ?? {}),
     };
-    const runTokens = args.telemetry?.totalTokensUsed ?? 0;
     const nextTelemetry =
       args.telemetry === undefined
         ? previous
@@ -306,10 +299,8 @@ export const endTaskSession = mutation({
             currentModel: args.telemetry.currentModel ?? previous.currentModel,
             openclawVersion:
               args.telemetry.openclawVersion ?? previous.openclawVersion,
-            totalTokensUsed: previous.totalTokensUsed + Math.max(0, runTokens),
             lastRunDurationMs:
               args.telemetry.lastRunDurationMs ?? previous.lastRunDurationMs,
-            lastRunCost: args.telemetry.lastRunCost ?? previous.lastRunCost,
           };
 
     const patch: Partial<typeof agent> = {
@@ -347,20 +338,6 @@ export const endTaskSession = mutation({
       },
       createdAt: now,
     });
-
-    // Log run for cost tracking (if telemetry provided)
-    // Note: We log runs even if cost is $0.00 (free models) to track activity
-    if (args.telemetry?.lastRunCost !== undefined) {
-      await ctx.db.insert("agentRuns", {
-        workspaceId: agent.workspaceId,
-        agentId: args.agentId,
-        taskId: currentTaskId,
-        cost: args.telemetry.lastRunCost, // Can be 0.00 for free models
-        tokensUsed: runTokens,
-        durationMs: args.telemetry.lastRunDurationMs ?? 0,
-        createdAt: now,
-      });
-    }
   },
 });
 
@@ -752,157 +729,3 @@ export const _rollbackCreatedAgentForSetupFailure = internalMutation({
   },
 });
 
-/**
- * Calculate daily burn rate (total cost spent today).
- * Aggregates all agent runs from today.
- */
-export const getDailyBurnRate = query({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayStartMs = todayStart.getTime();
-
-    const runs = await ctx.db
-      .query("agentRuns")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .filter((q) => q.gte(q.field("createdAt"), todayStartMs))
-      .collect();
-
-    const totalCost = runs.reduce((sum, run) => sum + run.cost, 0);
-    const totalTokens = runs.reduce((sum, run) => sum + run.tokensUsed, 0);
-    const totalDuration = runs.reduce((sum, run) => sum + run.durationMs, 0);
-
-    // Get unique agents that ran today
-    const agentIds = new Set(runs.map((r) => r.agentId));
-    const allAgents = await ctx.db
-      .query("agents")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .collect();
-
-    return {
-      totalCost,
-      totalTokens,
-      totalDurationMs: totalDuration,
-      runCount: runs.length,
-      activeAgentCount: agentIds.size,
-      totalAgentCount: allAgents.filter((a) => !a.isArchived).length,
-      currency: "USD",
-    };
-  },
-});
-
-/**
- * Get cost breakdown for a specific task.
- * Sums all runs associated with this task.
- */
-export const getTaskCost = query({
-  args: {
-    workspaceId: v.id("workspaces"),
-    taskId: v.id("tasks"),
-  },
-  handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
-
-    const runs = await ctx.db
-      .query("agentRuns")
-      .withIndex("byTask", (q) => q.eq("taskId", args.taskId))
-      .collect();
-
-    const totalCost = runs.reduce((sum, run) => sum + run.cost, 0);
-    const totalTokens = runs.reduce((sum, run) => sum + run.tokensUsed, 0);
-    const totalDuration = runs.reduce((sum, run) => sum + run.durationMs, 0);
-
-    // Group by agent
-    const byAgent: Record<string, { cost: number; runs: number }> = {};
-    for (const run of runs) {
-      const agentId = run.agentId;
-      if (!byAgent[agentId]) {
-        byAgent[agentId] = { cost: 0, runs: 0 };
-      }
-      byAgent[agentId].cost += run.cost;
-      byAgent[agentId].runs += 1;
-    }
-
-    return {
-      taskId: args.taskId,
-      totalCost,
-      totalTokens,
-      totalDurationMs: totalDuration,
-      runCount: runs.length,
-      byAgent,
-      currency: "USD",
-    };
-  },
-});
-
-/** Get run telemetry summary and recent runs for an agent (viewer+). */
-export const getRunOverviewByAgent = query({
-  args: {
-    workspaceId: v.id("workspaces"),
-    agentId: v.id("agents"),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
-    const agent = await ctx.db.get(args.agentId);
-    if (!agent || agent.workspaceId !== args.workspaceId) {
-      throw new Error("Agent not found");
-    }
-
-    const limit = Math.max(1, Math.min(args.limit ?? 20, 100));
-    const runs = await ctx.db
-      .query("agentRuns")
-      .withIndex("byAgent", (q) => q.eq("agentId", args.agentId))
-      .order("desc")
-      .take(limit);
-
-    const now = Date.now();
-    const window24h = now - 24 * 60 * 60 * 1000;
-    const window7d = now - 7 * 24 * 60 * 60 * 1000;
-
-    const runs24h = runs.filter((r) => r.createdAt >= window24h);
-    const runs7d = runs.filter((r) => r.createdAt >= window7d);
-
-    const allTaskIds = [
-      ...new Set(
-        runs
-          .map((r) => r.taskId)
-          .filter((id): id is Id<"tasks"> => id !== null),
-      ),
-    ];
-    const taskTitleById = new Map<string, string>();
-    for (const taskId of allTaskIds) {
-      const task = await ctx.db.get(taskId);
-      if (task && task.workspaceId === args.workspaceId) {
-        taskTitleById.set(task._id, task.title);
-      }
-    }
-
-    const sum = (items: typeof runs) =>
-      items.reduce(
-        (acc, run) => {
-          acc.cost += run.cost;
-          acc.tokensUsed += run.tokensUsed;
-          acc.durationMs += run.durationMs;
-          acc.runCount += 1;
-          return acc;
-        },
-        { cost: 0, tokensUsed: 0, durationMs: 0, runCount: 0 },
-      );
-
-    return {
-      recentRuns: runs.map((run) => ({
-        ...run,
-        taskTitle:
-          run.taskId && taskTitleById.get(String(run.taskId))
-            ? taskTitleById.get(String(run.taskId))
-            : null,
-      })),
-      totals24h: sum(runs24h),
-      totals7d: sum(runs7d),
-    };
-  },
-});

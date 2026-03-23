@@ -16,8 +16,8 @@
     "benefitBullets": [
       "Real-time agent monitoring",
       "Kanban task management",
-      "Live cost tracking",
-      "Role-based team access"
+      "Role-based team access",
+      "Full activity audit log"
     ],
     "snapshotTitle": "Mission Control",
     "snapshotLiveLabel": "Online",
@@ -59,7 +59,6 @@
     "whyBullets": [
       "Real-time agent status and health monitoring",
       "Kanban task management built for AI workflows",
-      "Live cost tracking across all model calls",
       "Team access with role-based permissions",
       "Secure encrypted connections to your OpenClaw instance",
       "Full activity audit log with 7-day retention"

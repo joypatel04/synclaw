@@ -72,11 +72,6 @@ function AgentHealthInner() {
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
   };
 
-  const formatCost = (cost: number | undefined) => {
-    if (cost === undefined || cost === null) return "$0.00";
-    if (cost === 0) return "Free";
-    return `$${cost.toFixed(4)}`;
-  };
 
   if (!canManage) {
     return (
@@ -137,7 +132,7 @@ function AgentHealthInner() {
             {rows.map(({ agent, tone, label, pulseAt }) => {
               const model = agent.telemetry?.currentModel ?? "unknown";
               const oc = agent.telemetry?.openclawVersion ?? "unknown";
-              const lastRun = `${formatDuration(agent.telemetry?.lastRunDurationMs)} • ${formatCost(agent.telemetry?.lastRunCost)}`;
+              const lastRun = formatDuration(agent.telemetry?.lastRunDurationMs);
               return (
                 <div
                   key={agent._id}

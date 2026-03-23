@@ -500,9 +500,10 @@ export default defineSchema({
       v.object({
         currentModel: v.string(),
         openclawVersion: v.string(),
-        totalTokensUsed: v.number(),
         lastRunDurationMs: v.number(),
-        lastRunCost: v.float64(),
+        // Legacy fields — present in existing documents, no longer written by new code.
+        totalTokensUsed: v.optional(v.float64()),
+        lastRunCost: v.optional(v.float64()),
       }),
     ),
     lastSeenActivityAt: v.optional(v.number()),
@@ -576,7 +577,8 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byStatus", ["status"])
-    .index("recent", ["createdAt"]),
+    .index("recent", ["createdAt"])
+    .index("byWorkspaceUpdatedAt", ["workspaceId", "updatedAt"]),
 
   messages: defineTable({
     workspaceId: v.id("workspaces"),
@@ -611,7 +613,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])
-    .index("recent", ["createdAt"]),
+    .index("recent", ["createdAt"])
+    .index("byWorkspaceCreatedAt", ["workspaceId", "createdAt"]),
 
   activitySeenByAgent: defineTable({
     workspaceId: v.id("workspaces"),
@@ -704,22 +707,4 @@ export default defineSchema({
 
   // NOTE: chatMessages/chatEvents tables removed. Chat is OpenClaw WS-only.
 
-  /**
-   * Individual agent run records for cost tracking.
-   * Each time an agent finishes a task session, a record is created here.
-   * This enables accurate per-task and daily burn rate calculations.
-   */
-  agentRuns: defineTable({
-    workspaceId: v.id("workspaces"),
-    agentId: v.id("agents"),
-    taskId: v.union(v.id("tasks"), v.null()),
-    cost: v.float64(),
-    tokensUsed: v.number(),
-    durationMs: v.number(),
-    createdAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("byTask", ["taskId"])
-    .index("byAgent", ["agentId"])
-    .index("byCreatedAt", ["createdAt"]),
 });

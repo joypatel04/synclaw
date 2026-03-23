@@ -36,7 +36,7 @@ export const OPENCLAW_METHOD_CARDS: OpenClawMethodCard[] = [
     mode: "self_hosted_local",
     title: "Self-hosted Local",
     subtitle: "Advanced",
-    useWhen: "Sutraha and OpenClaw run in the same local/private environment",
+    useWhen: "Synclaw and OpenClaw run in the same local/private environment",
     needs: "Local/private ws:// URL + local deployment access",
     setupTime: "~4 min",
   },

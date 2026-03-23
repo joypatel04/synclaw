@@ -1,25 +1,34 @@
-# Cloud Get Started
+# Cloud Setup (Managed Product Path)
 
-## Who this is for
+Use this path when you want the fastest onboarding and least infrastructure work.
 
-Use Cloud if you want to start quickly and avoid infrastructure setup.
+## Recommended for
 
-## 10-minute setup checklist
+- Solo operators testing workflow quickly.
+- Small teams that want managed operations.
+- Early beta customers evaluating product fit.
 
-1. Sign in and create your first workspace.
-2. Complete onboarding setup.
-3. Configure OpenClaw values in `Settings -> OpenClaw`.
-4. Create your first agent from recipe flow.
-5. Confirm activity appears in Live Feed.
-6. Invite collaborators and assign workspace roles.
+## Setup checklist
 
-## Billing note
+1. Sign in and create/select a workspace.
+2. Complete onboarding owner steps.
+3. Open `Settings -> OpenClaw` and save a valid gateway URL + token.
+4. In onboarding, create your first agent with one-click setup.
+5. Open chat and run one real task.
 
-If billing provider setup is still in progress, keep billing UI as "Coming Soon" while you validate onboarding and product value.
+## Validation checklist
 
-## Success criteria
+- OpenClaw connection test succeeds.
+- Agent creation completes without manual file editing.
+- Chat responds and activity appears in dashboard surfaces.
+- Task/document updates persist in Convex.
 
-- You can create tasks and assign execution clearly.
-- Agent runs are visible in activity and health surfaces.
-- Team members can access only what their roles allow.
+## Recommended first-run task
 
+Ask the new agent to complete a deterministic task (for example: summarize a fixed input and output a markdown checklist) so you can verify repeatability.
+
+## Operational notes
+
+- Keep production and development workspaces separate.
+- Rotate OpenClaw tokens periodically.
+- Keep the OpenClaw origin allowlist aligned with your app domains.

@@ -100,11 +100,7 @@ OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 - Product overview: `docs/product/OVERVIEW.md`
 - Hosting guide: `docs/product/HOSTING_GUIDE.md`
 - Cloud setup: `docs/product/CLOUD_GET_STARTED.md`
-- Self-hosted prerequisites: `docs/product/SELF_HOSTED_PREREQUISITES.md`
-- Self-hosted Convex setup: `docs/product/SELF_HOSTED_SETUP_CONVEX.md`
-- Self-hosted MCP setup: `docs/product/SELF_HOSTED_SETUP_MCP.md`
-- Self-hosted local run: `docs/product/SELF_HOSTED_RUN_LOCAL.md`
-- Self-hosted troubleshooting: `docs/product/SELF_HOSTED_TROUBLESHOOTING.md`
+- Self-hosted guide: `docs/product/SELF_HOSTED_GUIDE.md`
 - Pricing model: `docs/product/PRICING.md`
 - FAQ: `docs/product/FAQ.md`
 # Vercel build trigger - Mon Feb 23 05:12:08 PM UTC 2026

@@ -1,68 +1,53 @@
-"use client";
-
+import { ArrowRight, BookOpen, Cloud, HardDrive } from "lucide-react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  BookOpen,
-  Cloud,
-  Coins,
-  HardDrive,
-  LifeBuoy,
-  Shield,
-} from "lucide-react";
-import { brand } from "@/lib/brand";
 import { DocsCard, DocsFrame } from "@/app/help/_components/DocsFrame";
+import { MarkdownDocCard } from "@/app/help/_components/MarkdownDocCard";
+import { HELP_DOCS, readHelpDoc } from "@/lib/helpDocs";
 
-const tracks = [
-  {
-    href: "/help/cloud",
-    title: "Cloud (recommended)",
-    description: "Fastest path for non-technical users and teams that want managed infrastructure.",
-    icon: Cloud,
-  },
-  {
-    href: "/help/self-hosted",
-    title: "Self-hosted OSS",
-    description: "Developer-grade setup using your own Convex project and MCP server.",
-    icon: HardDrive,
-  },
-  {
-    href: "/help/pricing",
-    title: "Pricing model",
-    description: "How cloud plans compare to self-hosted and support options.",
-    icon: Coins,
-  },
-  {
-    href: "/help/faq",
-    title: "FAQ",
-    description: "Common migration, support, and deployment questions.",
-    icon: LifeBuoy,
-  },
-] as const;
+export default async function GettingStartedPage() {
+  const guide = await readHelpDoc("gettingStarted");
 
-export default function GettingStartedPage() {
   return (
     <DocsFrame
-      title="Product Documentation"
-      description={`Setup and deployment guide for ${brand.product.name}.`}
+      title={HELP_DOCS.gettingStarted.title}
+      description={HELP_DOCS.gettingStarted.description}
       icon={BookOpen}
     >
       <div className="space-y-6">
-        <DocsCard title="Choose your path">
+        <MarkdownDocCard content={guide} />
+
+        <DocsCard title="Choose your deployment path">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {tracks.map((track) => (
+            {[
+              {
+                href: HELP_DOCS.cloud.href,
+                title: HELP_DOCS.cloud.title,
+                description: HELP_DOCS.cloud.description,
+                icon: Cloud,
+              },
+              {
+                href: HELP_DOCS.selfHosted.href,
+                title: HELP_DOCS.selfHosted.title,
+                description: HELP_DOCS.selfHosted.description,
+                icon: HardDrive,
+              },
+            ].map((doc) => (
               <Link
-                key={track.href}
-                href={track.href}
+                key={doc.href}
+                href={doc.href}
                 className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-accent-orange/40 hover:bg-bg-hover"
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-primary">
-                    <track.icon className="h-4 w-4 text-accent-orange" />
+                  <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-primary">
+                    <doc.icon className="h-4 w-4 text-accent-orange" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-text-primary">{track.title}</p>
-                    <p className="mt-1 text-xs text-text-muted">{track.description}</p>
+                    <p className="text-sm font-semibold text-text-primary">
+                      {doc.title}
+                    </p>
+                    <p className="mt-1 text-xs text-text-muted">
+                      {doc.description}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">
@@ -72,39 +57,7 @@ export default function GettingStartedPage() {
             ))}
           </div>
         </DocsCard>
-
-        <DocsCard title="Decision model">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>Use Cloud if you want the product to work immediately and avoid ops burden.</li>
-            <li>Use Self-hosted if you need full infra control and can handle setup complexity.</li>
-            <li>Keep feature parity in workflow; pricing differs by who operates the infrastructure.</li>
-          </ul>
-        </DocsCard>
-
-        <DocsCard title="Security and operations">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-border-default bg-bg-primary p-3">
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-dim">
-                <Shield className="h-4 w-4 text-accent-orange" />
-                Cloud
-              </div>
-              <p className="text-xs text-text-muted">
-                Managed auth and infrastructure with streamlined onboarding.
-              </p>
-            </div>
-            <div className="rounded-lg border border-border-default bg-bg-primary p-3">
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-dim">
-                <Shield className="h-4 w-4 text-accent-orange" />
-                Self-hosted
-              </div>
-              <p className="text-xs text-text-muted">
-                Full control over data plane and integrations, with full operational responsibility.
-              </p>
-            </div>
-          </div>
-        </DocsCard>
       </div>
     </DocsFrame>
   );
 }
-

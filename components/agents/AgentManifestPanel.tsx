@@ -154,7 +154,7 @@ export function AgentManifestPanel() {
           </h2>
           <p className="mt-1 text-xs text-text-muted">
             Keep a lightweight JSON manifest in your OpenClaw repo (e.g.{" "}
-            <span className="font-mono">sutraha.agents.json</span>) to reproduce agents across environments.
+            <span className="font-mono">synclaw.agents.json</span>) to reproduce agents across environments.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -164,7 +164,7 @@ export function AgentManifestPanel() {
               className="h-8 gap-2"
               onClick={() =>
                 downloadText(
-                  `sutraha.agents.${String(workspaceId).slice(0, 6)}.json`,
+                  `synclaw.agents.${String(workspaceId).slice(0, 6)}.json`,
                   manifestText,
                   "application/json;charset=utf-8",
                 )
@@ -246,7 +246,7 @@ export function AgentManifestPanel() {
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           rows={8}
-          placeholder="Paste sutraha.agents.json here…"
+          placeholder="Paste synclaw.agents.json here…"
           className="mt-3 bg-bg-primary border-border-default text-text-primary font-mono text-[11px] leading-relaxed"
         />
 

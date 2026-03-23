@@ -966,7 +966,7 @@ export function OnboardingWizard() {
           </div>
           <p className="mt-1 text-xs text-text-muted">
             Choose this if you don&apos;t already have an OpenClaw stack.
-            Sutraha provisions and connects it automatically.
+            Synclaw provisions and connects it automatically.
           </p>
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">

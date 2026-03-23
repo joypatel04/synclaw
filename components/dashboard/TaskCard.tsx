@@ -3,7 +3,7 @@
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
-import { TaskCostBadge } from "@/components/task/TaskCostBadge";
+
 import { cn } from "@/lib/utils";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
@@ -81,7 +81,7 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
                 />
               ))}
             </div>
-            <TaskCostBadge taskId={task._id} compact />
+
           </div>
           <Timestamp time={task.updatedAt} />
         </div>

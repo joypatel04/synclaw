@@ -1,63 +1,44 @@
-"use client";
-
+import { Cloud } from "lucide-react";
 import Link from "next/link";
-import { Cloud, ExternalLink } from "lucide-react";
-import { brand } from "@/lib/brand";
 import { DocsCard, DocsFrame } from "@/app/help/_components/DocsFrame";
+import { MarkdownDocCard } from "@/app/help/_components/MarkdownDocCard";
+import { HELP_DOCS, readHelpDoc } from "@/lib/helpDocs";
 
-export default function CloudDocsPage() {
+export default async function CloudDocsPage() {
+  const guide = await readHelpDoc("cloud");
+
   return (
     <DocsFrame
-      title="Cloud Setup"
-      description="Fastest onboarding flow for real users."
+      title={HELP_DOCS.cloud.title}
+      description={HELP_DOCS.cloud.description}
       icon={Cloud}
     >
       <div className="space-y-6">
-        <DocsCard title="Who should use Cloud">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>Solopreneurs and teams that want fast activation and lower setup friction.</li>
-            <li>Operators who prefer managed infrastructure and support.</li>
-            <li>Anyone validating product-market fit before technical customization.</li>
-          </ul>
-        </DocsCard>
+        <MarkdownDocCard content={guide} />
 
-        <DocsCard title="Cloud onboarding checklist">
-          <ol className="list-decimal space-y-2 pl-5">
-            <li>Create account and workspace in {brand.product.name}.</li>
-            <li>Complete guided setup in chat and connect your OpenClaw settings.</li>
-            <li>Create your first agent from recipe and verify activity feed updates.</li>
-            <li>Invite team members and assign workspace roles.</li>
-            <li>Activate billing when provider integration is enabled.</li>
-          </ol>
-        </DocsCard>
-
-        <DocsCard title="Operational notes">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>Billing UI can show Coming Soon while payment provider setup is in progress.</li>
-            <li>Core workflow stays usable for onboarding and validation during this phase.</li>
-            <li>Support add-ons can be introduced as a separate paid tier.</li>
-          </ul>
-        </DocsCard>
-
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">Next</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
+        <DocsCard title="Continue">
+          <div className="flex flex-wrap gap-2 text-xs">
             <Link
-              href="/help/pricing"
-              className="inline-flex items-center gap-1 rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover"
+              href="/onboarding"
+              className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
             >
-              Review pricing <ExternalLink className="h-3.5 w-3.5" />
+              Open onboarding
             </Link>
             <Link
-              href="/settings/billing"
-              className="inline-flex items-center gap-1 rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover"
+              href="/agents/new"
+              className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
             >
-              Billing settings <ExternalLink className="h-3.5 w-3.5" />
+              Create & Configure Agent
+            </Link>
+            <Link
+              href="/chat"
+              className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+            >
+              Open chat
             </Link>
           </div>
-        </div>
+        </DocsCard>
       </div>
     </DocsFrame>
   );
 }
-
