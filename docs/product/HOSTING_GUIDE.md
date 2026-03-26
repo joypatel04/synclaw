@@ -1,10 +1,10 @@
 # Hosting Guide
 
-This guide documents production-style setup for both Cloud and Self-hosted deployment models.
+This guide documents production-style setup for both Public WSS and Self-hosted deployment models.
 
 ## Navigation
 
-- Cloud hosting:
+- Public WSS hosting:
   - `docs/product/CLOUD_GET_STARTED.md`
 - Self-hosted hosting:
   - `docs/product/SELF_HOSTED_GUIDE.md`
@@ -12,7 +12,7 @@ This guide documents production-style setup for both Cloud and Self-hosted deplo
 
 ## Hosting model decision
 
-### Choose Cloud when
+### Choose Public WSS when
 
 - you want fastest user onboarding
 - you do not want to operate infrastructure
@@ -61,7 +61,7 @@ This guide documents production-style setup for both Cloud and Self-hosted deplo
 ## Reference public docs routes
 
 - `/docs/hosting`
-- `/docs/hosting/cloud`
+- `/docs/hosting/cloud` (Public WSS hosting route)
 - `/docs/hosting/self-hosted`
 - `/docs/hosting/self-hosted/convex`
 - `/docs/hosting/self-hosted/mcp`

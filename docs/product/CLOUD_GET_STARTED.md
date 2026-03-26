@@ -1,11 +1,11 @@
-# Cloud Setup (Managed Product Path)
+# Public WSS Setup (Current OSS Path)
 
 Use this path when you want the fastest onboarding and least infrastructure work.
 
 ## Recommended for
 
 - Solo operators testing workflow quickly.
-- Small teams that want managed operations.
+- Small teams that want BYO OpenClaw with minimal setup.
 - Early beta customers evaluating product fit.
 
 ## Setup checklist

@@ -13,7 +13,7 @@ import { HELP_DOCS } from "@/lib/helpDocs";
 
 const icons = {
   gettingStarted: BookOpen,
-  cloud: Cloud,
+  publicWss: Cloud,
   selfHosted: HardDrive,
   pricing: Coins,
   faq: CircleHelp,
@@ -67,7 +67,7 @@ export default function HelpPage() {
             Documentation
           </h2>
           <p className="mt-1 text-xs text-text-muted">
-            Markdown-backed docs for cloud and self-hosted operation.
+            Markdown-backed docs for Public WSS and self-hosted operation.
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {(Object.keys(HELP_DOCS) as Array<keyof typeof HELP_DOCS>).map(

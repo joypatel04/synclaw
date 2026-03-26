@@ -20,9 +20,9 @@ export default async function GettingStartedPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
               {
-                href: HELP_DOCS.cloud.href,
-                title: HELP_DOCS.cloud.title,
-                description: HELP_DOCS.cloud.description,
+                href: HELP_DOCS.publicWss.href,
+                title: HELP_DOCS.publicWss.title,
+                description: HELP_DOCS.publicWss.description,
                 icon: Cloud,
               },
               {

@@ -2,12 +2,12 @@
 
 ## Product tracks
 
-### Cloud
+### Public WSS
 
-Position Cloud as the default for most users:
+Position Public WSS as the default for most users:
 
 - fastest time-to-value
-- managed operations
+- optional support operations
 - lower setup/maintenance burden
 
 ### Self-hosted
@@ -20,7 +20,7 @@ Position self-hosted for technical teams:
 
 ## Commercial framing
 
-- Cloud monetizes convenience, reliability, and speed.
+- Public WSS monetizes convenience, reliability, and speed.
 - Self-hosted offers control and flexibility.
 - Paid support can cover installation, migration, and priority incident help.
 
@@ -28,6 +28,6 @@ Position self-hosted for technical teams:
 
 Keep packaging simple:
 
-1. One clear Cloud offer.
+1. One clear Public WSS offer.
 2. Self-hosted available for technical adopters.
 3. Optional support add-on for high-touch customers.

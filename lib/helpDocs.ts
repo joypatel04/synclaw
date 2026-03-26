@@ -12,11 +12,11 @@ export const HELP_DOCS = {
       "Choose your path, run the baseline setup, and verify your first workspace.",
     filePath: "docs/product/OVERVIEW.md",
   },
-  cloud: {
-    href: "/help/cloud",
-    title: "Cloud Setup",
+  publicWss: {
+    href: "/help/public-wss",
+    title: "Public WSS Setup",
     description:
-      "Fastest path for teams that want managed operations and minimum setup.",
+      "Fastest path for teams that want BYO OpenClaw with minimum setup.",
     filePath: "docs/product/CLOUD_GET_STARTED.md",
   },
   selfHosted: {
@@ -29,7 +29,7 @@ export const HELP_DOCS = {
   pricing: {
     href: "/help/pricing",
     title: "Pricing",
-    description: "Cloud vs self-hosted packaging and support positioning.",
+    description: "OSS vs self-hosted packaging and support positioning.",
     filePath: "docs/product/PRICING.md",
   },
   faq: {

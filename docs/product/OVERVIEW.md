@@ -12,9 +12,9 @@ Synclaw is a workspace control plane for OpenClaw-based agent operations.
 
 ## Deployment choices
 
-### Cloud (recommended for beta users)
+### Public WSS (recommended for beta users)
 
-Use Cloud when you want fast activation and minimal infrastructure work.
+Use Public WSS when you want fast activation and minimal infrastructure work.
 
 ### Self-hosted
 
@@ -34,7 +34,7 @@ Use self-hosted when you need infrastructure ownership and can maintain:
 
 ## Documentation map
 
-- Cloud runbook: `docs/product/CLOUD_GET_STARTED.md`
+- Public WSS runbook: `docs/product/CLOUD_GET_STARTED.md`
 - Self-hosted runbook: `docs/product/SELF_HOSTED_GUIDE.md`
 - Pricing positioning: `docs/product/PRICING.md`
 - FAQ: `docs/product/FAQ.md`

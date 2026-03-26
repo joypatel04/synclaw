@@ -14,8 +14,8 @@ import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDo
 const sections = [
   {
     href: "/docs/hosting/cloud",
-    title: "Cloud hosting guide",
-    description: "Managed path for fastest launch.",
+    title: "Public WSS hosting guide",
+    description: "Fastest path for OSS launch with BYO OpenClaw.",
     icon: Cloud,
   },
   {
@@ -66,12 +66,12 @@ export default function HostingOverviewPage() {
   return (
     <PublicDocsShell
       title="Hosting Guide"
-      description="Production-style setup docs for Cloud and Self-hosted deployments."
+      description="Production-style setup docs for Public WSS and Self-hosted deployments."
       icon={Server}
     >
       <PublicDocsCard title="Use this guide">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Choose Cloud or Self-hosted based on operational ownership.</li>
+          <li>Choose Public WSS or Self-hosted based on operational ownership.</li>
           <li>Follow the step-by-step guide in order.</li>
           <li>Run verification checks before moving to production.</li>
           <li>Use troubleshooting pages when behavior differs from expected output.</li>

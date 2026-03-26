@@ -11,7 +11,7 @@ Choose self-hosted only if your team can operate:
 - OpenClaw gateway runtime and security policy
 - Optional Files Bridge runtime for remote file editing
 
-If you want the fastest activation, use the Cloud path.
+If you want the fastest activation, use the Public WSS path.
 
 ## 2) Prerequisites
 

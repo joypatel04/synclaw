@@ -6,9 +6,9 @@ No. It is a real infrastructure path, so it includes operational tasks by design
 
 ## Which option should non-technical users choose?
 
-Cloud. It minimizes setup and support burden.
+Public WSS. It minimizes setup and support burden.
 
-## Can users start in Cloud and move later?
+## Can users start in Public WSS and move later?
 
 Yes. Keep workspace behavior consistent so migration paths stay straightforward.
 
