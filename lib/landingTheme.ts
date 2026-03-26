@@ -52,9 +52,9 @@ export const landingTheme: LandingTheme = {
   },
   transitions: {
     darkToLight:
-      "linear-gradient(180deg, #06080F 0%, #151A40 42%, #8DA3FF 68%, #F5F7FC 100%)",
+      "linear-gradient(180deg, #06080F 0%, #0B1020 18%, #17203A 40%, #334577 62%, #6E83BF 80%, #D5DEF5 92%, #F5F7FC 100%)",
     lightToDark:
-      "linear-gradient(180deg, #F5F7FC 0%, #D8DFFC 28%, #1C2248 60%, #06080F 100%)",
+      "linear-gradient(180deg, #F5F7FC 0%, #E9EEFB 14%, #D3DCF3 32%, #8395C1 54%, #354164 74%, #141A2F 90%, #06080F 100%)",
   },
 };
 

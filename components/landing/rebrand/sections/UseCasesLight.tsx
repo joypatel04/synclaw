@@ -10,13 +10,13 @@ export function UseCasesLight({ content }: { content: LandingContent }) {
       <SectionFrame className="landing-reveal pb-28">
         <div className="mb-10 flex items-end justify-between gap-4">
           <h3 className="text-[clamp(1.9rem,3.4vw,3rem)] font-semibold leading-tight tracking-[-0.025em] landing-display">
-            Outcome-focused workflows
+            Outcome-focused OpenClaw workflows
             <br />
             for every team shape
           </h3>
           <p className="max-w-sm text-sm leading-relaxed text-[var(--landing-light-muted)]">
-            Start with one workspace and scale execution with clear role
-            boundaries and event visibility.
+            Start with one Synclaw workspace, connect OpenClaw once, and scale
+            execution with clear role boundaries and event visibility.
           </p>
         </div>
 

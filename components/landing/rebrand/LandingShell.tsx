@@ -8,6 +8,7 @@ import { FooterDark } from "./sections/FooterDark";
 import { HeroDark } from "./sections/HeroDark";
 import { ProofGridDark } from "./sections/ProofGridDark";
 import { UseCasesLight } from "./sections/UseCasesLight";
+import { WorkflowShowcaseDark } from "./sections/WorkflowShowcaseDark";
 import { TransitionBand } from "./TransitionBand";
 
 export function LandingShell({
@@ -38,6 +39,7 @@ export function LandingShell({
       <main>
         <HeroDark brand={brand} content={content} />
         <ProofGridDark content={content} />
+        <WorkflowShowcaseDark />
         <TransitionBand direction="darkToLight" />
         <ExplainerLight content={content} />
         <UseCasesLight content={content} />

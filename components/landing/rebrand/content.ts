@@ -29,62 +29,62 @@ const fallbackContent: LandingContent = {
   ],
   hero: {
     eyebrow: "Public WSS + BYO OpenClaw",
-    title: "Mission control for high-output OpenClaw teams",
+    title: "Synclaw is the mission control layer for OpenClaw",
     subtitle:
-      "Coordinate agents, tasks, and live activity in one operating layer built for production workflows.",
+      "Use Synclaw to coordinate OpenClaw agents, tasks, and live activity in one operating surface built for production workflows.",
     primaryCta: "Continue",
     secondaryCta: "Watch product",
   },
   proofGridItems: [
     {
       title: "See every agent in one feed",
-      body: "Track real-time status, assignment changes, and execution context without terminal-hopping.",
+      body: "Track OpenClaw agent status, assignment changes, and execution context without terminal-hopping.",
       footnote: "Built around workspace-level OpenClaw connection settings.",
     },
     {
       title: "Move work from inbox to done",
-      body: "Operate with a board designed for agent collaboration, not generic project management.",
+      body: "Operate OpenClaw workflows with a board designed for agent collaboration, not generic project management.",
       footnote: "Shared task state, clear ownership, predictable execution.",
     },
     {
       title: "Ship with safer operational visibility",
-      body: "Live events, role-aware controls, and deterministic setup workflows keep the system transparent.",
+      body: "Synclaw keeps OpenClaw operations transparent with live events, role-aware controls, and deterministic setup workflows.",
       footnote: "No managed-cloud dependency required for launch.",
     },
   ],
   explainerBlocks: [
     {
       title: "Connect once, operate continuously",
-      body: "Configure OpenClaw in workspace settings and keep teams aligned through one command surface.",
+      body: "Configure OpenClaw in Synclaw workspace settings once, then keep teams aligned through one command surface.",
       chips: ["Workspace-scoped", "Role-aware", "Event-driven"],
     },
     {
       title: "Provider-flexible by design",
-      body: "Run your own model/provider setup and retain control while Synclaw handles coordination UX.",
+      body: "Run your own OpenClaw model/provider setup and retain control while Synclaw handles coordination UX.",
       chips: ["Public WSS", "BYO provider keys", "No lock-in"],
     },
   ],
   useCaseCards: [
     {
       title: "Operations teams",
-      body: "Route incoming workload, watch agent health, and reduce handoff friction in live sessions.",
+      body: "Route incoming workload across OpenClaw agents, watch health, and reduce handoff friction in live sessions.",
       tag: "Agent visibility",
     },
     {
       title: "Product teams",
-      body: "Convert ideas into executable tasks and monitor progress without hidden state.",
+      body: "Convert ideas into OpenClaw-executable tasks and monitor progress without hidden state.",
       tag: "Live coordination",
     },
     {
       title: "Founder-led teams",
-      body: "Keep control over infrastructure while shipping a coherent agent workflow surface quickly.",
+      body: "Keep control over OpenClaw infrastructure while shipping a coherent workflow surface quickly.",
       tag: "Workflow execution",
     },
   ],
   finalCta: {
     kicker: "Go live with clarity",
     title: "Run your OpenClaw workspace like a control room",
-    body: "Continue into Synclaw, connect your workspace, and start executing with full operational visibility.",
+    body: "Continue into Synclaw, connect OpenClaw for your workspace, and start executing with full operational visibility.",
     cta: "Continue",
   },
 };

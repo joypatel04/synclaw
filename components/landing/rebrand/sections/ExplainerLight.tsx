@@ -9,17 +9,19 @@ export function ExplainerLight({ content }: { content: LandingContent }) {
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--landing-light-dim)]">
-              Public WSS launch narrative
+              Synclaw + OpenClaw operating model
             </p>
             <h2 className="mt-4 text-[clamp(2.1rem,4.2vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.03em] landing-display">
-              Clean operations,
+              Synclaw gives OpenClaw teams
               <br />
-              without the hidden complexity
+              clean operations,
+              <br />
+              without hidden complexity
             </h2>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-[var(--landing-light-muted)]">
-              Synclaw is the control layer between your OpenClaw runtime and
-              your execution workflow. Keep your infra choices, gain a focused
-              operating interface.
+              Synclaw is the operating layer between your OpenClaw runtime and
+              your day-to-day execution workflow. Keep your infra choices, gain
+              a focused operating interface.
             </p>
           </div>
 

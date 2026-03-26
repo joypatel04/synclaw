@@ -32,6 +32,7 @@
   ],
   "exclude": [
     "node_modules",
+    "dist",
     "packages/mcp-server",
     "packages/managed-gateway",
     "packages/host-agent"
