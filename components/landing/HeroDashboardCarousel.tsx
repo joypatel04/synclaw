@@ -41,7 +41,6 @@ type AgentPreviewRow = {
   model: string;
   heartbeat: string;
   currentTask?: string;
-  mobileHidden?: boolean;
 };
 
 type ActivityPreviewType =
@@ -58,7 +57,6 @@ type LiveFeedPreviewRow = {
   text: string;
   time: string;
   hasLink?: boolean;
-  mobileHidden?: boolean;
 };
 
 type KanbanPreviewAssignee = {
@@ -71,7 +69,6 @@ type KanbanPreviewTask = {
   assignees: KanbanPreviewAssignee[];
   priority: "high" | "medium" | "none";
   updatedAt: string;
-  mobileHidden?: boolean;
 };
 
 type KanbanPreviewColumn = {
@@ -80,8 +77,8 @@ type KanbanPreviewColumn = {
   tasks: KanbanPreviewTask[];
 };
 
-const ROTATION_INTERVAL_MS = 5200;
-const TOUCH_RESUME_DELAY_MS = 900;
+const ROTATION_INTERVAL_MS = 6800;
+const TOUCH_RESUME_DELAY_MS = 1200;
 
 const cardOrder: HeroCardKind[] = ["agents", "liveFeed", "kanban"];
 
@@ -91,11 +88,7 @@ const cardMeta: Record<
 > = {
   agents: { label: "Agents", icon: Bot, liveLabel: "Agents" },
   liveFeed: { label: "Live Feed", icon: Activity, liveLabel: "Live Feed" },
-  kanban: {
-    label: "Kanban",
-    icon: LayoutDashboard,
-    liveLabel: "Tasks",
-  },
+  kanban: { label: "Kanban", icon: LayoutDashboard, liveLabel: "Tasks" },
 };
 
 const demoAgents: AgentPreviewRow[] = [
@@ -106,7 +99,7 @@ const demoAgents: AgentPreviewRow[] = [
     status: "active",
     model: "gpt-5.1",
     heartbeat: "2m ago",
-    currentTask: "Draft managed rollout brief",
+    currentTask: "Draft rollout narrative",
   },
   {
     emoji: "✍️",
@@ -115,7 +108,7 @@ const demoAgents: AgentPreviewRow[] = [
     status: "active",
     model: "claude-sonnet",
     heartbeat: "5m ago",
-    currentTask: "Landing page narrative refresh",
+    currentTask: "Homepage copy polish",
   },
   {
     emoji: "🧪",
@@ -125,64 +118,40 @@ const demoAgents: AgentPreviewRow[] = [
     model: "gemini-2.5",
     heartbeat: "14m ago",
   },
-  {
-    emoji: "⚙️",
-    name: "Ops",
-    role: "Deploy",
-    status: "active",
-    model: "gpt-5.1",
-    heartbeat: "9m ago",
-    currentTask: "Verify managed gateway health",
-    mobileHidden: true,
-  },
-] as const;
+];
 
 const demoFeed: LiveFeedPreviewRow[] = [
   {
     type: "task_created",
-    text: '🧠 Research created task "Ship hero dashboard parity"',
+    text: 'Research created "Hero parity pass"',
     time: "2m ago",
     hasLink: true,
   },
   {
     type: "task_updated",
-    text: '⚙️ Ops moved "Provider apply flow" to in progress',
+    text: 'Ops moved "Provider verify" to in progress',
     time: "4m ago",
     hasLink: true,
   },
   {
     type: "message_sent",
-    text: '✍️ Writer on "Ship hero dashboard parity": Updated card copy and visual hierarchy',
-    time: "5m ago",
-    hasLink: true,
+    text: 'Writer: "Copy contrast updated for light band"',
+    time: "6m ago",
+    hasLink: false,
   },
   {
     type: "document_created",
-    text: 'Created doc "Managed launch checklist"',
-    time: "7m ago",
-    hasLink: true,
-  },
-  {
-    type: "document_updated",
-    text: 'Updated doc "Managed launch checklist"',
-    time: "9m ago",
+    text: 'Created "Launch checklist"',
+    time: "8m ago",
     hasLink: true,
   },
   {
     type: "mention_alert",
-    text: '🧠 Research mentioned @QA Agent: "Please validate reconnect flow"',
-    time: "11m ago",
+    text: "Mentioned QA Agent for final pass",
+    time: "12m ago",
     hasLink: false,
-    mobileHidden: true,
   },
-  {
-    type: "broadcast_sent",
-    text: '⚙️ Ops broadcast to all agents: "Production deploy window"',
-    time: "14m ago",
-    hasLink: false,
-    mobileHidden: true,
-  },
-] as const;
+];
 
 const demoBoard: KanbanPreviewColumn[] = [
   {
@@ -190,17 +159,10 @@ const demoBoard: KanbanPreviewColumn[] = [
     label: "Inbox",
     tasks: [
       {
-        title: "Scope support handoff flow",
+        title: "Scope support handoff",
         assignees: [{ emoji: "🧠", name: "Research" }],
         priority: "medium",
         updatedAt: "2m",
-      },
-      {
-        title: "Draft release update",
-        assignees: [{ emoji: "✍️", name: "Writer" }],
-        priority: "none",
-        updatedAt: "5m",
-        mobileHidden: true,
       },
     ],
   },
@@ -209,7 +171,7 @@ const demoBoard: KanbanPreviewColumn[] = [
     label: "In Progress",
     tasks: [
       {
-        title: "Ship hero dashboard parity",
+        title: "Polish dark-light transitions",
         assignees: [
           { emoji: "🛠️", name: "Builder" },
           { emoji: "🧪", name: "QA Agent" },
@@ -218,10 +180,10 @@ const demoBoard: KanbanPreviewColumn[] = [
         updatedAt: "1m",
       },
       {
-        title: "Verify OpenClaw route health",
+        title: "Review public-wss docs links",
         assignees: [{ emoji: "⚙️", name: "Ops" }],
-        priority: "medium",
-        updatedAt: "6m",
+        priority: "none",
+        updatedAt: "9m",
       },
     ],
   },
@@ -230,21 +192,14 @@ const demoBoard: KanbanPreviewColumn[] = [
     label: "Done",
     tasks: [
       {
-        title: "Provider key validation",
-        assignees: [{ emoji: "🔐", name: "Security" }],
-        priority: "none",
-        updatedAt: "12m",
-      },
-      {
-        title: "Agent setup rollback",
+        title: "Provider model defaults",
         assignees: [{ emoji: "✅", name: "QA" }],
         priority: "none",
-        updatedAt: "18m",
-        mobileHidden: true,
+        updatedAt: "16m",
       },
     ],
   },
-] as const;
+];
 
 const activityTypeMeta: Record<
   ActivityPreviewType,
@@ -266,7 +221,7 @@ function activityColor(
   if (tone === "accent") return palette.accent;
   if (tone === "emerald") return palette.emerald;
   if (tone === "amber") return palette.amber;
-  return "rgba(255,255,255,0.6)";
+  return "rgba(255,255,255,0.58)";
 }
 
 function priorityColor(
@@ -275,37 +230,8 @@ function priorityColor(
 ) {
   if (priority === "high") return palette.accent;
   if (priority === "medium") return palette.amber;
-  return "rgba(255,255,255,0.35)";
+  return "rgba(255,255,255,0.33)";
 }
-
-const liveFeedCategoryChips = [
-  { label: "All", count: demoFeed.length },
-  {
-    label: "Tasks",
-    count: demoFeed.filter(
-      (row) => row.type === "task_created" || row.type === "task_updated",
-    ).length,
-  },
-  {
-    label: "Docs",
-    count: demoFeed.filter(
-      (row) =>
-        row.type === "document_created" || row.type === "document_updated",
-    ).length,
-  },
-  {
-    label: "Comments",
-    count: demoFeed.filter((row) => row.type === "message_sent").length,
-  },
-  {
-    label: "Broadcasts",
-    count: demoFeed.filter((row) => row.type === "broadcast_sent").length,
-  },
-  {
-    label: "Mentions",
-    count: demoFeed.filter((row) => row.type === "mention_alert").length,
-  },
-] as const;
 
 const shellDataPoints: Record<
   HeroCardKind,
@@ -321,25 +247,25 @@ const shellDataPoints: Record<
   agents: {
     syncLabel: "Agent roster synced",
     metricLabel: "Active now",
-    metricValue: "3 / 4",
+    metricValue: "2 / 3",
     noteTitle: "Agent health",
     noteValue: "All critical agents online",
     stats: [
-      { label: "Agents", value: "4", hint: "1 idle" },
+      { label: "Agents", value: "3", hint: "1 idle" },
       { label: "Heartbeat", value: "2m", hint: "latest" },
-      { label: "Mentions", value: "6", hint: "last hour" },
+      { label: "Mentions", value: "4", hint: "last hour" },
     ],
   },
   liveFeed: {
     syncLabel: "Event stream synced",
     metricLabel: "Events / min",
-    metricValue: "27",
+    metricValue: "19",
     noteTitle: "Live feed",
-    noteValue: "Mentions and docs flowing",
+    noteValue: "Stable event throughput",
     stats: [
       { label: "Tasks", value: "2", hint: "updated" },
-      { label: "Docs", value: "2", hint: "changed" },
-      { label: "Broadcasts", value: "1", hint: "pending read" },
+      { label: "Docs", value: "1", hint: "changed" },
+      { label: "Mentions", value: "1", hint: "pending" },
     ],
   },
   kanban: {
@@ -347,11 +273,11 @@ const shellDataPoints: Record<
     metricLabel: "In progress",
     metricValue: "2",
     noteTitle: "Task flow",
-    noteValue: "Review queue stable",
+    noteValue: "No blockers detected",
     stats: [
-      { label: "Inbox", value: "2", hint: "triage" },
+      { label: "Inbox", value: "1", hint: "triage" },
+      { label: "Done", value: "1", hint: "today" },
       { label: "Blocked", value: "0", hint: "clear" },
-      { label: "Done", value: "2", hint: "today" },
     ],
   },
 };
@@ -392,9 +318,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
   const activeMeta = cardMeta[activeKind];
   const activeData = shellDataPoints[activeKind];
 
-  const pause = () => {
-    setIsPaused(true);
-  };
+  const pause = () => setIsPaused(true);
 
   const resume = () => {
     if (touchResumeTimerRef.current) {
@@ -404,14 +328,10 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
     setIsPaused(false);
   };
 
-  const handleTouchStart = () => {
-    pause();
-  };
+  const handleTouchStart = () => pause();
 
   const handleTouchEnd = () => {
-    if (touchResumeTimerRef.current) {
-      clearTimeout(touchResumeTimerRef.current);
-    }
+    if (touchResumeTimerRef.current) clearTimeout(touchResumeTimerRef.current);
     touchResumeTimerRef.current = setTimeout(() => {
       setIsPaused(false);
       touchResumeTimerRef.current = null;
@@ -421,11 +341,11 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
   return (
     <div className="lp-float relative isolate">
       <section
-        className="relative z-10 overflow-hidden rounded-2xl"
+        className="relative z-10 overflow-hidden rounded-[22px]"
         style={{
           border: `1px solid ${palette.border}`,
-          backgroundColor: "rgba(12,14,22,0.9)",
-          boxShadow: `0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px ${palette.border}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+          backgroundColor: "rgba(9,12,20,0.9)",
+          boxShadow: `0 24px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)`,
         }}
         aria-label="Dashboard preview carousel"
         onMouseEnter={pause}
@@ -441,22 +361,22 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
             <div className="flex gap-1.5">
               <span
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "#EF4444", opacity: 0.5 }}
+                style={{ backgroundColor: "#EF4444", opacity: 0.45 }}
               />
               <span
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: palette.amber, opacity: 0.5 }}
+                style={{ backgroundColor: palette.amber, opacity: 0.45 }}
               />
               <span
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: palette.emerald, opacity: 0.5 }}
+                style={{ backgroundColor: palette.emerald, opacity: 0.45 }}
               />
             </div>
             <span
               className="rounded-md px-3 py-0.5 text-[10px]"
               style={{
                 backgroundColor: palette.surface,
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.34)",
               }}
             >
               synclaw.in / dashboard
@@ -487,38 +407,36 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
           </div>
         </div>
 
-        <div className="relative h-[318px] overflow-hidden sm:h-[338px]">
+        <div className="relative h-[306px] overflow-hidden sm:h-[326px]">
           {cardOrder.map((kind, index) => {
             const meta = cardMeta[kind];
             const isActive = activeCardIndex === index;
+
             return (
               <section
                 key={kind}
                 aria-hidden={!isActive}
                 className={cn(
-                  "absolute inset-0 p-3 transition-[opacity,transform] duration-[560ms] ease-out",
+                  "absolute inset-0 p-3 transition-[opacity,transform] duration-[700ms] ease-out",
                   isActive
-                    ? "opacity-100 translate-y-0 scale-100"
-                    : "pointer-events-none opacity-0 translate-y-2 scale-[0.985]",
+                    ? "translate-y-0 scale-100 opacity-100"
+                    : "pointer-events-none translate-y-2 scale-[0.986] opacity-0",
                 )}
               >
                 <div
-                  className="flex items-center gap-2 px-1 pb-2 text-[9px] font-semibold uppercase tracking-widest"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  className="flex items-center gap-2 px-1 pb-2 text-[9px] font-semibold uppercase tracking-[0.14em]"
+                  style={{ color: "rgba(255,255,255,0.28)" }}
                 >
                   <meta.icon className="h-3.5 w-3.5" />
                   <span>{meta.label}</span>
                 </div>
 
                 {kind === "agents" ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {demoAgents.map((agent) => (
                       <article
                         key={agent.name}
-                        className={cn(
-                          "rounded-xl border p-3",
-                          agent.mobileHidden ? "hidden sm:block" : "block",
-                        )}
+                        className="rounded-xl border p-3"
                         style={{
                           borderColor: palette.border,
                           backgroundColor: palette.surface,
@@ -539,34 +457,31 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                               />
                               <p
                                 className="truncate text-[11px] font-semibold"
-                                style={{ color: "rgba(255,255,255,0.72)" }}
+                                style={{ color: "rgba(255,255,255,0.74)" }}
                               >
                                 {agent.name}
                               </p>
                             </div>
                             <p
                               className="mt-0.5 pl-[24px] text-[10px]"
-                              style={{ color: "rgba(255,255,255,0.33)" }}
+                              style={{ color: "rgba(255,255,255,0.36)" }}
                             >
                               {agent.role}
                             </p>
                             {agent.currentTask ? (
-                              <div
-                                className="mt-1.5 rounded-md px-2 py-1"
+                              <p
+                                className="mt-1.5 truncate rounded-md border px-2 py-1 text-[10px]"
                                 style={{
+                                  borderColor: palette.border,
                                   backgroundColor: "rgba(255,255,255,0.03)",
-                                  border: `1px solid ${palette.border}`,
+                                  color: "rgba(255,255,255,0.58)",
                                 }}
                               >
-                                <p
-                                  className="truncate text-[10px]"
-                                  style={{ color: "rgba(255,255,255,0.58)" }}
-                                >
-                                  Working on: {agent.currentTask}
-                                </p>
-                              </div>
+                                {agent.currentTask}
+                              </p>
                             ) : null}
                           </div>
+
                           <span
                             className="rounded-full px-2 py-0.5 text-[10px] font-mono"
                             style={{
@@ -577,21 +492,22 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                                   : "rgba(255,255,255,0.45)",
                             }}
                           >
-                            {agent.status === "active" ? "active" : "idle"}
+                            {agent.status}
                           </span>
                         </div>
+
                         <div className="mt-2 flex items-center justify-between">
                           <span
                             className="text-[10px]"
-                            style={{ color: "rgba(255,255,255,0.26)" }}
+                            style={{ color: "rgba(255,255,255,0.28)" }}
                           >
                             {agent.model}
                           </span>
                           <span
                             className="text-[10px]"
-                            style={{ color: "rgba(255,255,255,0.26)" }}
+                            style={{ color: "rgba(255,255,255,0.28)" }}
                           >
-                            Heartbeat {agent.heartbeat}
+                            {agent.heartbeat}
                           </span>
                         </div>
                       </article>
@@ -600,76 +516,47 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                 ) : null}
 
                 {kind === "liveFeed" ? (
-                  <div className="space-y-1.5">
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                      {liveFeedCategoryChips.map((chip, chipIndex) => (
-                        <span
-                          key={chip.label}
-                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px]"
+                  <div className="space-y-2">
+                    {demoFeed.map((item, rowIndex) => {
+                      const typeMeta = activityTypeMeta[item.type];
+                      const Icon = typeMeta.icon;
+
+                      return (
+                        <article
+                          key={item.text}
+                          className="flex items-start gap-2.5 rounded-lg border px-2.5 py-2"
                           style={{
-                            borderColor:
-                              chipIndex === 0 ? palette.accent : palette.border,
+                            borderColor: palette.border,
                             backgroundColor:
-                              chipIndex === 0
-                                ? palette.accentDim
-                                : "rgba(255,255,255,0.02)",
-                            color:
-                              chipIndex === 0
-                                ? palette.accent
-                                : "rgba(255,255,255,0.52)",
+                              rowIndex % 2
+                                ? "rgba(255,255,255,0.012)"
+                                : palette.surface,
                           }}
                         >
-                          <span>{chip.label}</span>
-                          <span className="font-mono">{chip.count}</span>
-                        </span>
-                      ))}
-                    </div>
-                    {demoFeed.map((item, rowIndex) => (
-                      <article
-                        key={item.text}
-                        className={cn(
-                          "flex items-start gap-2.5 rounded-lg px-2.5 py-2",
-                          rowIndex > 3 && "opacity-60",
-                          item.mobileHidden ? "hidden sm:flex" : "flex",
-                        )}
-                        style={{
-                          backgroundColor:
-                            rowIndex % 2 ? "transparent" : palette.surface,
-                          border:
-                            rowIndex % 2
-                              ? "none"
-                              : `1px solid ${palette.border}`,
-                        }}
-                      >
-                        {(() => {
-                          const metaByType = activityTypeMeta[item.type];
-                          const Icon = metaByType.icon;
-                          return (
-                            <Icon
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                              style={{
-                                color: activityColor(metaByType.color, palette),
-                              }}
-                            />
-                          );
-                        })()}
-                        <div className="min-w-0">
-                          <p
-                            className="truncate text-[11px]"
-                            style={{ color: "rgba(255,255,255,0.66)" }}
-                          >
-                            {item.text}
-                          </p>
-                          <p
-                            className="text-[10px]"
-                            style={{ color: "rgba(255,255,255,0.26)" }}
-                          >
-                            {item.time}
-                            {item.hasLink ? " • View →" : ""}
-                          </p>
-                        </div>
-                      </article>
-                    ))}
+                          <Icon
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                            style={{
+                              color: activityColor(typeMeta.color, palette),
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <p
+                              className="truncate text-[11px]"
+                              style={{ color: "rgba(255,255,255,0.69)" }}
+                            >
+                              {item.text}
+                            </p>
+                            <p
+                              className="text-[10px]"
+                              style={{ color: "rgba(255,255,255,0.28)" }}
+                            >
+                              {item.time}
+                              {item.hasLink ? " • view" : ""}
+                            </p>
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : null}
 
@@ -681,13 +568,13 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                         className="rounded-lg border p-2"
                         style={{
                           borderColor: palette.border,
-                          backgroundColor: "rgba(255,255,255,0.02)",
+                          backgroundColor: "rgba(255,255,255,0.018)",
                         }}
                       >
                         <div className="mb-2 flex items-center justify-between gap-1">
                           <p
-                            className="truncate text-[9px] font-semibold uppercase tracking-wider"
-                            style={{ color: "rgba(255,255,255,0.4)" }}
+                            className="truncate text-[9px] font-semibold uppercase tracking-[0.14em]"
+                            style={{ color: "rgba(255,255,255,0.41)" }}
                           >
                             {col.label}
                           </p>
@@ -695,7 +582,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                             className="rounded-full px-1.5 py-0.5 text-[9px] font-mono"
                             style={{
                               backgroundColor: palette.surface,
-                              color: "rgba(255,255,255,0.52)",
+                              color: "rgba(255,255,255,0.56)",
                             }}
                           >
                             {col.tasks.length}
@@ -705,10 +592,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                           {col.tasks.map((task) => (
                             <article
                               key={task.title}
-                              className={cn(
-                                "rounded-md border px-2 py-1.5",
-                                task.mobileHidden ? "hidden sm:block" : "block",
-                              )}
+                              className="rounded-md border px-2 py-1.5"
                               style={{
                                 borderColor: palette.border,
                                 backgroundColor: palette.surface,
@@ -733,20 +617,10 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                                   </span>
                                   <span
                                     className="truncate text-[9px]"
-                                    style={{ color: "rgba(255,255,255,0.56)" }}
+                                    style={{ color: "rgba(255,255,255,0.55)" }}
                                   >
                                     {task.assignees[0]?.name}
                                   </span>
-                                  {task.assignees.length > 1 ? (
-                                    <span
-                                      className="shrink-0 text-[9px]"
-                                      style={{
-                                        color: "rgba(255,255,255,0.34)",
-                                      }}
-                                    >
-                                      +{task.assignees.length - 1}
-                                    </span>
-                                  ) : null}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span
@@ -760,7 +634,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                                   />
                                   <span
                                     className="text-[9px]"
-                                    style={{ color: "rgba(255,255,255,0.3)" }}
+                                    style={{ color: "rgba(255,255,255,0.31)" }}
                                   >
                                     {task.updatedAt}
                                   </span>
@@ -792,20 +666,20 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
               }}
             >
               <p
-                className="text-[9px] uppercase tracking-wider"
-                style={{ color: "rgba(255,255,255,0.36)" }}
+                className="text-[9px] uppercase tracking-[0.12em]"
+                style={{ color: "rgba(255,255,255,0.38)" }}
               >
                 {stat.label}
               </p>
               <p
                 className="mt-1 text-sm font-semibold"
-                style={{ color: "rgba(255,255,255,0.88)" }}
+                style={{ color: "rgba(255,255,255,0.9)" }}
               >
                 {stat.value}
               </p>
               <p
                 className="text-[9px]"
-                style={{ color: "rgba(255,255,255,0.42)" }}
+                style={{ color: "rgba(255,255,255,0.44)" }}
               >
                 {stat.hint}
               </p>
@@ -831,7 +705,7 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
                   aria-label={`Show ${cardMeta[kind].label} preview`}
                   aria-pressed={isActive}
                   className={cn(
-                    "h-2 w-2 rounded-full border transition-colors",
+                    "h-2 w-2 rounded-full border transition-all",
                     isActive ? "scale-110" : "opacity-80",
                   )}
                   style={{
@@ -852,20 +726,21 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
             {isPaused
               ? "Paused"
               : activeKind === "agents"
-                ? "4 agents • 3 active"
+                ? "3 agents • 2 active"
                 : activeKind === "liveFeed"
-                  ? "Last 7 days feed"
-                  : "7 tasks in flow"}
+                  ? "5 latest events"
+                  : "4 tasks in flow"}
           </span>
         </div>
       </section>
 
-      <div className="pointer-events-none absolute -right-10 top-6 z-50 hidden lg:block">
+      <div className="pointer-events-none absolute -right-10 top-8 z-50 hidden lg:block">
         <div
-          className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
+          className="rounded-2xl border px-3.5 py-2.5"
           style={{
             borderColor: palette.borderStrong,
-            backgroundColor: "rgba(8,10,15,0.94)",
+            backgroundColor: "rgba(8,10,15,0.92)",
+            boxShadow: "0 24px 55px rgba(0,0,0,0.4)",
           }}
         >
           <div className="flex items-center gap-2 text-[12px] font-medium">
@@ -887,10 +762,11 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
 
       <div className="pointer-events-none absolute -right-12 top-1/2 z-50 hidden -translate-y-1/2 lg:block">
         <div
-          className="rounded-2xl border px-4 py-3 shadow-2xl"
+          className="rounded-2xl border px-4 py-3"
           style={{
             borderColor: palette.borderStrong,
-            backgroundColor: "rgba(8,10,15,0.94)",
+            backgroundColor: "rgba(8,10,15,0.92)",
+            boxShadow: "0 24px 55px rgba(0,0,0,0.4)",
           }}
         >
           <p
@@ -910,10 +786,11 @@ export function HeroDashboardCarousel({ palette }: HeroDashboardCarouselProps) {
 
       <div className="pointer-events-none absolute -bottom-7 -left-8 z-50 hidden lg:block">
         <div
-          className="rounded-2xl border px-3.5 py-2.5 shadow-2xl"
+          className="rounded-2xl border px-3.5 py-2.5"
           style={{
             borderColor: palette.borderStrong,
-            backgroundColor: "rgba(8,10,15,0.94)",
+            backgroundColor: "rgba(8,10,15,0.92)",
+            boxShadow: "0 24px 55px rgba(0,0,0,0.4)",
           }}
         >
           <p

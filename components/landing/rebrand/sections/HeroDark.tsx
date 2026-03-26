@@ -15,7 +15,7 @@ export function HeroDark({
   content: LandingContent;
 }) {
   return (
-    <SectionFrame className="landing-reveal pt-20 sm:pt-28 lg:pt-32">
+    <SectionFrame className="landing-reveal pt-18 sm:pt-20 lg:pt-20">
       <div className="grid items-start gap-12 lg:grid-cols-[1fr_0.95fr] lg:gap-14">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
