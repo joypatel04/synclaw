@@ -1,4 +1,3 @@
-import { ShieldCheck } from "lucide-react";
 import {
   PublicDocsCard,
   PublicDocsCodeBlock,
@@ -10,13 +9,18 @@ export default function WebhookSecurityDocsPage() {
     <PublicDocsShell
       title="Webhook Security"
       description="How to operate webhook endpoints safely in production."
-      icon={ShieldCheck}
+      iconName="ShieldCheck"
     >
       <PublicDocsCard title="Baseline controls">
         <ul className="list-disc space-y-2 pl-5">
           <li>Use per-webhook secrets and rotate them regularly.</li>
-          <li>Never store plain secrets after creation; only hashed secrets at rest.</li>
-          <li>Use provider event IDs to protect against duplicate deliveries.</li>
+          <li>
+            Never store plain secrets after creation; only hashed secrets at
+            rest.
+          </li>
+          <li>
+            Use provider event IDs to protect against duplicate deliveries.
+          </li>
           <li>Apply payload size limits and request rate limits.</li>
         </ul>
       </PublicDocsCard>
@@ -43,4 +47,3 @@ Recommended:
     </PublicDocsShell>
   );
 }
-

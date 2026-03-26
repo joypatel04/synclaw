@@ -1,4 +1,3 @@
-import { Server } from "lucide-react";
 import {
   PublicDocsCallout,
   PublicDocsCard,
@@ -11,12 +10,20 @@ export default function HostingSelfHostedConvexPage() {
     <PublicDocsShell
       title="Self-hosted: Configure Convex"
       description="Set up Convex deployments, auth, and local runtime for this project."
-      icon={Server}
+      iconName="Server"
     >
       <PublicDocsCard title="1) Create and link Convex project">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Create a Convex project from dashboard (dev deployment first).</li>
-          <li>Copy deployment values into <code className="rounded bg-bg-primary px-1 py-0.5">.env.local</code>.</li>
+          <li>
+            Create a Convex project from dashboard (dev deployment first).
+          </li>
+          <li>
+            Copy deployment values into{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              .env.local
+            </code>
+            .
+          </li>
           <li>Run local sync and wait until functions are ready.</li>
         </ol>
         <div className="mt-4 space-y-3">
@@ -41,10 +48,22 @@ AUTH_GOOGLE_SECRET=<google-client-secret>`}
 
       <PublicDocsCard title="2) Configure auth provider">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Create/update GitHub and Google OAuth apps and set callback URLs to Convex auth routes.</li>
-          <li>Ensure local callback and production callback are both configured where required.</li>
-          <li>Set OAuth client id/secret in both local env and production deployment secrets.</li>
-          <li>Verify callback returns to app domain and session persists after refresh.</li>
+          <li>
+            Create/update GitHub and Google OAuth apps and set callback URLs to
+            Convex auth routes.
+          </li>
+          <li>
+            Ensure local callback and production callback are both configured
+            where required.
+          </li>
+          <li>
+            Set OAuth client id/secret in both local env and production
+            deployment secrets.
+          </li>
+          <li>
+            Verify callback returns to app domain and session persists after
+            refresh.
+          </li>
         </ol>
         <div className="mt-4">
           <PublicDocsCodeBlock
@@ -91,14 +110,18 @@ bun run dev`}
 
       <PublicDocsCard title="5) Production deployment detail">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Set all required env vars in your hosting platform and Convex production env.</li>
+          <li>
+            Set all required env vars in your hosting platform and Convex
+            production env.
+          </li>
           <li>Deploy app and Convex functions from the same commit SHA.</li>
           <li>Run smoke tests immediately after deploy.</li>
           <li>Keep rollback-ready previous deployment for fast recovery.</li>
         </ol>
         <div className="mt-4">
           <PublicDocsCallout title="Important">
-            Version skew between app code and Convex function schema is a common source of runtime bugs. Deploy them together.
+            Version skew between app code and Convex function schema is a common
+            source of runtime bugs. Deploy them together.
           </PublicDocsCallout>
         </div>
       </PublicDocsCard>

@@ -1,4 +1,4 @@
-import { ArrowRight, Cloud } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import {
   PublicDocsCard,
@@ -11,7 +11,7 @@ export default function PublicWssDocsPage() {
     <PublicDocsShell
       title="Public WSS Setup"
       description={`Fastest way to start with ${brand.product.name} in OSS mode.`}
-      icon={Cloud}
+      iconName="Cloud"
     >
       <PublicDocsCard title="Who should pick Public WSS">
         <ul className="list-disc space-y-2 pl-5">

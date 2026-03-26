@@ -6,13 +6,69 @@
     "websiteUrl": "https://synclaw.io"
   },
   "marketing": {
-    "heroHeadline": "The command center your",
-    "heroAccent": "OpenClaw agents deserve",
-    "heroSubheadline": "Stop managing OpenClaw through terminals and config files. Synclaw gives you real-time agent monitoring, task management, and cost tracking — in one clean dashboard.",
-    "primaryCtaLabel": "Book a Setup Call",
-    "secondaryCtaLabel": "See how it works",
-    "signInLabel": "Sign in",
-    "trustBadge": "Early access — limited spots available",
+    "landingNavLinks": [
+      { "label": "Docs", "href": "/docs" },
+      { "label": "Product", "href": "#product" },
+      { "label": "Use Cases", "href": "#use-cases" },
+      { "label": "FAQ", "href": "/docs/faq" }
+    ],
+    "heroPrimaryCtaLabel": "Continue",
+    "heroSecondaryCtaLabel": "Watch product",
+    "heroEyebrow": "Public WSS + BYO OpenClaw",
+    "proofGridItems": [
+      {
+        "title": "See every agent in one feed",
+        "body": "Track real-time status, assignment changes, and execution context without terminal-hopping.",
+        "footnote": "Built around workspace-level OpenClaw settings."
+      },
+      {
+        "title": "Move work from inbox to done",
+        "body": "Operate with a board designed for agent collaboration, not generic project management.",
+        "footnote": "Shared task state, clear ownership, predictable execution."
+      },
+      {
+        "title": "Ship with safer operational visibility",
+        "body": "Live events, role-aware controls, and deterministic setup workflows keep the system transparent.",
+        "footnote": "No managed-cloud dependency required for launch."
+      }
+    ],
+    "explainerBlocks": [
+      {
+        "title": "Connect once, operate continuously",
+        "body": "Configure OpenClaw in workspace settings and keep teams aligned through one command surface.",
+        "chips": ["Workspace-scoped", "Role-aware", "Event-driven"]
+      },
+      {
+        "title": "Provider-flexible by design",
+        "body": "Run your own model/provider setup and retain control while Synclaw handles coordination UX.",
+        "chips": ["Public WSS", "BYO provider keys", "No lock-in"]
+      }
+    ],
+    "useCaseCards": [
+      {
+        "title": "Operations teams",
+        "body": "Route incoming workload, watch agent health, and reduce handoff friction in live sessions.",
+        "tag": "Agent visibility"
+      },
+      {
+        "title": "Product teams",
+        "body": "Convert ideas into executable tasks and monitor progress without hidden state.",
+        "tag": "Live coordination"
+      },
+      {
+        "title": "Founder-led teams",
+        "body": "Keep control over infrastructure while shipping a coherent agent workflow surface quickly.",
+        "tag": "Workflow execution"
+      }
+    ],
+    "finalCtaLabel": "Continue",
+    "heroHeadline": "Mission control for your",
+    "heroAccent": "OpenClaw workspace",
+    "heroSubheadline": "Coordinate agents, tasks, and live activity through one operating surface built for Public WSS and BYO OpenClaw teams.",
+    "primaryCtaLabel": "Continue",
+    "secondaryCtaLabel": "Watch product",
+    "signInLabel": "Continue",
+    "trustBadge": "Public WSS launch profile",
     "benefitBullets": [
       "Real-time agent monitoring",
       "Kanban task management",

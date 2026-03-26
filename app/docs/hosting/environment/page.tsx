@@ -1,4 +1,3 @@
-import { Settings2 } from "lucide-react";
 import {
   PublicDocsCallout,
   PublicDocsCard,
@@ -11,7 +10,7 @@ export default function HostingEnvironmentReferencePage() {
     <PublicDocsShell
       title="Environment Variable Reference"
       description="Current env variables for OSS Public WSS mode and self-hosted deployment."
-      icon={Settings2}
+      iconName="Settings2"
     >
       <PublicDocsCard title="Core Convex variables">
         <ul className="list-disc space-y-2 pl-5">

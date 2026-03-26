@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  AlertTriangle,
   BookOpenText,
   ChevronRight,
   Cloud,
@@ -10,6 +11,7 @@ import {
   HardDrive,
   HelpCircle,
   LifeBuoy,
+  PlugZap,
   Server,
   Settings2,
   ShieldCheck,
@@ -26,6 +28,24 @@ type DocsNavItem = {
   label: string;
   icon?: LucideIcon;
 };
+
+const docsHeaderIcons = {
+  AlertTriangle,
+  BookOpenText,
+  Cloud,
+  Coins,
+  FolderTree,
+  HardDrive,
+  HelpCircle,
+  PlugZap,
+  Server,
+  Settings2,
+  ShieldCheck,
+  Webhook,
+  Wrench,
+} as const;
+
+export type PublicDocsIconName = keyof typeof docsHeaderIcons;
 
 const docsNavGroups: Array<{ title: string; items: DocsNavItem[] }> = [
   {
@@ -109,14 +129,15 @@ function isActivePath(pathname: string, href: string): boolean {
 export function PublicDocsShell({
   title,
   description,
-  icon: Icon,
+  iconName,
   children,
 }: {
   title: string;
   description: string;
-  icon: LucideIcon;
+  iconName: PublicDocsIconName;
   children: React.ReactNode;
 }) {
+  const Icon = docsHeaderIcons[iconName];
   const pathname = usePathname() ?? "/docs";
   const activeTopNav = docsTopNav.find((item) =>
     isActivePath(pathname, item.href),

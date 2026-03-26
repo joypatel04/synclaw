@@ -1,4 +1,3 @@
-import { AlertTriangle } from "lucide-react";
 import {
   PublicDocsCard,
   PublicDocsCodeBlock,
@@ -10,7 +9,7 @@ export default function HostingTroubleshootingPage() {
     <PublicDocsShell
       title="Hosting Troubleshooting"
       description="Fast diagnosis for common auth, Convex, and OpenClaw/MCP issues."
-      icon={AlertTriangle}
+      iconName="AlertTriangle"
     >
       <PublicDocsCard title="Auth callback stays on provider domain">
         <ul className="list-disc space-y-2 pl-5">

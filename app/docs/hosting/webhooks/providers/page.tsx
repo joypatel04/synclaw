@@ -1,4 +1,3 @@
-import { PlugZap } from "lucide-react";
 import {
   PublicDocsCard,
   PublicDocsCodeBlock,
@@ -10,7 +9,7 @@ export default function WebhookProviderRecipesPage() {
     <PublicDocsShell
       title="Webhook Provider Recipes"
       description="Practical examples for common event providers."
-      icon={PlugZap}
+      iconName="PlugZap"
     >
       <PublicDocsCard title="GitHub Webhook (issues)">
         <PublicDocsCodeBlock
@@ -60,4 +59,3 @@ Content-Type: application/json
     </PublicDocsShell>
   );
 }
-

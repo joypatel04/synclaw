@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  BookOpenText,
   Cloud,
   Coins,
   HardDrive,
@@ -54,7 +53,7 @@ export default function PublicDocsOverviewPage() {
     <PublicDocsShell
       title="Public Documentation"
       description={`How to set up and run ${brand.product.name} with Public WSS and self-hosted deployment options.`}
-      icon={BookOpenText}
+      iconName="BookOpenText"
     >
       <PublicDocsCard title="Choose your track">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

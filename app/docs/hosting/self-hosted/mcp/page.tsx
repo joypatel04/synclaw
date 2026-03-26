@@ -1,4 +1,3 @@
-import { Wrench } from "lucide-react";
 import {
   PublicDocsCallout,
   PublicDocsCard,
@@ -11,14 +10,29 @@ export default function HostingSelfHostedMcpPage() {
     <PublicDocsShell
       title="Self-hosted: Configure OpenClaw + MCP"
       description="Connect gateway auth and MCP tooling to your workspace flow."
-      icon={Wrench}
+      iconName="Wrench"
     >
       <PublicDocsCard title="1) OpenClaw gateway setup">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Open <code className="rounded bg-bg-primary px-1 py-0.5">Settings -&gt; OpenClaw</code> in target workspace.</li>
-          <li>Default to Public WSS (`wss://`) using explicit protocol and no trailing spaces.</li>
+          <li>
+            Open{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              Settings -&gt; OpenClaw
+            </code>{" "}
+            in target workspace.
+          </li>
+          <li>
+            Default to Public WSS (`wss://`) using explicit protocol and no
+            trailing spaces.
+          </li>
           <li>Set auth token with least required scopes.</li>
-          <li>Add Synclaw origin to OpenClaw <code className="rounded bg-bg-primary px-1 py-0.5">allowedOrigins</code> and approve device.</li>
+          <li>
+            Add Synclaw origin to OpenClaw{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              allowedOrigins
+            </code>{" "}
+            and approve device.
+          </li>
           <li>Save and re-open settings page to confirm persistence.</li>
         </ol>
         <div className="mt-4">
@@ -35,15 +49,24 @@ Environment: <dev|staging|prod workspace target>`}
       <PublicDocsCard title="Method decision (security-first)">
         <ul className="list-disc space-y-2 pl-5">
           <li>Public WSS is the recommended default for production.</li>
-          <li>Private Connector is advanced and meant for private-network operators.</li>
-          <li>Self-hosted Local is advanced and best only when app + OpenClaw are in same private environment.</li>
+          <li>
+            Private Connector is advanced and meant for private-network
+            operators.
+          </li>
+          <li>
+            Self-hosted Local is advanced and best only when app + OpenClaw are
+            in same private environment.
+          </li>
         </ul>
       </PublicDocsCard>
 
       <PublicDocsCard title="2) MCP server setup">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Deploy MCP server with required tool providers.</li>
-          <li>Ensure network reachability between runtime and MCP endpoint over your expected network path.</li>
+          <li>
+            Ensure network reachability between runtime and MCP endpoint over
+            your expected network path.
+          </li>
           <li>Validate auth between OpenClaw runtime and MCP server.</li>
           <li>Confirm tool manifest and schemas are loaded as expected.</li>
         </ol>
@@ -88,8 +111,8 @@ Expected:
         </ul>
         <div className="mt-4">
           <PublicDocsCallout title="Diagnostic order">
-            Check gateway auth first, then MCP connectivity, then tool schema compatibility. This avoids chasing downstream
-            symptoms.
+            Check gateway auth first, then MCP connectivity, then tool schema
+            compatibility. This avoids chasing downstream symptoms.
           </PublicDocsCallout>
         </div>
       </PublicDocsCard>

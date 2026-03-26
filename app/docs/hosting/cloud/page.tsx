@@ -1,4 +1,3 @@
-import { Cloud } from "lucide-react";
 import {
   PublicDocsCallout,
   PublicDocsCard,
@@ -11,7 +10,7 @@ export default function HostingCloudPage() {
     <PublicDocsShell
       title="Public WSS Hosting"
       description="Rapid onboarding path for OSS launch with BYO OpenClaw over secure WSS."
-      icon={Cloud}
+      iconName="Cloud"
     >
       <PublicDocsCard title="Prerequisites">
         <ul className="list-disc space-y-2 pl-5">

@@ -1,4 +1,3 @@
-import { HelpCircle } from "lucide-react";
 import {
   PublicDocsCard,
   PublicDocsShell,
@@ -9,7 +8,7 @@ export default function PublicFaqDocsPage() {
     <PublicDocsShell
       title="FAQ"
       description="Common Public WSS vs self-hosted questions."
-      icon={HelpCircle}
+      iconName="HelpCircle"
     >
       <PublicDocsCard title="Is self-hosted intentionally difficult?">
         <p>
