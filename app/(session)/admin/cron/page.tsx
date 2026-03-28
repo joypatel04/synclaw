@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CronJobTable } from "@/components/admin/cron/CronJobTable";
@@ -32,7 +34,7 @@ interface ToastState {
 }
 
 function useToast() {
-  const [toast, setToast] = React.useState<ToastState>({ show: false, message: "", type: "success" });
+  const [toast, setToast] = useState<ToastState>({ show: false, message: "", type: "success" });
 
   const showToast = useCallback(({ title, variant }: { title: string; variant?: "default" | "destructive" }) => {
     setToast({ show: true, message: title, type: variant === "destructive" ? "error" : "success" });
@@ -52,10 +54,11 @@ function useToast() {
   return { toast: showToast, ToastComponent };
 }
 
-export default function CronJobsPage() {
+// Inner component that uses useWorkspace (must be rendered inside AppLayout)
+function CronJobsPageContent() {
   const { workspace } = useWorkspace();
   const openclawConfig = useQuery(
-    api.openclaw.getConfigSummary,
+    api.openclaw.getClientConfig,
     workspace ? { workspaceId: workspace._id } : "skip",
   );
 
@@ -85,7 +88,7 @@ export default function CronJobsPage() {
           {
             wsUrl: openclawConfig.wsUrl,
             protocol: "req",
-            authToken: openclawConfig.token || undefined,
+            authToken: openclawConfig.authToken || undefined,
             clientId: "synclaw-hq",
             clientMode: "webchat",
             clientPlatform: "web",
@@ -237,20 +240,6 @@ export default function CronJobsPage() {
     }
   };
 
-  // Fetch run history
-  const handleFetchRuns = async (jobId: string): Promise<CronRun[]> => {
-    const client = gatewayRef.current;
-    if (!client) return [];
-
-    try {
-      const result = await client.request("cron.runs", { jobId });
-      return Array.isArray(result) ? result : [];
-    } catch (err) {
-      console.error("Failed to fetch runs:", err);
-      return [];
-    }
-  };
-
   // Handlers
   const handleEdit = (job: CronJob) => {
     setSelectedJob(job);
@@ -268,7 +257,7 @@ export default function CronJobsPage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <div className="mx-auto max-w-7xl p-3 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
@@ -343,8 +332,8 @@ export default function CronJobsPage() {
             isLoading={isLoading}
             onEdit={handleEdit}
             onToggle={handleToggleJob}
-            onRun={(job) => setRunConfirmJob(job)}
-            onDelete={(job) => setDeleteConfirmJob(job)}
+            onRun={async (job) => setRunConfirmJob(job)}
+            onDelete={async (job) => setDeleteConfirmJob(job)}
             onViewHistory={handleViewHistory}
           />
         )}
@@ -363,8 +352,7 @@ export default function CronJobsPage() {
       <CronRunHistory
         open={isHistoryOpen}
         onOpenChange={setIsHistoryOpen}
-        job={historyJob}
-        onFetchRuns={handleFetchRuns}
+        jobId={historyJob?.id ?? null}
       />
 
       {/* Delete Confirmation */}
@@ -423,6 +411,15 @@ export default function CronJobsPage() {
 
       {/* Toast Notifications */}
       {ToastComponent}
+    </>
+  );
+}
+
+// Main page component - doesn't use useWorkspace directly
+export default function CronJobsPage() {
+  return (
+    <AppLayout>
+      <CronJobsPageContent />
     </AppLayout>
   );
 }

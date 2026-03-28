@@ -1,4 +1,4 @@
-import * as cronParser from "cron-parser";
+import cronParser from "cron-parser";
 import { formatDistanceToNow } from "date-fns";
 import type { CronJob, CronScheduleType } from "@/components/admin/cron/types";
 
@@ -10,7 +10,7 @@ export function validateCronExpression(expr: string): {
   error?: string;
 } {
   try {
-    cronParser.parseExpression(expr);
+    cronParser.parse(expr);
     return { valid: true };
   } catch (error) {
     return {
@@ -62,7 +62,7 @@ export function getNextRunTime(schedule: any): string {
 
     switch (schedule.kind) {
       case "cron": {
-        const interval = cronParser.parseExpression(schedule.expr || "* * * * *", {
+        const interval = cronParser.parse(schedule.expr || "* * * * *", {
           tz: schedule.tz || "UTC",
         });
         const next = interval.next().toDate();

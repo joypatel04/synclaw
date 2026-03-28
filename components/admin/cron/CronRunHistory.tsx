@@ -80,12 +80,13 @@ export function CronRunHistory({
 
       const payload = (result as { payload?: { runs?: CronRun[] } })?.payload;
       if (payload && Array.isArray(payload.runs)) {
+        const runsArray = payload.runs;
         if (page === 0) {
-          setRuns(payload.runs);
+          setRuns(runsArray);
         } else {
-          setRuns((prev) => [...prev, ...payload.runs]);
+          setRuns((prev) => [...prev, ...runsArray]);
         }
-        setHasMore(payload.runs.length >= 50);
+        setHasMore(runsArray.length >= 50);
       } else {
         setHasMore(false);
       }
