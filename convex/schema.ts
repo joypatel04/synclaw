@@ -312,8 +312,10 @@ export default defineSchema({
   messages: defineTable({
     workspaceId: v.id("workspaces"),
     taskId: v.union(v.id("tasks"), v.null()),
+    userId: v.union(v.id("users"), v.null()),
     agentId: v.union(v.id("agents"), v.null()),
     authorName: v.string(),
+    authorImage: v.optional(v.string()),
     content: v.string(),
     attachments: v.array(v.id("documents")),
     createdAt: v.number(),
