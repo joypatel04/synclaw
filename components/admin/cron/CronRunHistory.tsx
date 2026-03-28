@@ -1,6 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
+import { getRunStatusColor, formatDuration } from "@/lib/cron-utils";
+import type { CronRun } from "./types";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
@@ -8,15 +16,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertCircle, CheckCircle2, Loader2, Clock } from "lucide-react";
-import type { CronRun } from "./types";
-import { getRunStatusColor, formatDuration } from "@/lib/cron-utils";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CronRunHistoryProps {
   jobId: string | null;
@@ -50,17 +51,22 @@ export function CronRunHistory({
     setError(null);
 
     try {
-      const client = new OpenClawBrowserGatewayClient({
-        wsUrl: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL || "",
-        protocol: "req",
-        clientId: "web",
-        clientMode: "webchat",
-        clientPlatform: "web",
-        role: "operator",
-        scopes: ["chat", "cron"],
-        subscribeOnConnect: false,
-        subscribeMethod: "chat.subscribe",
-      });
+      const client = new OpenClawBrowserGatewayClient(
+        {
+          wsUrl: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL || "",
+          protocol: "req",
+          clientId: "web",
+          clientMode: "webchat",
+          clientPlatform: "web",
+          role: "operator",
+          scopes: ["chat", "cron"],
+          subscribeOnConnect: false,
+          subscribeMethod: "chat.subscribe",
+        },
+        async () => {
+          // No-op event handler
+        },
+      );
 
       await client.connect();
 
@@ -162,7 +168,7 @@ export function CronRunHistory({
             </div>
           ) : (
             <div className="space-y-3 py-4">
-              {runs.map((run) => (
+              {(runs || []).map((run) => (
                 <div
                   key={run.id}
                   className="rounded-lg border border-border-default bg-bg-secondary/50 p-4"

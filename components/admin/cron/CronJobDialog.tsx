@@ -158,7 +158,9 @@ export function CronJobDialog({ open, onOpenChange, job, onSave, isSaving }: Cro
         cronExpr: job.schedule.expr || "* * * * *",
         intervalMs: job.schedule.everyMs || 60000,
         atTime: job.schedule.at || "",
-        sessionTarget: job.sessionTarget || "isolated",
+        sessionTarget: (job.sessionTarget === "main" || job.sessionTarget === "isolated" || job.sessionTarget === "current")
+          ? job.sessionTarget
+          : "isolated",
         payloadKind: job.payload.kind,
         payloadText: job.payload.text || "",
         payloadMessage: job.payload.message || "",
