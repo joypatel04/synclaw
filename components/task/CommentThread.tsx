@@ -37,7 +37,7 @@ type DocType = "deliverable" | "research" | "protocol" | "note";
 
 export function CommentThread({ taskId }: CommentThreadProps) {
   const { workspaceId, canEdit, canManage } = useWorkspace();
-  const messages = useQuery(api.messages.list, { workspaceId, taskId }) ?? [];
+  const messages = useQuery(api.messages.listWithAuthors, { workspaceId, taskId }) ?? [];
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
   const createDocument = useMutation(api.documents.create);
   const deleteMessage = useMutation(api.messages.remove);
@@ -69,6 +69,18 @@ export function CommentThread({ taskId }: CommentThreadProps) {
       return raw.slice(prefixed.length).trim() || agent.name;
     }
     return raw;
+  };
+
+  const getInitials = (name: string): string => {
+    // Remove emoji prefix if present (e.g., "🧪 Friday" -> "Friday")
+    const cleanName = name.replace(/^[^\p{L}\p{N}]+/u, "").trim();
+    if (!cleanName) return "U";
+
+    const parts = cleanName.split(/\s+/);
+    if (parts.length === 1) {
+      return parts[0][0].toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
   const openDocModalFor = (msg: Doc<"messages">) => {
@@ -140,59 +152,83 @@ export function CommentThread({ taskId }: CommentThreadProps) {
           />
         ) : (
           <div className="space-y-4">
-            {messages.map((msg) => (
-              <div key={msg._id} className="flex gap-2.5 sm:gap-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">
-                  {getAgentEmoji(msg.agentId) ?? "👤"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="text-sm font-medium text-text-primary">
-                        {getAuthorLabel(msg as Doc<"messages">)}
-                      </span>
-                      <Timestamp time={msg.createdAt} />
+            {messages.map((msg) => {
+              const agentEmoji = getAgentEmoji(msg.agentId);
+              const authorLabel = getAuthorLabel(msg as Doc<"messages">);
+              const initials = getInitials(authorLabel);
+              const hasUserImage = !agentEmoji && (msg as any).authorImage;
+
+              return (
+                <div key={msg._id} className="flex gap-2.5 sm:gap-3">
+                  <div className="relative h-7 w-7 shrink-0">
+                    {hasUserImage ? (
+                      <img
+                        src={(msg as any).authorImage}
+                        alt={authorLabel}
+                        className="h-full w-full rounded-full object-cover"
+                        onError={(e) => {
+                          // Fallback to initials on error
+                          e.currentTarget.style.display = "none";
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    {(!hasUserImage || agentEmoji) && (
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-sm">
+                        {agentEmoji ?? initials}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-sm font-medium text-text-primary">
+                          {authorLabel}
+                        </span>
+                        <Timestamp time={msg.createdAt} />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {canEdit && (
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px] text-text-muted hover:text-accent-orange gap-1"
+                            onClick={() =>
+                              openDocModalFor(msg as Doc<"messages">)
+                            }
+                          >
+                            <FileText className="h-3 w-3" />
+                            Save as doc
+                          </Button>
+                        )}
+                        {canManage ? (
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px] text-text-muted hover:text-status-blocked gap-1"
+                            disabled={Boolean(deletingMessageId)}
+                            onClick={() =>
+                              void handleDeleteComment(msg._id as Id<"messages">)
+                            }
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            {deletingMessageId === msg._id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {canEdit && (
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="ghost"
-                          className="h-6 px-2 text-[10px] text-text-muted hover:text-accent-orange gap-1"
-                          onClick={() =>
-                            openDocModalFor(msg as Doc<"messages">)
-                          }
-                        >
-                          <FileText className="h-3 w-3" />
-                          Save as doc
-                        </Button>
-                      )}
-                      {canManage ? (
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="ghost"
-                          className="h-6 px-2 text-[10px] text-text-muted hover:text-status-blocked gap-1"
-                          disabled={Boolean(deletingMessageId)}
-                          onClick={() =>
-                            void handleDeleteComment(msg._id as Id<"messages">)
-                          }
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          {deletingMessageId === msg._id
-                            ? "Deleting..."
-                            : "Delete"}
-                        </Button>
-                      ) : null}
+                    <div className="mt-1 min-w-0 max-w-full overflow-x-hidden text-sm text-text-secondary leading-relaxed">
+                      <MarkdownContent content={msg.content} />
                     </div>
                   </div>
-                  <div className="mt-1 min-w-0 max-w-full overflow-x-hidden text-sm text-text-secondary leading-relaxed">
-                    <MarkdownContent content={msg.content} />
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </ScrollArea>

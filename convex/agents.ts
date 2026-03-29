@@ -714,3 +714,157 @@ export const _rollbackCreatedAgentForSetupFailure = internalMutation({
   },
 });
 
+/** Hierarchy node with inferred parent-child relationships */
+export interface HierarchyNode {
+  _id: string;
+  name: string;
+  role: string;
+  emoji: string;
+  sessionKey: string;
+  status: "active" | "idle" | "error" | "offline";
+  lastPulseAt: number | undefined;
+  currentTaskId: string | null;
+  parentId: string | null;
+  level: number;
+}
+
+/**
+ * Compute parent ID from session key pattern.
+ * Rules:
+ * - If sessionKey has exactly 3 parts (agent:NAME:main), it's a root agent (no parent)
+ * - Otherwise, build parent key by removing the last segment
+ * - Find agent with matching parent session key
+ */
+function computeParentId(
+  sessionKey: string,
+  allSessionKeys: string[],
+): string | null {
+  const parts = sessionKey.split(":");
+
+  // Root agent: agent:NAME:main (exactly 3 parts)
+  if (parts.length === 3) {
+    return null;
+  }
+
+  // Build parent key by removing last segment
+  const parentKey = parts.slice(0, -1).join(":");
+
+  // Find agent with matching parent session key
+  const parentAgent = allSessionKeys.find((key) => key === parentKey);
+
+  return parentAgent || null;
+}
+
+/**
+ * Get hierarchy tree for all agents in workspace.
+ * Returns agents with computed parentId and level fields.
+ */
+export const getHierarchyTree = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, args) => {
+    const agents = await ctx.db
+      .query("agents")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .collect();
+
+    // Filter out archived agents
+    const activeAgents = agents.filter((a) => !a.isArchived);
+
+    // Get all session keys for parent lookup
+    const sessionKeys = activeAgents.map((a) => a.sessionKey);
+
+    // Build hierarchy nodes
+    const nodes: HierarchyNode[] = activeAgents.map((agent) => {
+      const parentId = computeParentId(agent.sessionKey, sessionKeys);
+
+      // Compute level (depth) by counting ancestors
+      let level = 0;
+      let currentParentId = parentId;
+      while (currentParentId !== null) {
+        level++;
+        const parentAgent = activeAgents.find(
+          (a) => a.sessionKey === currentParentId,
+        );
+        if (!parentAgent) break;
+
+        const parentParentId = computeParentId(
+          parentAgent.sessionKey,
+          sessionKeys,
+        );
+        currentParentId = parentParentId;
+      }
+
+      return {
+        _id: agent._id,
+        name: agent.name,
+        role: agent.role,
+        emoji: agent.emoji,
+        sessionKey: agent.sessionKey,
+        status: agent.status,
+        lastPulseAt: agent.lastPulseAt,
+        currentTaskId: agent.currentTaskId ?? null,
+        parentId,
+        level,
+      };
+    });
+
+    return nodes;
+  },
+});
+
+/**
+ * Get detailed info about a single agent for the side panel.
+ */
+export const getAgentDetailForTree = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const agent = await ctx.db.get(args.agentId);
+
+    if (!agent || agent.workspaceId !== args.workspaceId) {
+      return null;
+    }
+
+    return {
+      _id: agent._id,
+      name: agent.name,
+      role: agent.role,
+      emoji: agent.emoji,
+      sessionKey: agent.sessionKey,
+      status: agent.status,
+      lastPulseAt: agent.lastPulseAt,
+      currentTaskId: agent.currentTaskId,
+      telemetry: agent.telemetry,
+      lastSeenActivityAt: agent.lastSeenActivityAt,
+      createdAt: agent.createdAt,
+    };
+  },
+});
+
+/**
+ * Get recent activity for an agent.
+ */
+export const getAgentActivityForTree = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+    agentId: v.id("agents"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const limit = args.limit ?? 10;
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .order("desc")
+      .collect();
+
+    return activities.filter((a) => a.agentId === args.agentId).slice(0, limit);
+  },
+});
