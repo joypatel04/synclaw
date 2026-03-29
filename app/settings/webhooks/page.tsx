@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   Copy,
@@ -17,6 +16,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { WebhookCreateDialog } from "@/components/settings/WebhookCreateDialog";
+import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import { WEBHOOKS_ENABLED } from "@/lib/features";
 import {
   Select,
@@ -25,33 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-function SettingsTabs() {
-  const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
-  const inactive = "border-transparent text-text-muted hover:text-text-primary";
-  return (
-    <div className="flex gap-1 mb-8 border-b border-border-default overflow-x-auto">
-      <Link href="/settings" className={`${base} ${inactive}`}>
-        General
-      </Link>
-      <Link href="/settings/members" className={`${base} ${inactive}`}>
-        Members
-      </Link>
-      <Link href="/settings/openclaw" className={`${base} ${inactive}`}>
-        OpenClaw
-      </Link>
-      <Link
-        href="/settings/webhooks"
-        className={`${base} border-accent-orange text-accent-orange`}
-      >
-        Webhooks
-      </Link>
-      <Link href="/settings/account" className={`${base} ${inactive}`}>
-        Account
-      </Link>
-    </div>
-  );
-}
 
 function WebhooksContent() {
   const { workspaceId, canManage } = useWorkspace();
@@ -143,7 +116,7 @@ function WebhooksContent() {
         </div>
       </div>
 
-      <SettingsTabs />
+      <WorkspaceSettingsTabs active="webhooks" canManage={canManage} />
 
       <div className="space-y-4">
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">

@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
-import Link from "next/link";
-import { WEBHOOKS_ENABLED } from "@/lib/features";
+import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,7 @@ import {
 import { useRouter } from "next/navigation";
 
 function SettingsContent() {
-  const { workspace, role, canAdmin } = useWorkspace();
+  const { workspace, role, canAdmin, canManage } = useWorkspace();
   const updateName = useMutation(api.workspaces.updateName);
   const deleteWorkspace = useMutation(api.workspaces.deleteWorkspace);
   const router = useRouter();
@@ -72,41 +71,7 @@ function SettingsContent() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex gap-1 mb-8 border-b border-border-default">
-        <Link
-          href="/settings"
-          className="border-b-2 border-accent-orange px-4 py-2.5 text-sm font-medium text-accent-orange"
-        >
-          General
-        </Link>
-        <Link
-          href="/settings/members"
-          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-        >
-          Members
-        </Link>
-        <Link
-          href="/settings/openclaw"
-          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-        >
-          OpenClaw
-        </Link>
-        {WEBHOOKS_ENABLED ? (
-          <Link
-            href="/settings/webhooks"
-            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-          >
-            Webhooks
-          </Link>
-        ) : null}
-        <Link
-          href="/settings/account"
-          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-        >
-          Account
-        </Link>
-      </div>
+      <WorkspaceSettingsTabs active="general" canManage={canManage} />
 
       <div className="space-y-8">
         {/* Workspace Name */}

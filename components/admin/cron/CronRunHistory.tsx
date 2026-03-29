@@ -19,16 +19,34 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 
+/** Same fields as workspace OpenClaw client config (browser gateway connect). */
+export type CronRunGatewayConfig = {
+  wsUrl: string;
+  protocol: string;
+  authToken?: string;
+  password?: string;
+  forceDisableDeviceAuth?: boolean;
+  clientId?: string;
+  clientMode?: string;
+  clientPlatform?: string;
+  role?: string;
+  scopes?: string[];
+  subscribeMethod?: string;
+};
+
 interface CronRunHistoryProps {
   jobId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Required to load history against the workspace gateway (not a public env URL). */
+  gatewayConfig: CronRunGatewayConfig | null;
 }
 
 export function CronRunHistory({
   jobId,
   open,
   onOpenChange,
+  gatewayConfig,
 }: CronRunHistoryProps) {
   const [runs, setRuns] = useState<CronRun[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,10 +60,16 @@ export function CronRunHistory({
 
     loadRuns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, jobId, page]);
+  }, [open, jobId, page, gatewayConfig]);
 
   const loadRuns = async () => {
     if (!jobId) return;
+    if (!gatewayConfig?.wsUrl) {
+      setError(
+        "OpenClaw gateway is not configured. Set it under Settings → OpenClaw.",
+      );
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -53,15 +77,18 @@ export function CronRunHistory({
     try {
       const client = new OpenClawBrowserGatewayClient(
         {
-          wsUrl: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL || "",
-          protocol: "req",
-          clientId: "web",
-          clientMode: "webchat",
-          clientPlatform: "web",
-          role: "operator",
-          scopes: ["chat", "cron"],
+          wsUrl: gatewayConfig.wsUrl,
+          protocol: gatewayConfig.protocol,
+          authToken: gatewayConfig.authToken,
+          password: gatewayConfig.password,
+          forceDisableDeviceAuth: gatewayConfig.forceDisableDeviceAuth,
+          clientId: gatewayConfig.clientId,
+          clientMode: gatewayConfig.clientMode,
+          clientPlatform: gatewayConfig.clientPlatform,
+          role: gatewayConfig.role,
+          scopes: gatewayConfig.scopes,
           subscribeOnConnect: false,
-          subscribeMethod: "chat.subscribe",
+          subscribeMethod: gatewayConfig.subscribeMethod ?? "chat.subscribe",
         },
         async () => {
           // No-op event handler

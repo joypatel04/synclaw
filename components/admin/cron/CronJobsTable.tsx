@@ -1,22 +1,17 @@
 "use client";
 
+import {
+  Clock,
+  Edit,
+  History,
+  MoreVertical,
+  Play,
+  Power,
+  PowerOff,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,21 +22,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Play,
-  Trash2,
-  Edit,
-  Clock,
-  MoreVertical,
-  RefreshCw,
-  History,
-  Power,
-  PowerOff,
-} from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  formatSchedule,
+  getNextRunTime,
+  getScheduleTypeColor,
+} from "@/lib/cron-utils";
+import { type CronRunGatewayConfig, CronRunHistory } from "./CronRunHistory";
 import type { CronJob } from "./types";
-import { getNextRunTime, formatSchedule, getScheduleTypeColor } from "@/lib/cron-utils";
-import { CronRunHistory } from "./CronRunHistory";
 
 interface CronJobsTableProps {
   jobs: CronJob[];
@@ -52,6 +56,7 @@ interface CronJobsTableProps {
   onToggle: (job: CronJob) => Promise<void>;
   onTrigger: (jobId: string) => Promise<void>;
   onRefresh: () => void;
+  gatewayConfig: CronRunGatewayConfig | null;
 }
 
 export function CronJobsTable({
@@ -63,6 +68,7 @@ export function CronJobsTable({
   onToggle,
   onTrigger,
   onRefresh,
+  gatewayConfig,
 }: CronJobsTableProps) {
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
   const [historyJobId, setHistoryJobId] = useState<string | null>(null);
@@ -278,6 +284,7 @@ export function CronJobsTable({
         jobId={historyJobId}
         open={historyJobId !== null}
         onOpenChange={(open) => !open && setHistoryJobId(null)}
+        gatewayConfig={gatewayConfig}
       />
     </>
   );

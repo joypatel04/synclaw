@@ -1,0 +1,29 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="aL" x1="34" y1="54" x2="128" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C4D0EA"/>
+      <stop offset="1" stop-color="#6A7BAA"/>
+    </linearGradient>
+    <linearGradient id="aR" x1="222" y1="54" x2="128" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DEE6F8"/>
+      <stop offset="1" stop-color="#7E8CB4"/>
+    </linearGradient>
+    <linearGradient id="aSync" x1="88" y1="90" x2="168" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8E7DFF"/>
+      <stop offset="1" stop-color="#58D5FF"/>
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="70" cy="144" rx="30" ry="36" fill="url(#aL)"/>
+  <path d="M90 118C96 90 118 70 148 66C135 84 128 101 126 121C114 123 102 122 90 118Z" fill="url(#aL)"/>
+  <path d="M92 168C100 192 120 208 148 210C135 192 129 176 127 156C114 154 102 158 92 168Z" fill="url(#aL)"/>
+
+  <ellipse cx="186" cy="144" rx="30" ry="36" fill="url(#aR)"/>
+  <path d="M166 118C160 90 138 70 108 66C121 84 128 101 130 121C142 123 154 122 166 118Z" fill="url(#aR)"/>
+  <path d="M164 168C156 192 136 208 108 210C121 192 127 176 129 156C142 154 154 158 164 168Z" fill="url(#aR)"/>
+
+  <path d="M96 127C104 112 119 102 136 102C154 102 169 112 176 127" stroke="url(#aSync)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M160 125L177 127L170 112" stroke="url(#aSync)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M160 161C152 176 137 186 120 186C102 186 87 176 80 161" stroke="url(#aSync)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M96 163L79 161L86 176" stroke="url(#aSync)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

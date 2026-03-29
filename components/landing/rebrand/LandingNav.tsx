@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { SynClawMark } from "@/components/brand/SynClawMark";
 import { GlowButton } from "./GlowButton";
 
 export function LandingNav({
@@ -14,7 +14,13 @@ export function LandingNav({
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04]">
-            <SynClawMark className="h-5 w-6" />
+            <Image
+              src="/brand/synclaw-logo.png"
+              alt="SynClaw logo"
+              width={22}
+              height={22}
+              className="h-[22px] w-[22px]"
+            />
           </span>
           <span className="font-semibold tracking-tight text-white/90">
             SynClaw

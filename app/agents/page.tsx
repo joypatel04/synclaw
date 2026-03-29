@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   Bot,
   ExternalLink,
+  GitBranch,
   HeartPulse,
   Pencil,
 } from "lucide-react";
@@ -79,7 +80,7 @@ function mapOneClickSetupError(code: string | undefined, message: string) {
 }
 
 function AgentsContent() {
-  const { workspaceId, canAdmin, canManage } = useWorkspace();
+  const { workspaceId, canAdmin, canManage, canEdit } = useWorkspace();
   const router = useRouter();
   const agents =
     useQuery(api.agents.list, { workspaceId, includeArchived: canAdmin }) ?? [];
@@ -450,8 +451,21 @@ function AgentsContent() {
             </p>
           </div>
         </div>
-        {canAdmin && (
+        {(canEdit || canAdmin) && (
           <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto gap-2"
+              title="Parent/child relationships from session keys"
+            >
+              <Link href="/agents/tree">
+                <GitBranch className="h-4 w-4" />
+                Hierarchy
+              </Link>
+            </Button>
+            {canAdmin ? (
             <Button
               asChild
               variant="outline"
@@ -460,6 +474,7 @@ function AgentsContent() {
             >
               <Link href="/agents/new">Use recipe</Link>
             </Button>
+            ) : null}
             <Button
               asChild
               variant="outline"
@@ -472,6 +487,7 @@ function AgentsContent() {
                 Health
               </Link>
             </Button>
+            {canAdmin ? (
             <Button
               size="sm"
               className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
@@ -479,6 +495,7 @@ function AgentsContent() {
             >
               Create & Configure Agent
             </Button>
+            ) : null}
           </div>
         )}
       </div>

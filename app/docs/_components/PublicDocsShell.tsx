@@ -18,9 +18,9 @@ import {
   Webhook,
   Wrench,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SynClawMark } from "@/components/brand/SynClawMark";
 import { brand } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -149,7 +149,13 @@ export function PublicDocsShell({
       <header className="sticky top-0 z-40 border-b border-border-default bg-bg-secondary/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/docs" className="flex items-center gap-2">
-            <SynClawMark className="h-5 w-6" />
+            <Image
+              src="/brand/synclaw-logo.png"
+              alt="SynClaw logo"
+              width={20}
+              height={20}
+              className="h-5 w-5"
+            />
             <span className="text-sm font-semibold">
               {brand.product.shortName} Docs
             </span>

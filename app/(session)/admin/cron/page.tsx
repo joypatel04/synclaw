@@ -1,13 +1,25 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { CronJobTable } from "@/components/admin/cron/CronJobTable";
+import { useQuery } from "convex/react";
+import {
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Play,
+  Plus,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CronJobDialog } from "@/components/admin/cron/CronJobDialog";
+import { CronJobTable } from "@/components/admin/cron/CronJobTable";
 import { CronRunHistory } from "@/components/admin/cron/CronRunHistory";
-import { Button } from "@/components/ui/button";
+import type { CronJob } from "@/components/admin/cron/types";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useWorkspace } from "@/components/providers/workspace-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,12 +30,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Clock, RefreshCw, Loader2, CheckCircle2, XCircle, Play } from "lucide-react";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
-import { useWorkspace } from "@/components/providers/workspace-provider";
+import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
-import type { CronJob, CronRun } from "@/components/admin/cron/types";
+import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
 import { cn } from "@/lib/utils";
 
 // Simple toast notification state
@@ -34,19 +43,47 @@ interface ToastState {
 }
 
 function useToast() {
-  const [toast, setToast] = useState<ToastState>({ show: false, message: "", type: "success" });
+  const [toast, setToast] = useState<ToastState>({
+    show: false,
+    message: "",
+    type: "success",
+  });
 
-  const showToast = useCallback(({ title, variant }: { title: string; variant?: "default" | "destructive" }) => {
-    setToast({ show: true, message: title, type: variant === "destructive" ? "error" : "success" });
-    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
-  }, []);
+  const showToast = useCallback(
+    ({
+      title,
+      variant,
+    }: {
+      title: string;
+      variant?: "default" | "destructive";
+    }) => {
+      setToast({
+        show: true,
+        message: title,
+        type: variant === "destructive" ? "error" : "success",
+      });
+      setTimeout(
+        () => setToast({ show: false, message: "", type: "success" }),
+        3000,
+      );
+    },
+    [],
+  );
 
   const ToastComponent = toast.show ? (
-    <div className={cn(
-      "fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-bottom-4",
-      toast.type === "success" ? "bg-teal-500 text-white" : "bg-red-500 text-white"
-    )}>
-      {toast.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+    <div
+      className={cn(
+        "fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-bottom-4",
+        toast.type === "success"
+          ? "bg-teal-500 text-white"
+          : "bg-red-500 text-white",
+      )}
+    >
+      {toast.type === "success" ? (
+        <CheckCircle2 className="h-4 w-4" />
+      ) : (
+        <XCircle className="h-4 w-4" />
+      )}
       <span className="text-sm font-medium">{toast.message}</span>
     </div>
   ) : null;
@@ -56,7 +93,7 @@ function useToast() {
 
 // Inner component that uses useWorkspace (must be rendered inside AppLayout)
 function CronJobsPageContent() {
-  const { workspace } = useWorkspace();
+  const { workspace, canManage } = useWorkspace();
   const openclawConfig = useQuery(
     api.openclaw.getClientConfig,
     workspace ? { workspaceId: workspace._id } : "skip",
@@ -71,51 +108,16 @@ function CronJobsPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [historyJob, setHistoryJob] = useState<CronJob | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [deleteConfirmJob, setDeleteConfirmJob] = useState<CronJob | null>(null);
+  const [deleteConfirmJob, setDeleteConfirmJob] = useState<CronJob | null>(
+    null,
+  );
   const [runConfirmJob, setRunConfirmJob] = useState<CronJob | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
   const gatewayRef = useRef<OpenClawBrowserGatewayClient | null>(null);
+  const fetchJobsRef = useRef<() => Promise<void>>(async () => {});
   const { toast, ToastComponent } = useToast();
 
-  // Initialize gateway client
-  useEffect(() => {
-    if (!openclawConfig || !openclawConfig.wsUrl) return;
-
-    const initGateway = async () => {
-      try {
-        const client = new OpenClawBrowserGatewayClient(
-          {
-            wsUrl: openclawConfig.wsUrl,
-            protocol: "req",
-            authToken: openclawConfig.authToken || undefined,
-            clientId: "synclaw-hq",
-            clientMode: "webchat",
-            clientPlatform: "web",
-            role: openclawConfig.role || "operator",
-            scopes: openclawConfig.scopes || ["operator.read", "operator.write", "operator.admin"],
-            subscribeOnConnect: false,
-            subscribeMethod: "chat.subscribe",
-          },
-          async () => {}, // No event handler needed for cron
-        );
-
-        await client.connect();
-        gatewayRef.current = client;
-        fetchJobs();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to connect to gateway");
-      }
-    };
-
-    initGateway();
-
-    return () => {
-      gatewayRef.current?.disconnect().catch(console.error);
-    };
-  }, [openclawConfig]);
-
-  // Fetch cron jobs
   const fetchJobs = useCallback(async () => {
     const client = gatewayRef.current;
     if (!client) return;
@@ -123,7 +125,9 @@ function CronJobsPageContent() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await client.request("cron.list", { includeDisabled: true });
+      const result = await client.request("cron.list", {
+        includeDisabled: true,
+      });
       setJobs(Array.isArray(result) ? result : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch jobs");
@@ -132,6 +136,58 @@ function CronJobsPageContent() {
       setIsLoading(false);
     }
   }, [toast]);
+
+  fetchJobsRef.current = fetchJobs;
+
+  // Initialize gateway client (same connect shape as chat — OpenClaw validates client.id)
+  useEffect(() => {
+    if (!openclawConfig || !openclawConfig.wsUrl) return;
+    if ((openclawConfig.transportMode ?? "direct_ws") === "connector") {
+      setError(
+        "Connector mode is not supported for cron management in the browser yet. Use direct WebSocket gateway settings or Chat from this app.",
+      );
+      return;
+    }
+
+    const initGateway = async () => {
+      try {
+        setError(null);
+        const client = new OpenClawBrowserGatewayClient(
+          {
+            wsUrl: openclawConfig.wsUrl,
+            protocol: openclawConfig.protocol,
+            authToken: openclawConfig.authToken,
+            password: openclawConfig.password,
+            forceDisableDeviceAuth:
+              (openclawConfig.deploymentMode ?? "manual") === "managed",
+            clientId: openclawConfig.clientId,
+            clientMode: openclawConfig.clientMode,
+            clientPlatform: openclawConfig.clientPlatform,
+            role: openclawConfig.role,
+            scopes: openclawConfig.scopes,
+            subscribeOnConnect: false,
+            subscribeMethod: openclawConfig.subscribeMethod,
+          },
+          async () => {},
+        );
+
+        await client.connect();
+        gatewayRef.current = client;
+        void fetchJobsRef.current();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to connect to gateway",
+        );
+      }
+    };
+
+    void initGateway();
+
+    return () => {
+      gatewayRef.current?.disconnect().catch(console.error);
+      gatewayRef.current = null;
+    };
+  }, [openclawConfig]);
 
   // Refresh jobs
   const handleRefresh = async () => {
@@ -198,7 +254,7 @@ function CronJobsPageContent() {
       });
       toast({ title: `Job ${enabled ? "enabled" : "disabled"}` });
       await fetchJobs();
-    } catch (err) {
+    } catch (_err) {
       toast({ title: "Failed to update job", variant: "destructive" });
     }
   };
@@ -216,7 +272,7 @@ function CronJobsPageContent() {
         runMode: "force",
       });
       toast({ title: "Job triggered successfully" });
-    } catch (err) {
+    } catch (_err) {
       toast({ title: "Failed to trigger job", variant: "destructive" });
     } finally {
       setIsRunning(false);
@@ -235,7 +291,7 @@ function CronJobsPageContent() {
       });
       toast({ title: "Job deleted successfully" });
       await fetchJobs();
-    } catch (err) {
+    } catch (_err) {
       toast({ title: "Failed to delete job", variant: "destructive" });
     }
   };
@@ -255,6 +311,22 @@ function CronJobsPageContent() {
     setHistoryJob(job);
     setIsHistoryOpen(true);
   };
+
+  if (!canManage) {
+    return (
+      <div className="mx-auto max-w-2xl p-6 text-center">
+        <h1 className="text-lg font-semibold text-text-primary mb-2">
+          Cron jobs
+        </h1>
+        <p className="text-sm text-text-muted mb-4">
+          Workspace admins and owners can manage gateway cron jobs from here.
+        </p>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/settings/openclaw">Back to OpenClaw settings</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -316,11 +388,8 @@ function CronJobsPageContent() {
             <p className="text-sm text-text-muted mb-4">
               Please configure your OpenClaw Gateway connection in settings.
             </p>
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = "/settings/openclaw"}
-            >
-              Configure Gateway
+            <Button asChild variant="outline">
+              <Link href="/settings/openclaw">Configure Gateway</Link>
             </Button>
           </div>
         )}
@@ -353,22 +422,47 @@ function CronJobsPageContent() {
         open={isHistoryOpen}
         onOpenChange={setIsHistoryOpen}
         jobId={historyJob?.id ?? null}
+        gatewayConfig={
+          openclawConfig?.wsUrl &&
+          (openclawConfig.transportMode ?? "direct_ws") !== "connector"
+            ? {
+                wsUrl: openclawConfig.wsUrl,
+                protocol: openclawConfig.protocol,
+                authToken: openclawConfig.authToken,
+                password: openclawConfig.password,
+                forceDisableDeviceAuth:
+                  (openclawConfig.deploymentMode ?? "manual") === "managed",
+                clientId: openclawConfig.clientId,
+                clientMode: openclawConfig.clientMode,
+                clientPlatform: openclawConfig.clientPlatform,
+                role: openclawConfig.role,
+                scopes: openclawConfig.scopes,
+                subscribeMethod: openclawConfig.subscribeMethod,
+              }
+            : null
+        }
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteConfirmJob} onOpenChange={() => setDeleteConfirmJob(null)}>
+      <AlertDialog
+        open={!!deleteConfirmJob}
+        onOpenChange={() => setDeleteConfirmJob(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Cron Job</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteConfirmJob?.name || "this job"}"? This action
-              cannot be undone.
+              Are you sure you want to delete "
+              {deleteConfirmJob?.name || "this job"}"? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteConfirmJob && handleDeleteJob(deleteConfirmJob)}
+              onClick={() =>
+                deleteConfirmJob && handleDeleteJob(deleteConfirmJob)
+              }
               className="bg-red-500 hover:bg-red-600"
             >
               Delete
@@ -378,12 +472,16 @@ function CronJobsPageContent() {
       </AlertDialog>
 
       {/* Run Now Confirmation */}
-      <AlertDialog open={!!runConfirmJob} onOpenChange={() => setRunConfirmJob(null)}>
+      <AlertDialog
+        open={!!runConfirmJob}
+        onOpenChange={() => setRunConfirmJob(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Run Job Now</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to trigger "{runConfirmJob?.name || "this job"}" immediately?
+              Are you sure you want to trigger "
+              {runConfirmJob?.name || "this job"}" immediately?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

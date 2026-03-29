@@ -26,8 +26,8 @@ import {
   ASSISTED_LAUNCH_BETA_ENABLED,
   MANAGED_BETA_ENABLED,
   MANAGED_INTERNAL_CONTROLS_ENABLED,
-  WEBHOOKS_ENABLED,
 } from "@/lib/features";
+import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import {
   MANAGED_REGION_OPTIONS,
   type ManagedRegionCode,
@@ -71,50 +71,8 @@ const FIXED_GATEWAY_SCOPES = [
   "operator.admin",
 ];
 
-function SettingsTabs({
-  active,
-}: {
-  active: "general" | "members" | "openclaw";
-}) {
-  const base = "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth";
-  const activeCls = "border-accent-orange text-accent-orange";
-  const inactiveCls =
-    "border-transparent text-text-muted hover:text-text-primary";
-
-  return (
-    <div className="flex gap-1 mb-8 border-b border-border-default">
-      <Link
-        href="/settings"
-        className={`${base} ${active === "general" ? activeCls : inactiveCls}`}
-      >
-        General
-      </Link>
-      <Link
-        href="/settings/members"
-        className={`${base} ${active === "members" ? activeCls : inactiveCls}`}
-      >
-        Members
-      </Link>
-      <Link
-        href="/settings/openclaw"
-        className={`${base} ${active === "openclaw" ? activeCls : inactiveCls}`}
-      >
-        OpenClaw
-      </Link>
-      {WEBHOOKS_ENABLED ? (
-        <Link href="/settings/webhooks" className={`${base} ${inactiveCls}`}>
-          Webhooks
-        </Link>
-      ) : null}
-      <Link href="/settings/account" className={`${base} ${inactiveCls}`}>
-        Account
-      </Link>
-    </div>
-  );
-}
-
 function OpenClawSettingsContent() {
-  const { workspaceId, canAdmin, workspace } = useWorkspace();
+  const { workspaceId, canAdmin, canManage, workspace } = useWorkspace();
   const convex = useConvex();
   const managedProvisioningEnabled =
     canUseCapability("managedProvisioning") &&
@@ -724,7 +682,7 @@ function OpenClawSettingsContent() {
           </div>
         </div>
 
-        <SettingsTabs active="openclaw" />
+        <WorkspaceSettingsTabs active="openclaw" canManage={canManage} />
 
         <div className="flex flex-col items-center justify-center rounded-xl border border-border-default bg-bg-secondary py-16">
           <ShieldAlert className="h-10 w-10 text-text-dim mb-3" />
@@ -752,7 +710,7 @@ function OpenClawSettingsContent() {
         </div>
       </div>
 
-      <SettingsTabs active="openclaw" />
+      <WorkspaceSettingsTabs active="openclaw" canManage={canManage} />
 
       <div className="space-y-8">
         {managedProvisioningEnabled ? (
@@ -1339,6 +1297,18 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               />
               Include cron/heartbeat sessions in chat
             </label>
+
+            {canManage ? (
+              <p className="text-xs text-text-muted">
+                <Link
+                  href="/admin/cron"
+                  className="font-medium text-accent-orange hover:underline"
+                >
+                  Manage gateway cron jobs
+                </Link>{" "}
+                (schedules and run history on your OpenClaw gateway).
+              </p>
+            ) : null}
 
             <div className="space-y-2">
               <Label className="text-text-secondary">History poll (ms)</Label>

@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import {
   Crown,
   Mail,
@@ -40,9 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Link from "next/link";
 import { useState } from "react";
-import { WEBHOOKS_ENABLED } from "@/lib/features";
 
 const roleIcons: Record<string, React.ElementType> = {
   owner: Crown,
@@ -133,41 +132,7 @@ function MembersContent() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-8 border-b border-border-default">
-        <Link
-          href="/settings"
-          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-        >
-          General
-        </Link>
-        <Link
-          href="/settings/members"
-          className="border-b-2 border-accent-orange px-4 py-2.5 text-sm font-medium text-accent-orange"
-        >
-          Members
-        </Link>
-        <Link
-          href="/settings/openclaw"
-          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-        >
-          OpenClaw
-        </Link>
-        {WEBHOOKS_ENABLED ? (
-          <Link
-            href="/settings/webhooks"
-            className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-          >
-            Webhooks
-          </Link>
-        ) : null}
-        <Link
-          href="/settings/account"
-          className="border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-muted hover:text-text-primary transition-smooth"
-        >
-          Account
-        </Link>
-      </div>
+      <WorkspaceSettingsTabs active="members" canManage={canManage} />
 
       {/* Members */}
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
