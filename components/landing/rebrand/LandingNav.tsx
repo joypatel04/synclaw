@@ -12,16 +12,14 @@ export function LandingNav({
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06080F]/75 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04]">
-            <Image
-              src="/brand/synclaw-logo.png"
-              alt="SynClaw logo"
-              width={22}
-              height={22}
-              className="h-[22px] w-[22px]"
-            />
-          </span>
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src="/brand/synclaw-logo.png"
+            alt="SynClaw logo"
+            width={34}
+            height={34}
+            className="h-[34px] w-[34px]"
+          />
           <span className="font-semibold tracking-tight text-white/90">
             SynClaw
           </span>

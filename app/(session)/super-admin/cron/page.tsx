@@ -8,6 +8,11 @@ import { CronJobDialog } from "@/components/admin/cron/CronJobDialog";
 import { CronJobsTable } from "@/components/admin/cron/CronJobsTable";
 import type { CronJob } from "@/components/admin/cron/types";
 import type { CronRunGatewayConfig } from "@/components/admin/cron/CronRunHistory";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
+
+const SUPER_ADMIN_GATEWAY_CLIENT_ID = "openclaw-control-ui";
 
 const SUPER_ADMIN_CRON_GATEWAY: CronRunGatewayConfig | null =
   typeof process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL === "string" &&
@@ -15,6 +20,7 @@ const SUPER_ADMIN_CRON_GATEWAY: CronRunGatewayConfig | null =
     ? {
         wsUrl: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL,
         protocol: "req",
+        clientId: SUPER_ADMIN_GATEWAY_CLIENT_ID,
         clientMode: "webchat",
         clientPlatform: "web",
         role: "operator",
@@ -22,9 +28,6 @@ const SUPER_ADMIN_CRON_GATEWAY: CronRunGatewayConfig | null =
         subscribeMethod: "chat.subscribe",
       }
     : null;
-import { AppLayout } from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
 
 export default function CronJobManagementPage() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
@@ -45,7 +48,7 @@ export default function CronJobManagementPage() {
       {
         wsUrl: process.env.NEXT_PUBLIC_OPENCLAW_GATEWAY_URL || "",
         protocol: "req",
-        // Omit clientId in webchat mode so the client uses openclaw-control-ui (gateway schema).
+        clientId: SUPER_ADMIN_GATEWAY_CLIENT_ID,
         clientMode: "webchat",
         clientPlatform: "web",
         role: "operator",

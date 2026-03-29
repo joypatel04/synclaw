@@ -152,9 +152,9 @@ export function PublicDocsShell({
             <Image
               src="/brand/synclaw-logo.png"
               alt="SynClaw logo"
-              width={20}
-              height={20}
-              className="h-5 w-5"
+              width={24}
+              height={24}
+              className="h-6 w-6"
             />
             <span className="text-sm font-semibold">
               {brand.product.shortName} Docs

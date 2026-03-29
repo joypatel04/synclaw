@@ -85,16 +85,14 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
         <div className="flex h-14 items-center justify-between px-4 sm:px-6">
           {/* Logo + Workspace Switcher */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-orange/20">
-                <Image
-                  src="/brand/synclaw-logo.png"
-                  alt="SynClaw logo"
-                  width={22}
-                  height={22}
-                  className="h-[22px] w-[22px]"
-                />
-              </div>
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image
+                src="/brand/synclaw-logo.png"
+                alt="SynClaw logo"
+                width={30}
+                height={30}
+                className="h-[30px] w-[30px]"
+              />
               <span className="hidden text-sm font-semibold tracking-tight text-text-primary sm:inline">
                 SynClaw
               </span>
