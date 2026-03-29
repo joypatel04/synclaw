@@ -1,4 +1,4 @@
-# Sutraha HQ Centralized Protocol v1.1.0 (STRICT)
+# Synclaw Centralized Protocol v1.1.0 (STRICT)
 
 This is the master heartbeat instruction set for all agents. Failure to follow this leads to context collapse and hallucinations.
 
@@ -9,33 +9,33 @@ This is the master heartbeat instruction set for all agents. Failure to follow t
 Every 30-45 minutes, follow this sequence exactly:
 
 ### Step 1: Presence
-*   Follow **Stage 1** of `SUTRAHA_HQ_PROTOCOL.md`.
+*   Follow **Stage 1** of `SYNCLAW_HQ_PROTOCOL.md`.
 
 ### Step 2: Inbox Check
-*   Fetch `sutraha_get_unseen_activities` and `sutraha_get_notifications`.
+*   Fetch `synclaw_get_unseen_activities` and `synclaw_get_notifications`.
 *   **DO NOT** acknowledge yet.
 
 ### Step 3: Task Pickup (CRITICAL)
-*   Fetch `sutraha_get_my_tasks(includeDone=false, limit=10)`.
+*   Fetch `synclaw_get_my_tasks(includeDone=false, limit=10)`.
 *   If tasks exist with status `assigned`:
     *   For EACH task: spawn a worker via `sessions_spawn` with the full task context.
-    *   Worker should follow SUTRAHA_HQ_PROTOCOL.md Stage 2-4.
+    *   Worker should follow SYNCLAW_HQ_PROTOCOL.md Stage 2-4.
 *   **DO NOT** acknowledge until workers are spawned.
 
 ### Step 4: Isolated Delegation (MANDATORY)
 *   **NEVER** handle multiple tasks in the parent session.
 *   For **EACH** unique `taskId` found in the activities:
-    1.  Fetch full context: `sutraha_get_task(taskId)` and `sutraha_list_messages(taskId)`.
+    1.  Fetch full context: `synclaw_get_task(taskId)` and `synclaw_list_messages(taskId)`.
     2.  Prepare a **Context Package**: Title, Description, and the last 3-5 relevant comments.
     3.  Spawn a worker: `sessions_spawn`.
     4.  **Worker Prompt Template:**
         ```text
-        [FOLLOW SUTRAHA_HQ_PROTOCOL.md]
+        [FOLLOW SYNCLAW_HQ_PROTOCOL.md]
         TASK_CONTEXT: [Insert Context Package here]
         NEW_ACTIVITY: [Describe the mention/update that triggered this]
         YOUR_MISSION: [Execute the specific task or reply to the mention]
         ```
-    5.  Once spawned successfully, call `sutraha_ack_specific_activity` for the IDs related to that task.
+    5.  Once spawned successfully, call `synclaw_ack_specific_activity` for the IDs related to that task.
 
 ---
 
@@ -43,8 +43,8 @@ Every 30-45 minutes, follow this sequence exactly:
 
 If you are spawned with a `TASK_CONTEXT`, you are a **Worker**.
 
-1.  **Compliance:** Follow all four stages of `SUTRAHA_HQ_PROTOCOL.md` (Startup -> Pickup -> Work -> Resolution).
-2.  **Telemetry:** Provide accurate `totalTokensUsed` and `lastRunCost` in the `sutraha_end_task_session` call.
+1.  **Compliance:** Follow all four stages of `SYNCLAW_HQ_PROTOCOL.md` (Startup -> Pickup -> Work -> Resolution).
+2.  **Telemetry:** Provide accurate `totalTokensUsed` and `lastRunCost` in the `synclaw_end_task_session` call.
 3.  **Memory:** Use `MEMORY_PROTOCOL.md` (Tier 1/2/3).
 
 ---
@@ -78,7 +78,7 @@ If you are spawned with a `TASK_CONTEXT`, you are a **Worker**.
 ### Step C: Definition of Done (MANDATORY)
 Before marking task as done, **ALL must pass:**
 
-| Check | vyana-web | sutraha-hq |
+| Check | vyana-web | synclaw-hq |
 |--------|-----------|-------------|
 | Lint | `yarn lint` | `bun run lint` |
 | Type-check | `yarn tsc --noEmit` | `bun tsc --noEmit` |

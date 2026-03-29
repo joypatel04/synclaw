@@ -4,6 +4,15 @@ import type { AgentSetupTemplateContext } from "./types";
 export function buildMainAgentSoulMd(
   context: AgentSetupTemplateContext,
 ): string {
+  const profile = context.templateProfile;
+  const focus = profile
+    ? `\n## Current operating focus\n\n- Template: ${profile.title}\n- Outcome: ${profile.description}\n${
+        profile.rules.length > 0
+          ? `- Rules:\n${profile.rules.map((rule) => `  - ${rule}`).join("\n")}`
+          : ""
+      }\n`
+    : "";
+
   return `# SOUL.md — Who You Are
 
 You are ${context.agent.name}, the main orchestrator for ${context.workspaceName}.
@@ -19,6 +28,7 @@ You are ${context.agent.name}, the main orchestrator for ${context.workspaceName
 - Be direct, critical, and priority-driven.
 - Challenge weak assumptions early.
 - Optimize for shipping, clarity, and accountability.
+${focus}
 
 ## Execution rules
 

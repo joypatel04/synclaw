@@ -1,0 +1,29 @@
+# Minimal Docker Compose for OpenClaw gateway on a managed VPS (e.g. Hostinger).
+# Used with Hostinger VPS_createNewProjectV1 when MANAGED_HOSTINGER_DOCKER_DEPLOY_ENABLED=true.
+#
+# IMPORTANT: Do NOT use a shared .env file. All values below are injected per deployment
+# by the control plane when calling createNewProject — each workspace gets a unique
+# OPENCLAW_GATEWAY_TOKEN (and FS_BRIDGE_*). The placeholders are filled by Hostinger
+# from the `environment` payload we send for that specific project.
+services:
+  openclaw-gateway:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install -g openclaw@latest && openclaw gateway run"
+    environment:
+      # Injected per deployment; unique per workspace (control plane sends these in createNewProject).
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_GATEWAY_PORT: ${OPENCLAW_GATEWAY_PORT:-18789}
+      OPENCLAW_GATEWAY_BIND: lan
+      OPENCLAW_WORKSPACE_ID: ${OPENCLAW_WORKSPACE_ID}
+      OPENCLAW_MANAGED_REGION: ${OPENCLAW_MANAGED_REGION}
+      OPENCLAW_MANAGED_INSTANCE_ID: ${OPENCLAW_MANAGED_INSTANCE_ID}
+      HOME: /app
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:${OPENCLAW_GATEWAY_PORT:-18789}"
+    volumes:
+      - openclaw_data:/app/.openclaw
+    restart: unless-stopped
+
+volumes:
+  openclaw_data:

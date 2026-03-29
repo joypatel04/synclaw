@@ -1,4 +1,3 @@
-import { AlertTriangle } from "lucide-react";
 import {
   PublicDocsCard,
   PublicDocsCodeBlock,
@@ -10,7 +9,7 @@ export default function HostingTroubleshootingPage() {
     <PublicDocsShell
       title="Hosting Troubleshooting"
       description="Fast diagnosis for common auth, Convex, and OpenClaw/MCP issues."
-      icon={AlertTriangle}
+      iconName="AlertTriangle"
     >
       <PublicDocsCard title="Auth callback stays on provider domain">
         <ul className="list-disc space-y-2 pl-5">
@@ -22,11 +21,12 @@ export default function HostingTroubleshootingPage() {
           <PublicDocsCodeBlock
             title="What to compare exactly"
             code={`Expected callback:
-https://<convex-site>.convex.site/api/auth/signin/github
+https://<convex-site>.convex.site/api/auth/callback/github
+https://<convex-site>.convex.site/api/auth/callback/google
 
 Check:
 1) OAuth app callback URL
-2) .env.local AUTH_GITHUB_ID / AUTH_GITHUB_SECRET
+2) .env.local AUTH_GITHUB_ID / AUTH_GITHUB_SECRET / AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET
 3) runtime restart after env edits`}
           />
         </div>
@@ -34,7 +34,13 @@ Check:
 
       <PublicDocsCard title='Convex errors like "No matching routes found"'>
         <ul className="list-disc space-y-2 pl-5">
-          <li>Run <code className="rounded bg-bg-primary px-1 py-0.5">bunx convex dev</code> and confirm functions are ready.</li>
+          <li>
+            Run{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              bunx convex dev
+            </code>{" "}
+            and confirm functions are ready.
+          </li>
           <li>Confirm correct deployment is set in local env.</li>
           <li>Re-run local server after env changes to pick up values.</li>
         </ul>
@@ -55,7 +61,9 @@ Check:
           <li>Re-validate gateway URL/token/scopes in workspace settings.</li>
           <li>Check MCP endpoint health and network access rules.</li>
           <li>Run one minimal tool request to isolate schema/auth issues.</li>
-          <li>Confirm failure appears in activity logs with actionable details.</li>
+          <li>
+            Confirm failure appears in activity logs with actionable details.
+          </li>
         </ul>
         <div className="mt-4">
           <PublicDocsCodeBlock
@@ -71,11 +79,80 @@ Check:
         </div>
       </PublicDocsCard>
 
-      <PublicDocsCard title="Billing not active yet">
+      <PublicDocsCard title='Why "ws://" from "https://" fails'>
         <ul className="list-disc space-y-2 pl-5">
-          <li>Keep billing UI in Coming Soon state until provider webhooks are verified.</li>
-          <li>Continue onboarding and trial validation in parallel.</li>
-          <li>Enable checkout only after end-to-end payment test passes.</li>
+          <li>
+            Browsers block insecure WebSocket (
+            <code className="rounded bg-bg-primary px-1 py-0.5">ws://</code>)
+            from secure pages.
+          </li>
+          <li>
+            Use{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">wss://</code>{" "}
+            for Public WSS setups.
+          </li>
+          <li>
+            If OpenClaw must stay private, use Private Connector (advanced).
+          </li>
+        </ul>
+      </PublicDocsCard>
+
+      <PublicDocsCard title="Device approval passes but scopes still fail">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Device approval and role/scope authorization are separate checks.
+          </li>
+          <li>
+            Rotate/re-issue scopes to include required operator scopes for your
+            workflow.
+          </li>
+          <li>
+            Run Test again from Settings -&gt; OpenClaw after scope updates.
+          </li>
+        </ul>
+      </PublicDocsCard>
+
+      <PublicDocsCard title="Hardened endpoint but handshake still failing">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Verify exact origin match in{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              allowedOrigins
+            </code>
+            .
+          </li>
+          <li>
+            Confirm token/password is valid for target workspace and role.
+          </li>
+          <li>
+            Confirm TLS cert chain and reverse-proxy upgrade headers are
+            correct.
+          </li>
+          <li>Re-run Settings test and inspect diagnostics output.</li>
+        </ul>
+      </PublicDocsCard>
+
+      <PublicDocsCard title="Older references in archived docs">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Prioritize pages under{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              /docs/hosting/*
+            </code>{" "}
+            and{" "}
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              /docs/self-hosted
+            </code>
+            .
+          </li>
+          <li>
+            If a markdown file mentions legacy provider/payment flow, treat it
+            as historical unless linked from the docs sidebar.
+          </li>
+          <li>
+            Use Public WSS + workspace-level OpenClaw settings as the current
+            source of truth.
+          </li>
         </ul>
       </PublicDocsCard>
 

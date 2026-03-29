@@ -1,5 +1,5 @@
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Webhook } from "lucide-react";
 import {
   PublicDocsCallout,
   PublicDocsCard,
@@ -12,7 +12,7 @@ export default function HostingWebhooksPage() {
     <PublicDocsShell
       title="Webhook Automation"
       description="Ingest external events into a workspace and convert them into tasks, docs, and activity."
-      icon={Webhook}
+      iconName="Webhook"
     >
       <PublicDocsCard title="Endpoint contract (v1)">
         <PublicDocsCodeBlock
@@ -35,10 +35,30 @@ Errors:
 
       <PublicDocsCard title="Action templates">
         <ul className="list-disc space-y-2 pl-5">
-          <li><code className="rounded bg-bg-primary px-1 py-0.5">create_task</code>: create task from payload mapping.</li>
-          <li><code className="rounded bg-bg-primary px-1 py-0.5">create_document</code>: create note document from payload.</li>
-          <li><code className="rounded bg-bg-primary px-1 py-0.5">log_activity</code>: append webhook event in activity feed.</li>
-          <li><code className="rounded bg-bg-primary px-1 py-0.5">task_and_nudge_main</code>: create task and notify main agent.</li>
+          <li>
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              create_task
+            </code>
+            : create task from payload mapping.
+          </li>
+          <li>
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              create_document
+            </code>
+            : create note document from payload.
+          </li>
+          <li>
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              log_activity
+            </code>
+            : append webhook event in activity feed.
+          </li>
+          <li>
+            <code className="rounded bg-bg-primary px-1 py-0.5">
+              task_and_nudge_main
+            </code>
+            : create task and notify main agent.
+          </li>
         </ul>
       </PublicDocsCard>
 
@@ -69,7 +89,8 @@ Errors:
         </div>
         <div className="mt-4">
           <PublicDocsCallout title="Recommended">
-            Use provider event IDs whenever available so duplicate deliveries do not create duplicate tasks/documents.
+            Use provider event IDs whenever available so duplicate deliveries do
+            not create duplicate tasks/documents.
           </PublicDocsCallout>
         </div>
       </PublicDocsCard>

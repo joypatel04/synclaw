@@ -1,53 +1,44 @@
-"use client";
-
 import { HardDrive } from "lucide-react";
+import Link from "next/link";
 import { DocsCard, DocsFrame } from "@/app/help/_components/DocsFrame";
+import { MarkdownDocCard } from "@/app/help/_components/MarkdownDocCard";
+import { HELP_DOCS, readHelpDoc } from "@/lib/helpDocs";
 
-export default function SelfHostedDocsPage() {
+export default async function SelfHostedDocsPage() {
+  const guide = await readHelpDoc("selfHosted");
+
   return (
     <DocsFrame
-      title="Self-hosted OSS Setup"
-      description="Developer-grade deployment with your own infra."
+      title={HELP_DOCS.selfHosted.title}
+      description={HELP_DOCS.selfHosted.description}
       icon={HardDrive}
     >
       <div className="space-y-6">
-        <DocsCard title="Intended audience">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>Developers comfortable with environment variables, OAuth apps, and deployment pipelines.</li>
-            <li>Teams that need infrastructure ownership and deeper customization.</li>
-            <li>Users who accept higher setup and maintenance overhead.</li>
-          </ul>
-        </DocsCard>
+        <MarkdownDocCard content={guide} />
 
-        <DocsCard title="Prerequisites">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>Node.js/Bun runtime and ability to run Next.js + Convex locally.</li>
-            <li>Your own Convex project (dev + production deployments).</li>
-            <li>OpenClaw gateway and MCP server access.</li>
-            <li>OAuth provider app credentials (GitHub; add Google if needed).</li>
-          </ul>
-        </DocsCard>
-
-        <DocsCard title="Setup flow">
-          <ol className="list-decimal space-y-2 pl-5">
-            <li>Clone repository and configure `.env.local` from `.env.local.example`.</li>
-            <li>Run `bunx convex dev` and `bun run dev`.</li>
-            <li>Configure auth provider callbacks to match your local/prod URLs.</li>
-            <li>Set OpenClaw values in `Settings → OpenClaw` per workspace.</li>
-            <li>Create agents and verify heartbeat/activity flow.</li>
-            <li>Deploy app + Convex functions to production environments.</li>
-          </ol>
-        </DocsCard>
-
-        <DocsCard title="Why this path feels harder">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>You manage every integration and incident response path.</li>
-            <li>You own deployment correctness across app, backend, and external providers.</li>
-            <li>You maintain ongoing compatibility for OpenClaw/MCP/provider changes.</li>
-          </ul>
+        <DocsCard title="Related references">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Link
+              href="/docs/hosting/environment"
+              className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+            >
+              Environment reference
+            </Link>
+            <Link
+              href="/docs/hosting/self-hosted/files-bridge"
+              className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+            >
+              Files bridge setup
+            </Link>
+            <Link
+              href="/docs/hosting/troubleshooting"
+              className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+            >
+              Troubleshooting
+            </Link>
+          </div>
         </DocsCard>
       </div>
     </DocsFrame>
   );
 }
-

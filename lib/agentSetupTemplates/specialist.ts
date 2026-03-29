@@ -4,6 +4,15 @@ import type { AgentSetupTemplateContext } from "./types";
 export function buildSpecialistSoulMd(
   context: AgentSetupTemplateContext,
 ): string {
+  const profile = context.templateProfile;
+  const focus = profile
+    ? `\n## Current focus profile\n\n- Template: ${profile.title}\n- Outcome: ${profile.description}\n${
+        profile.rules.length > 0
+          ? `- Rules:\n${profile.rules.map((rule) => `  - ${rule}`).join("\n")}`
+          : ""
+      }\n`
+    : "";
+
   if (context.roleModule === "frontend_coding") {
     return `# SOUL.md — Who You Are
 
@@ -19,6 +28,7 @@ You are ${context.agent.name}, a frontend coding specialist for ${context.worksp
 
 - No backend schema changes unless explicitly assigned.
 - No broad refactors without clear justification.
+${focus}
 
 ## Working mode
 
@@ -33,6 +43,7 @@ You are ${context.agent.name}, a specialist agent for ${context.workspaceName}.
 ## Role
 
 - ${context.agent.role}
+${focus}
 
 ## Execution style
 

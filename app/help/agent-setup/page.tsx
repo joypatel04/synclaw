@@ -4,22 +4,51 @@ import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { REQUIRED_AGENT_SETUP_FILES } from "@/lib/agentSetupTemplates";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
-function AgentSetupCookbookContent() {
+function AgentSetupGuideContent() {
+  if (!AGENT_SETUP_ADVANCED_ENABLED) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 p-3 sm:p-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+          <h1 className="text-lg font-semibold text-text-primary sm:text-xl">
+            Setup diagnostics
+          </h1>
+          <p className="mt-2 text-sm text-text-secondary">
+            Manual setup guidance is hidden in production. Agent setup is
+            handled automatically during creation.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              asChild
+              className="bg-accent-orange text-white hover:bg-accent-orange/90"
+            >
+              <Link href="/agents/new">Create & Configure Agent</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/chat">Open chat</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const requiredFileCount = REQUIRED_AGENT_SETUP_FILES.length;
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-3 sm:p-6">
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
         <h1 className="text-lg font-semibold text-text-primary sm:text-xl">
-          Agent Setup Cookbook
+          Agent Setup Guide
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Setup 2.0 standard for reliable Synclaw backend coordination.
+          Canonical setup standard for reliable Synclaw backend coordination.
         </p>
       </div>
 
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
         <h2 className="text-sm font-semibold text-text-primary">
-          Mandatory 8-file Pack
+          Mandatory {requiredFileCount}-file Pack
         </h2>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-secondary">
           {REQUIRED_AGENT_SETUP_FILES.map((file) => (
@@ -50,7 +79,10 @@ function AgentSetupCookbookContent() {
           Completion checklist
         </h2>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-secondary">
-          <li>All 8 required files exist and pass validation checks.</li>
+          <li>
+            All {requiredFileCount} required files exist and pass validation
+            checks.
+          </li>
           <li>Bootstrap step confirmed.</li>
           <li>Cron step confirmed.</li>
           <li>First pulse detected.</li>
@@ -65,17 +97,17 @@ function AgentSetupCookbookContent() {
           <Link href="/agents">Open agents</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/chat?setup=1">Open chat setup</Link>
+          <Link href="/chat">Open chat</Link>
         </Button>
       </div>
     </div>
   );
 }
 
-export default function AgentSetupCookbookPage() {
+export default function AgentSetupGuidePage() {
   return (
     <AppLayout>
-      <AgentSetupCookbookContent />
+      <AgentSetupGuideContent />
     </AppLayout>
   );
 }

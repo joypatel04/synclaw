@@ -1,26 +1,18 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { ListChecks } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
 import { ChatInterface } from "@/components/chat/ChatInterface";
-import { ChatSetupRail } from "@/components/chat/ChatSetupRail";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId, canAdmin } = useWorkspace();
-  const [setupOpen, setSetupOpen] = useState(false);
   const agent = useQuery(
     api.agents.getById,
     workspaceId ? { workspaceId, id: agentId } : "skip",
@@ -43,39 +35,14 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
     <div className="mx-auto flex h-full min-h-0 max-w-7xl flex-col p-3 sm:p-6">
       <div className="min-w-0 flex-1 min-h-0 flex flex-col">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-          {canAdmin ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-2"
-              onClick={() => setSetupOpen(true)}
-            >
-              <ListChecks className="h-4 w-4" />
-              Setup Guide
+          {canAdmin && AGENT_SETUP_ADVANCED_ENABLED ? (
+            <Button asChild variant="outline" size="sm" className="h-8 gap-2">
+              <Link href={`/agents/${agentId}/setup`}>Setup Guide</Link>
             </Button>
           ) : null}
         </div>
         <ChatInterface agent={agent} className="flex-1 min-h-0" />
       </div>
-
-      {canAdmin ? (
-        <Sheet open={setupOpen} onOpenChange={setSetupOpen}>
-          <SheetContent
-            side="right"
-            className="w-full sm:max-w-xl overflow-y-auto bg-bg-primary border-border-default p-0"
-          >
-            <SheetHeader className="border-b border-border-default">
-              <SheetTitle className="text-text-primary">Setup Guide</SheetTitle>
-            </SheetHeader>
-            <div className="p-4">
-              <ChatSetupRail
-                selectedAgentId={agentId}
-                className="border-0 bg-transparent p-0 shadow-none"
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      ) : null}
     </div>
   );
 }

@@ -1,13 +1,16 @@
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, HardDrive } from "lucide-react";
-import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDocsShell";
+import {
+  PublicDocsCard,
+  PublicDocsShell,
+} from "@/app/docs/_components/PublicDocsShell";
 
 export default function PublicSelfHostedDocsPage() {
   return (
     <PublicDocsShell
       title="Self-hosted Setup"
       description="Developer-grade setup with your own infrastructure."
-      icon={HardDrive}
+      iconName="HardDrive"
     >
       <PublicDocsCard title="Prerequisites">
         <ul className="list-disc space-y-2 pl-5">

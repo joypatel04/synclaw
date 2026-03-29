@@ -1,5 +1,5 @@
 {
-  "name": "sutraha-hq",
+  "name": "synclaw",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "export:oss-beta": "bash scripts/export-oss-beta.sh"
   },
   "dependencies": {
     "@auth/core": "0.37.0",

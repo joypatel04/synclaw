@@ -31,7 +31,7 @@ export const getUndelivered = query({
         q.eq("mentionedAgentId", args.agentId).eq("delivered", false),
       )
       .order("desc")
-      .collect();
+      .take(50);
   },
 });
 

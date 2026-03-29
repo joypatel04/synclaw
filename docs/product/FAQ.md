@@ -1,23 +1,25 @@
 # FAQ
 
-## Is self-hosted intentionally complicated?
+## Is self-hosted intentionally hard?
 
-No. It is documented clearly, but infrastructure ownership naturally creates complexity.
+No. It is a real infrastructure path, so it includes operational tasks by design (auth, runtime, and deployment ownership).
 
-## Which option should non-technical users pick?
+## Which option should non-technical users choose?
 
-Cloud.
+Public WSS. It minimizes setup and support burden.
 
-## Can I start in Cloud and later move to self-hosted?
+## Can users start in Public WSS and move later?
 
-Yes, that path should be supported over time with migration guidance.
+Yes. Keep workspace behavior consistent so migration paths stay straightforward.
 
-## Is support included with self-hosted?
+## Why does OpenClaw connection fail with "origin not allowed"?
 
-Base self-hosted can be community-supported.  
-Priority assistance should be a paid support tier.
+OpenClaw gateway policy does not allow your Synclaw domain yet. Add the exact app origin to `gateway.controlUi.allowedOrigins` and restart gateway service.
 
-## Should we delay launch until billing is ready?
+## Is one-click agent setup fully automatic?
 
-No. You can launch onboarding and product usage first, then enable billing when provider setup is complete.
+Yes for normal user flow. Setup files are generated and written automatically. If setup fails, creation is rolled back instead of leaving a partially configured agent.
 
+## Can users still edit files manually?
+
+Yes. Use `/filesystem` to inspect and edit agent files after creation (when Files Bridge is enabled and configured).

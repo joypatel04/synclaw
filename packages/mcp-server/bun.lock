@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "@sutraha/mcp-server",
+      "name": "@synclaw/mcp-server",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.0.0",
         "convex": "^1.31.7",

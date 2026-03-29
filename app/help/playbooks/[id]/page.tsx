@@ -1,12 +1,13 @@
 "use client";
 
+import { Check, Copy, LifeBuoy, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Check, Copy, LifeBuoy, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 import { getPlaybook } from "@/lib/playbooks";
 
 function CopyBlock({
@@ -83,8 +84,12 @@ function PlaybookPageInner() {
             <Sparkles className="h-5 w-5 text-accent-orange" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-text-primary">{playbook.title}</h1>
-            <p className="mt-1 text-xs text-text-muted">{playbook.description}</p>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">
+              {playbook.title}
+            </h1>
+            <p className="mt-1 text-xs text-text-muted">
+              {playbook.description}
+            </p>
           </div>
         </div>
         <Button asChild variant="outline" size="sm" className="h-8">
@@ -94,7 +99,9 @@ function PlaybookPageInner() {
 
       <div className="space-y-6">
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">Step-by-step</h2>
+          <h2 className="text-sm font-semibold text-text-primary">
+            Step-by-step
+          </h2>
           <ol className="mt-3 list-decimal pl-5 space-y-2 text-sm text-text-secondary">
             {playbook.stepByStep.map((s) => (
               <li key={s}>{s}</li>
@@ -103,24 +110,37 @@ function PlaybookPageInner() {
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             {playbook.recipeId ? (
-              <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+              <Button
+                asChild
+                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              >
                 <Link href={`/agents/new?recipe=${playbook.recipeId}`}>
-                  Create agent (recipe)
+                  Create & Configure Agent
                 </Link>
               </Button>
             ) : (
-              <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
-                <Link href="/chat?setup=1">Open chat setup</Link>
+              <Button
+                asChild
+                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              >
+                <Link href="/agents/new">Create & Configure Agent</Link>
               </Button>
             )}
             <Button asChild variant="outline">
-              <Link href="/chat?setup=1">Continue in chat setup</Link>
+              <Link href="/chat">Open chat</Link>
             </Button>
+            {AGENT_SETUP_ADVANCED_ENABLED ? (
+              <Button asChild variant="outline">
+                <Link href="/help/agent-setup">Setup diagnostics</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-text-primary">What good looks like</h2>
+          <h2 className="text-sm font-semibold text-text-primary">
+            What good looks like
+          </h2>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-text-secondary">
             {playbook.goodLooksLike.map((g) => (
               <li key={g}>{g}</li>

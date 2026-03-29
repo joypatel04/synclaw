@@ -17,7 +17,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { WebhookCreateDialog } from "@/components/settings/WebhookCreateDialog";
-import { BILLING_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
+import { WEBHOOKS_ENABLED } from "@/lib/features";
 import {
   Select,
   SelectContent,
@@ -46,11 +46,9 @@ function SettingsTabs() {
       >
         Webhooks
       </Link>
-      {BILLING_ENABLED ? (
-        <Link href="/settings/billing" className={`${base} ${inactive}`}>
-          Billing
-        </Link>
-      ) : null}
+      <Link href="/settings/account" className={`${base} ${inactive}`}>
+        Account
+      </Link>
     </div>
   );
 }

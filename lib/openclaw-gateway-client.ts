@@ -22,6 +22,7 @@ type GatewayClientConfig = {
   protocol: GatewayProtocol;
   authToken?: string;
   password?: string;
+  forceDisableDeviceAuth?: boolean;
   clientId: string;
   clientMode: string;
   clientPlatform: string;
@@ -1232,7 +1233,9 @@ export class OpenClawBrowserGatewayClient {
       this.config.clientMode,
       this.config.role,
     );
-    const deviceAuthEnabled = isOpenClawDeviceAuthEnabled();
+    const deviceAuthEnabled = this.config.forceDisableDeviceAuth
+      ? false
+      : isOpenClawDeviceAuthEnabled();
     const storedDeviceToken = this.getStoredDeviceToken();
     const preferredToken =
       deviceAuthEnabled && storedDeviceToken

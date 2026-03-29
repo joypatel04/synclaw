@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -9,13 +8,17 @@ import {
   Webhook,
   Wrench,
 } from "lucide-react";
-import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDocsShell";
+import Link from "next/link";
+import {
+  PublicDocsCard,
+  PublicDocsShell,
+} from "@/app/docs/_components/PublicDocsShell";
 
 const sections = [
   {
     href: "/docs/hosting/cloud",
-    title: "Cloud hosting guide",
-    description: "Managed path for fastest launch.",
+    title: "Public WSS hosting guide",
+    description: "Fastest path for OSS launch with BYO OpenClaw.",
     icon: Cloud,
   },
   {
@@ -39,7 +42,8 @@ const sections = [
   {
     href: "/docs/hosting/self-hosted/files-bridge",
     title: "OpenClaw Files Bridge",
-    description: "Remote workspace file browsing/editing via Dockerized bridge.",
+    description:
+      "Remote workspace file browsing/editing via Dockerized bridge.",
     icon: HardDrive,
   },
   {
@@ -66,15 +70,20 @@ export default function HostingOverviewPage() {
   return (
     <PublicDocsShell
       title="Hosting Guide"
-      description="Production-style setup docs for Cloud and Self-hosted deployments."
-      icon={Server}
+      description="Production-style setup docs for Public WSS and Self-hosted deployments."
+      iconName="Server"
     >
       <PublicDocsCard title="Use this guide">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Choose Cloud or Self-hosted based on operational ownership.</li>
+          <li>
+            Choose Public WSS or Self-hosted based on operational ownership.
+          </li>
           <li>Follow the step-by-step guide in order.</li>
           <li>Run verification checks before moving to production.</li>
-          <li>Use troubleshooting pages when behavior differs from expected output.</li>
+          <li>
+            Use troubleshooting pages when behavior differs from expected
+            output.
+          </li>
         </ol>
       </PublicDocsCard>
 
@@ -91,8 +100,12 @@ export default function HostingOverviewPage() {
                   <section.icon className="h-4 w-4 text-accent-orange" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-text-primary">{section.title}</p>
-                  <p className="mt-1 text-xs text-text-muted">{section.description}</p>
+                  <p className="text-sm font-semibold text-text-primary">
+                    {section.title}
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {section.description}
+                  </p>
                 </div>
               </div>
               <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">

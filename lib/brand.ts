@@ -10,6 +10,29 @@ export interface BrandConfig {
     websiteUrl: BrandString;
   };
   marketing: {
+    landingNavLinks?: Array<{
+      label: BrandString;
+      href: BrandString;
+    }>;
+    heroPrimaryCtaLabel?: BrandString;
+    heroSecondaryCtaLabel?: BrandString;
+    heroEyebrow?: BrandString;
+    proofGridItems?: Array<{
+      title: BrandString;
+      body: BrandString;
+      footnote?: BrandString;
+    }>;
+    explainerBlocks?: Array<{
+      title: BrandString;
+      body: BrandString;
+      chips: BrandString[];
+    }>;
+    useCaseCards?: Array<{
+      title: BrandString;
+      body: BrandString;
+      tag: BrandString;
+    }>;
+    finalCtaLabel?: BrandString;
     heroHeadline: BrandString;
     heroSubheadline: BrandString;
     primaryCtaLabel: BrandString;
@@ -64,6 +87,7 @@ export interface BrandConfig {
     loginTitle: BrandString;
     loginSubtitle: BrandString;
     providerLabelGithub: BrandString;
+    providerLabelGoogle: BrandString;
     footerNote: BrandString;
   };
   seo: {
@@ -115,6 +139,7 @@ const REQUIRED_PATHS: Array<[keyof BrandConfig, string]> = [
   ["auth", "loginTitle"],
   ["auth", "loginSubtitle"],
   ["auth", "providerLabelGithub"],
+  ["auth", "providerLabelGoogle"],
   ["auth", "footerNote"],
   ["seo", "titleDefault"],
   ["seo", "descriptionDefault"],
@@ -183,27 +208,39 @@ function assertValid(config: BrandConfig): void {
   }
 
   if (config.marketing.benefitBullets.length === 0) {
-    throw new Error("[brand] marketing.benefitBullets must contain at least one item");
+    throw new Error(
+      "[brand] marketing.benefitBullets must contain at least one item",
+    );
   }
 
   if (config.marketing.snapshotRows.length === 0) {
-    throw new Error("[brand] marketing.snapshotRows must contain at least one row");
+    throw new Error(
+      "[brand] marketing.snapshotRows must contain at least one row",
+    );
   }
 
   if (config.marketing.segmentCards.length === 0) {
-    throw new Error("[brand] marketing.segmentCards must contain at least one card");
+    throw new Error(
+      "[brand] marketing.segmentCards must contain at least one card",
+    );
   }
 
   if (config.marketing.proofStrip.length === 0) {
-    throw new Error("[brand] marketing.proofStrip must contain at least one item");
+    throw new Error(
+      "[brand] marketing.proofStrip must contain at least one item",
+    );
   }
 
   if (config.marketing.visualCards.length === 0) {
-    throw new Error("[brand] marketing.visualCards must contain at least one card");
+    throw new Error(
+      "[brand] marketing.visualCards must contain at least one card",
+    );
   }
 
   if (config.marketing.whyBullets.length === 0) {
-    throw new Error("[brand] marketing.whyBullets must contain at least one bullet");
+    throw new Error(
+      "[brand] marketing.whyBullets must contain at least one bullet",
+    );
   }
 }
 

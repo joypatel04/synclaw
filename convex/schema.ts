@@ -95,7 +95,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])
-    .index("byEmail", ["email"]),
+    .index("byEmail", ["email"])
+    .index("byCreatedAt", ["createdAt"]),
 
   workspaceWebhooks: defineTable({
     workspaceId: v.id("workspaces"),
@@ -157,7 +158,8 @@ export default defineSchema({
     .index("byWebhook", ["webhookId"])
     .index("byWebhookAndReceivedAt", ["webhookId", "receivedAt"])
     .index("byWorkspaceAndStatus", ["workspaceId", "status"])
-    .index("byWebhookAndProviderEventId", ["webhookId", "providerEventId"]),
+    .index("byWebhookAndProviderEventId", ["webhookId", "providerEventId"])
+    .index("byReceivedAt", ["receivedAt"]),
 
   // ─── API Keys (server-to-server auth for OpenClaw etc.) ────────
 
@@ -183,6 +185,86 @@ export default defineSchema({
   openclawGatewayConfigs: defineTable({
     workspaceId: v.id("workspaces"),
     wsUrl: v.string(),
+    deploymentMode: v.optional(v.union(v.literal("managed"), v.literal("manual"))),
+    transportMode: v.optional(
+      v.union(
+        v.literal("direct_ws"),
+        v.literal("connector"),
+        v.literal("self_hosted_local"),
+      ),
+    ),
+    connectorId: v.optional(v.string()),
+    connectorStatus: v.optional(
+      v.union(v.literal("online"), v.literal("offline"), v.literal("degraded")),
+    ),
+    connectorLastSeenAt: v.optional(v.number()),
+    securityChecklistVersion: v.optional(v.number()),
+    securityConfirmedAt: v.optional(v.number()),
+    publicWssHardeningNotes: v.optional(v.string()),
+    recommendedMethod: v.optional(
+      v.union(
+        v.literal("public_wss"),
+        v.literal("connector_advanced"),
+        v.literal("self_hosted_local"),
+      ),
+    ),
+    provisioningMode: v.optional(
+      v.union(v.literal("customer_vps"), v.literal("sutraha_managed")),
+    ),
+    managedRegionRequested: v.optional(v.string()),
+    managedRegionResolved: v.optional(v.string()),
+    managedServerProfile: v.optional(
+      v.union(
+        v.literal("starter"),
+        v.literal("standard"),
+        v.literal("performance"),
+      ),
+    ),
+    managedServerType: v.optional(v.string()),
+    managedUpstreamHost: v.optional(v.string()),
+    managedUpstreamPort: v.optional(v.number()),
+    managedRouteVersion: v.optional(v.number()),
+    managedStatus: v.optional(
+      v.union(
+        v.literal("queued"),
+        v.literal("provisioning"),
+        v.literal("ready"),
+        v.literal("degraded"),
+        v.literal("failed"),
+      ),
+    ),
+    managedInstanceId: v.optional(v.string()),
+    managedConnectedAt: v.optional(v.number()),
+    managedBootstrapReadyAt: v.optional(v.number()),
+    managedGatewayReadyAt: v.optional(v.number()),
+    providerRuntimeStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("ready"), v.literal("failed")),
+    ),
+    defaultProvider: v.optional(
+      v.union(v.literal("openai"), v.literal("anthropic"), v.literal("gemini")),
+    ),
+    defaultModel: v.optional(v.string()),
+    lastProviderApplyAt: v.optional(v.number()),
+    lastProviderApplyError: v.optional(v.string()),
+    managedAutoFallbackUsed: v.optional(v.boolean()),
+    serviceTier: v.optional(
+      v.union(
+        v.literal("self_serve"),
+        v.literal("assisted"),
+        v.literal("managed"),
+      ),
+    ),
+    setupStatus: v.optional(
+      v.union(
+        v.literal("not_started"),
+        v.literal("infra_ready"),
+        v.literal("openclaw_ready"),
+        v.literal("agents_ready"),
+        v.literal("verified"),
+      ),
+    ),
+    ownerContact: v.optional(v.string()),
+    supportNotes: v.optional(v.string()),
     protocol: v.union(v.literal("req"), v.literal("jsonrpc")),
     clientId: v.string(),
     clientMode: v.string(),
@@ -206,6 +288,195 @@ export default defineSchema({
     updatedAt: v.number(),
     updatedBy: v.id("users"),
   }).index("byWorkspace", ["workspaceId"]),
+
+  // ─── OpenClaw provisioning jobs (workspace-scoped) ─────────────
+  openclawProvisioningJobs: defineTable({
+    workspaceId: v.id("workspaces"),
+    provider: v.string(),
+    targetHostType: v.union(
+      v.literal("customer_vps"),
+      v.literal("sutraha_managed"),
+    ),
+    requestedRegion: v.optional(v.string()),
+    requestedServerProfile: v.optional(
+      v.union(
+        v.literal("starter"),
+        v.literal("standard"),
+        v.literal("performance"),
+      ),
+    ),
+    requestedServerType: v.optional(v.string()),
+    resolvedServerType: v.optional(v.string()),
+    resolvedRegion: v.optional(v.string()),
+    fallbackApplied: v.optional(v.boolean()),
+    bootstrapStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("running"), v.literal("ready"), v.literal("failed")),
+    ),
+    gatewayRouteStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("running"), v.literal("ready"), v.literal("failed")),
+    ),
+    healthcheckStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("running"), v.literal("ready"), v.literal("failed")),
+    ),
+    connectionAutoApplied: v.optional(v.boolean()),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("failed"),
+      v.literal("completed"),
+      v.literal("canceled"),
+    ),
+    step: v.union(
+      v.literal("queued"),
+      v.literal("infra_provisioning"),
+      v.literal("host_placement"),
+      v.literal("bootstrap_openclaw"),
+      v.literal("tenant_runtime_create"),
+      v.literal("gateway_route_config"),
+      v.literal("tenant_route_config"),
+      v.literal("health_verification"),
+      v.literal("tenant_health_verification"),
+      v.literal("openclaw_install"),
+      v.literal("gateway_config"),
+      v.literal("security_hardening"),
+      v.literal("synclaw_connected"),
+      v.literal("agent_bootstrap"),
+      v.literal("verification"),
+      v.literal("done"),
+    ),
+    logs: v.array(v.string()),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    failureCode: v.optional(
+      v.union(
+        v.literal("PROVISION_FAILED"),
+        v.literal("BOOTSTRAP_FAILED"),
+        v.literal("GATEWAY_ROUTE_FAILED"),
+        v.literal("HEALTHCHECK_FAILED"),
+        v.literal("CONNECTIVITY_FAILED"),
+      ),
+    ),
+    failureReason: v.optional(v.string()),
+    retryOfJobId: v.optional(v.id("openclawProvisioningJobs")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndCreatedAt", ["workspaceId", "createdAt"])
+    .index("byWorkspaceAndStatus", ["workspaceId", "status"]),
+
+  // ─── Managed host pool (commercial managed runtime) ────────────
+  managedHosts: defineTable({
+    hostId: v.string(),
+    provider: v.string(),
+    region: v.string(),
+    apiBaseUrl: v.optional(v.string()),
+    publicIp: v.optional(v.string()),
+    privateIp: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("degraded"),
+      v.literal("draining"),
+      v.literal("offline"),
+    ),
+    capacityCpu: v.number(),
+    capacityMemMb: v.number(),
+    usedCpu: v.optional(v.number()),
+    usedMemMb: v.optional(v.number()),
+    agentVersion: v.optional(v.string()),
+    lastHeartbeatAt: v.number(),
+    metadataJson: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byHostId", ["hostId"])
+    .index("byStatusAndRegion", ["status", "region"])
+    .index("byUpdatedAt", ["updatedAt"]),
+
+  // ─── Managed workspace runtime placement (commercial managed runtime) ──
+  managedWorkspaceRuntimes: defineTable({
+    workspaceId: v.id("workspaces"),
+    hostId: v.string(),
+    runtimeId: v.optional(v.string()),
+    runtimeStatus: v.union(
+      v.literal("creating"),
+      v.literal("ready"),
+      v.literal("degraded"),
+      v.literal("failed"),
+      v.literal("deleted"),
+    ),
+    openclawContainerId: v.optional(v.string()),
+    fsBridgeContainerId: v.optional(v.string()),
+    upstreamHost: v.string(),
+    upstreamPort: v.number(),
+    fsBridgeBaseUrl: v.optional(v.string()),
+    volumeName: v.optional(v.string()),
+    resourceProfile: v.optional(v.string()),
+    lastHealthAt: v.optional(v.number()),
+    failureCode: v.optional(v.string()),
+    metadataJson: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byHostId", ["hostId"])
+    .index("byRuntimeStatus", ["runtimeStatus"]),
+
+  // ─── Assisted setup sessions (workspace-scoped) ────────────────
+  openclawSupportSessions: defineTable({
+    workspaceId: v.id("workspaces"),
+    type: v.union(v.literal("assisted_launch")),
+    status: v.union(
+      v.literal("requested"),
+      v.literal("scheduled"),
+      v.literal("completed"),
+      v.literal("canceled"),
+    ),
+    ownerContact: v.string(),
+    notes: v.optional(v.string()),
+    preferredTime: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndCreatedAt", ["workspaceId", "createdAt"]),
+
+  // ─── Workspace model provider keys (encrypted at rest) ─────────
+  workspaceModelProviderKeys: defineTable({
+    workspaceId: v.id("workspaces"),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("gemini"),
+      v.literal("google_antigravity"),
+      v.literal("z_ai"),
+      v.literal("minimax"),
+    ),
+    label: v.optional(v.string()),
+    keyCiphertextHex: v.string(),
+    keyIvHex: v.string(),
+    status: v.union(
+      v.literal("untested"),
+      v.literal("valid"),
+      v.literal("invalid"),
+    ),
+    lastAppliedAt: v.optional(v.number()),
+    lastAppliedStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("applied"), v.literal("failed")),
+    ),
+    lastAppliedError: v.optional(v.string()),
+    lastRuntimeValidatedAt: v.optional(v.number()),
+    lastRuntimeValidationStatus: v.optional(
+      v.union(v.literal("valid"), v.literal("invalid")),
+    ),
+    lastValidatedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  })
+    .index("byWorkspace", ["workspaceId"])
+    .index("byWorkspaceAndProvider", ["workspaceId", "provider"]),
 
   // ─── Domain tables (all workspace-scoped) ───────────────────────
 
@@ -231,9 +502,10 @@ export default defineSchema({
       v.object({
         currentModel: v.string(),
         openclawVersion: v.string(),
-        totalTokensUsed: v.number(),
         lastRunDurationMs: v.number(),
-        lastRunCost: v.float64(),
+        // Legacy fields — present in existing documents, no longer written by new code.
+        totalTokensUsed: v.optional(v.float64()),
+        lastRunCost: v.optional(v.float64()),
       }),
     ),
     lastSeenActivityAt: v.optional(v.number()),
@@ -307,7 +579,8 @@ export default defineSchema({
   })
     .index("byWorkspace", ["workspaceId"])
     .index("byStatus", ["status"])
-    .index("recent", ["createdAt"]),
+    .index("recent", ["createdAt"])
+    .index("byWorkspaceUpdatedAt", ["workspaceId", "updatedAt"]),
 
   messages: defineTable({
     workspaceId: v.id("workspaces"),
@@ -344,7 +617,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("byWorkspace", ["workspaceId"])
-    .index("recent", ["createdAt"]),
+    .index("recent", ["createdAt"])
+    .index("byWorkspaceCreatedAt", ["workspaceId", "createdAt"]),
 
   activitySeenByAgent: defineTable({
     workspaceId: v.id("workspaces"),
@@ -437,22 +711,4 @@ export default defineSchema({
 
   // NOTE: chatMessages/chatEvents tables removed. Chat is OpenClaw WS-only.
 
-  /**
-   * Individual agent run records for cost tracking.
-   * Each time an agent finishes a task session, a record is created here.
-   * This enables accurate per-task and daily burn rate calculations.
-   */
-  agentRuns: defineTable({
-    workspaceId: v.id("workspaces"),
-    agentId: v.id("agents"),
-    taskId: v.union(v.id("tasks"), v.null()),
-    cost: v.float64(),
-    tokensUsed: v.number(),
-    durationMs: v.number(),
-    createdAt: v.number(),
-  })
-    .index("byWorkspace", ["workspaceId"])
-    .index("byTask", ["taskId"])
-    .index("byAgent", ["agentId"])
-    .index("byCreatedAt", ["createdAt"]),
 });

@@ -1,0 +1,27 @@
+name: Edition Governance
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-pr-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required PR sections
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_BODY:-}" ]; then
+            echo "PR body is empty. Add required sections."
+            exit 1
+          fi
+          echo "$PR_BODY" | grep -qi "core impact" || {
+            echo "Missing 'Core impact' section in PR description.";
+            exit 1;
+          }
+          echo "$PR_BODY" | grep -qi "commercial-only justification" || {
+            echo "Missing 'Commercial-only justification' section in PR description.";
+            exit 1;
+          }

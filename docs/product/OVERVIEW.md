@@ -1,50 +1,40 @@
-# Product Overview
+# Synclaw Documentation Overview
 
-## What this product is
+Synclaw is a workspace control plane for OpenClaw-based agent operations.
 
-Synclaw is an operator control plane for AI-assisted execution.  
-It combines:
+## What Synclaw does today
 
-- mission/task planning
-- OpenClaw-powered agent runs
-- MCP-connected tool execution
-- activity visibility and review flow
+- Connects one workspace to one OpenClaw gateway configuration.
+- Supports one-click agent creation with automatic setup file generation.
+- Tracks tasks, documents, broadcasts, and activity in Convex.
+- Streams chat directly from OpenClaw through WebSocket.
+- Optionally enables remote file editing through the Files Bridge.
 
-The product is designed for solo operators and teams that care about reliable shipping, not just activity volume.
+## Deployment choices
 
-## Deployment models
+### Public WSS (recommended for beta users)
 
-### 1) Cloud (recommended)
+Use Public WSS when you want fast activation and minimal infrastructure work.
 
-Best for most users:
+### Self-hosted
 
-- fastest onboarding
-- managed infrastructure
-- lower operational burden
-- better fit for non-technical customers
+Use self-hosted when you need infrastructure ownership and can maintain:
 
-### 2) Self-hosted OSS
+- Convex project + environment variables
+- OAuth providers
+- OpenClaw gateway availability and policy
+- Optional Files Bridge runtime
 
-Best for technical teams:
+## Canonical user flow
 
-- full control over infrastructure and integrations
-- deeper customization potential
-- higher setup and maintenance responsibility
+1. Complete onboarding.
+2. Configure OpenClaw connection for the workspace.
+3. Create an agent with one-click setup.
+4. Continue work in chat.
 
-## Core positioning
+## Documentation map
 
-- Cloud sells convenience and speed.
-- Self-hosted sells control.
-- Both share the same workflow principles.
-
-## Related docs
-
-- `docs/product/CLOUD_GET_STARTED.md`
-- `docs/product/SELF_HOSTED_PREREQUISITES.md`
-- `docs/product/SELF_HOSTED_SETUP_CONVEX.md`
-- `docs/product/SELF_HOSTED_SETUP_MCP.md`
-- `docs/product/SELF_HOSTED_RUN_LOCAL.md`
-- `docs/product/SELF_HOSTED_TROUBLESHOOTING.md`
-- `docs/product/PRICING.md`
-- `docs/product/FAQ.md`
-
+- Public WSS runbook: `docs/product/CLOUD_GET_STARTED.md`
+- Self-hosted runbook: `docs/product/SELF_HOSTED_GUIDE.md`
+- Pricing positioning: `docs/product/PRICING.md`
+- FAQ: `docs/product/FAQ.md`

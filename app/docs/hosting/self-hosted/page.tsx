@@ -1,18 +1,29 @@
+import {
+  ArrowRight,
+  FolderTree,
+  Server,
+  Settings2,
+  Wrench,
+} from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, FolderTree, HardDrive, Server, Settings2, Wrench } from "lucide-react";
-import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDocsShell";
+import {
+  PublicDocsCard,
+  PublicDocsShell,
+} from "@/app/docs/_components/PublicDocsShell";
 
 export default function HostingSelfHostedOverviewPage() {
   return (
     <PublicDocsShell
       title="Self-hosted Hosting"
       description="Own your stack: app, Convex backend, and tool infrastructure."
-      icon={HardDrive}
+      iconName="HardDrive"
     >
       <PublicDocsCard title="What you own in self-hosted mode">
         <ul className="list-disc space-y-2 pl-5">
           <li>Application deployment and runtime uptime.</li>
-          <li>Convex environments, schema migrations, and auth configuration.</li>
+          <li>
+            Convex environments, schema migrations, and auth configuration.
+          </li>
           <li>OpenClaw gateway and MCP server connectivity.</li>
           <li>Incident response and compatibility maintenance.</li>
         </ul>
@@ -39,8 +50,12 @@ export default function HostingSelfHostedOverviewPage() {
                 <Server className="h-4 w-4 text-accent-orange" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-text-primary">Configure Convex</p>
-                <p className="mt-1 text-xs text-text-muted">Deployment, env, auth, and verification.</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  Configure Convex
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  Deployment, env, auth, and verification.
+                </p>
               </div>
             </div>
             <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">
@@ -56,8 +71,12 @@ export default function HostingSelfHostedOverviewPage() {
                 <Wrench className="h-4 w-4 text-accent-orange" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-text-primary">Configure MCP/OpenClaw</p>
-                <p className="mt-1 text-xs text-text-muted">Gateway, token, scopes, and tool verification.</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  Configure MCP/OpenClaw
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  Gateway, token, scopes, and tool verification.
+                </p>
               </div>
             </div>
             <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">
@@ -73,8 +92,12 @@ export default function HostingSelfHostedOverviewPage() {
                 <Settings2 className="h-4 w-4 text-accent-orange" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-text-primary">Environment reference</p>
-                <p className="mt-1 text-xs text-text-muted">Variable-by-variable deployment reference.</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  Environment reference
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  Variable-by-variable deployment reference.
+                </p>
               </div>
             </div>
             <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">
@@ -90,8 +113,12 @@ export default function HostingSelfHostedOverviewPage() {
                 <FolderTree className="h-4 w-4 text-accent-orange" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-text-primary">OpenClaw Files Bridge</p>
-                <p className="mt-1 text-xs text-text-muted">Remote workspace file browser/editor via Docker bridge.</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  OpenClaw Files Bridge
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  Remote workspace file browser/editor via Docker bridge.
+                </p>
               </div>
             </div>
             <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">

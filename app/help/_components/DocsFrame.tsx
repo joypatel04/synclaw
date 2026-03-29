@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 export function DocsFrame({
@@ -24,7 +22,9 @@ export function DocsFrame({
               <Icon className="h-5 w-5 text-accent-orange" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold text-text-primary sm:text-xl">{title}</h1>
+              <h1 className="text-lg font-bold text-text-primary sm:text-xl">
+                {title}
+              </h1>
               <p className="mt-1 text-xs text-text-muted">{description}</p>
             </div>
           </div>
@@ -55,4 +55,3 @@ export function DocsCard({
     </section>
   );
 }
-

@@ -271,11 +271,17 @@ export const getByAssignee = query({
   },
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
+    // Use updatedAt index with a 30-day default floor to bound the scan.
+    // assigneeIds is an array field — not range-indexable — so in-memory filtering
+    // is unavoidable, but this limits the DB rows read to recently-active tasks.
+    const floor = args.since ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
     const all = await ctx.db
       .query("tasks")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
+      .withIndex("byWorkspaceUpdatedAt", (q) =>
+        q.eq("workspaceId", args.workspaceId).gte("updatedAt", floor),
+      )
       .order("desc")
-      .collect();
+      .take(500);
 
     const limit = args.limit ?? 0;
     const includeDone = args.includeDone ?? true;
@@ -301,7 +307,6 @@ export const getByAssignee = query({
         if (!includeDone && t.status === "done") return false;
         if (args.status && t.status !== args.status) return false;
         if (statusSet && !statusSet.has(t.status)) return false;
-        if (args.since !== undefined && t.updatedAt < args.since) return false;
         if (onlyUpdatedSinceLastSeen) {
           const lastSeenAt = seenByTask.get(t._id) ?? 0;
           if (t.updatedAt <= lastSeenAt) return false;

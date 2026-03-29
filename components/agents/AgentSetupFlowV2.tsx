@@ -16,6 +16,7 @@ import {
   REQUIRED_AGENT_SETUP_FILES,
   type RequiredAgentSetupFile,
 } from "@/lib/agentSetupTemplates";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 import {
   buildGenericAgentBootstrapMessage,
   buildMainAgentBootstrapMessage,
@@ -31,7 +32,13 @@ type FileScan = {
 
 type OperationMode = "keep_existing" | "create" | "replace" | "skip";
 
-export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
+export function AgentSetupFlowV2({
+  agentId,
+  advancedEnabled = AGENT_SETUP_ADVANCED_ENABLED,
+}: {
+  agentId: Id<"agents">;
+  advancedEnabled?: boolean;
+}) {
   const router = useRouter();
   const { workspaceId, workspace, canAdmin, role } = useWorkspace();
   const canEditFiles = role === "owner" || role === "admin";
@@ -73,6 +80,7 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
   const [chatPasted, setChatPasted] = useState<
     Partial<Record<RequiredAgentSetupFile, string>>
   >({});
+  const requiredFileCount = REQUIRED_AGENT_SETUP_FILES.length;
 
   useEffect(() => {
     if (!setupPlan) return;
@@ -120,10 +128,20 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
             workspaceId,
             basePath: detail.effectiveWorkspaceFolderPath,
             path: file,
+            allowMissing: true,
           })) as {
             content?: string;
             hash?: string;
+            missing?: boolean;
           };
+          if (res.missing) {
+            nextScan[file] = {
+              exists: false,
+              changed: false,
+            };
+            nextOps[file] = "create";
+            continue;
+          }
           const draft = drafts[file] ?? "";
           const changed = (res.content ?? "").trim() !== draft.trim();
           nextScan[file] = {
@@ -261,6 +279,41 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
     }
   };
 
+  const retrySetup = async () => {
+    if (!detail) return;
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const operations = REQUIRED_AGENT_SETUP_FILES.map((file) => ({
+        filename: file,
+        mode: "replace" as const,
+        content: drafts[file] ?? "",
+        source: "template" as const,
+      }));
+      await applySetupFiles({
+        workspaceId,
+        agentId,
+        operations,
+      });
+      const result = (await validateSetup({
+        workspaceId,
+        agentId,
+      })) as { ok: boolean; errors: string[] };
+      setValidationErrors(result.errors ?? []);
+      if (result.ok) {
+        setSuccess("Setup completed, opening chat");
+        router.push(`/chat/${detail.agent._id}`);
+        return;
+      }
+      setSuccess("Setup reapplied. Validation still has blockers.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!canAdmin) {
     return (
       <EmptyState
@@ -279,14 +332,103 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
     );
   }
 
+  if (!advancedEnabled) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-3 sm:p-6">
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
+          <h1 className="text-lg font-semibold text-text-primary">
+            Agent Setup Status
+          </h1>
+          <p className="mt-1 text-xs text-text-muted">
+            Canonical {requiredFileCount}-file setup is managed automatically.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              className="bg-accent-orange text-white hover:bg-accent-orange/90"
+              onClick={() => {
+                setChatDraft({
+                  workspaceId: String(workspaceId),
+                  sessionKey: detail.agent.sessionKey,
+                  content: bootstrap,
+                });
+                router.push(`/chat/${detail.agent._id}`);
+              }}
+            >
+              Open agent chat
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void retrySetup()}
+              disabled={busy}
+            >
+              Retry setup
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void runValidation()}
+              disabled={busy}
+            >
+              Validate setup
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 text-xs">
+          <p className="text-text-primary">
+            Completion status: {status.isComplete ? "Complete" : "Blocked"}
+          </p>
+          {!status.isComplete ? (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-text-muted">
+              {!status.bootstrapPrimed ? (
+                <li>Bootstrap step not confirmed.</li>
+              ) : null}
+              {!status.cronConfirmed ? <li>Cron step not confirmed.</li> : null}
+              {!status.requiredFilesConfirmed ? (
+                <li>
+                  All {requiredFileCount} required files are not
+                  confirmed/validated yet.
+                </li>
+              ) : null}
+              {!status.pulseDetected ? (
+                <li>First pulse not detected yet.</li>
+              ) : null}
+              {validationErrors.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-text-muted">
+              Setup completed. Continue in chat.
+            </p>
+          )}
+        </div>
+
+        {error ? (
+          <div className="rounded-lg border border-status-blocked/40 bg-status-blocked/10 px-3 py-2 text-xs text-status-blocked">
+            {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="rounded-lg border border-status-active/40 bg-status-active/10 px-3 py-2 text-xs text-status-active">
+            {success}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-3 sm:p-6">
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
         <h1 className="text-lg font-semibold text-text-primary">
-          Agent Setup 2.0
+          Agent Setup Guide
         </h1>
         <p className="mt-1 text-xs text-text-muted">
-          Strict 8-file setup for reliable Synclaw backend coordination.
+          Strict {requiredFileCount}-file setup for reliable Synclaw backend
+          coordination.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(["guided", "chat", "manual"] as const).map((item) => (
@@ -305,7 +447,7 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
             </Button>
           ))}
           <Button variant="outline" size="sm" asChild>
-            <Link href="/help/agent-setup">Open setup cookbook</Link>
+            <Link href="/help/agent-setup">Open Setup Guide</Link>
           </Button>
         </div>
       </div>
@@ -374,7 +516,7 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
                     sessionKey: detail.agent.sessionKey,
                     content: bootstrap,
                   });
-                  router.push(`/chat/${detail.agent._id}?setup=1`);
+                  router.push(`/chat/${detail.agent._id}`);
                 }}
               >
                 Open chat with bootstrap
@@ -561,7 +703,10 @@ export function AgentSetupFlowV2({ agentId }: { agentId: Id<"agents"> }) {
             ) : null}
             {!status.cronConfirmed ? <li>Cron step not confirmed.</li> : null}
             {!status.requiredFilesConfirmed ? (
-              <li>All 8 required files are not confirmed/validated yet.</li>
+              <li>
+                All {requiredFileCount} required files are not
+                confirmed/validated yet.
+              </li>
             ) : null}
             {!status.pulseDetected ? (
               <li>First pulse not detected yet.</li>

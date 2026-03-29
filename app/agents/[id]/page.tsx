@@ -23,11 +23,6 @@ function formatDuration(ms: number | undefined) {
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
-function formatCost(cost: number | undefined) {
-  if (cost === undefined || cost === null) return "$0.0000";
-  if (cost === 0) return "Free";
-  return `$${cost.toFixed(4)}`;
-}
 
 function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId, canAdmin, role } = useWorkspace();
@@ -37,11 +32,7 @@ function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
     workspaceId,
     id: agentId,
   });
-  const runOverview = useQuery(api.agents.getRunOverviewByAgent, {
-    workspaceId,
-    agentId,
-    limit: 20,
-  });
+
   const activities =
     useQuery(api.activities.getByAgent, {
       workspaceId,
@@ -193,65 +184,11 @@ function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
 
           <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
             <h3 className="text-sm font-semibold text-text-primary">
-              Run Metrics
+              Last Run
             </h3>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-md border border-border-default bg-bg-primary/60 p-2">
-                <p className="text-text-dim">Last Run</p>
-                <p className="mt-1 text-text-primary">
-                  {formatDuration(agent.telemetry?.lastRunDurationMs)} •{" "}
-                  {formatCost(agent.telemetry?.lastRunCost)}
-                </p>
-              </div>
-              <div className="rounded-md border border-border-default bg-bg-primary/60 p-2">
-                <p className="text-text-dim">Total Tokens</p>
-                <p className="mt-1 text-text-primary">
-                  {(agent.telemetry?.totalTokensUsed ?? 0).toLocaleString(
-                    "en-US",
-                  )}
-                </p>
-              </div>
-              <div className="rounded-md border border-border-default bg-bg-primary/60 p-2">
-                <p className="text-text-dim">24h</p>
-                <p className="mt-1 text-text-primary">
-                  {runOverview?.totals24h.runCount ?? 0} runs •{" "}
-                  {formatCost(runOverview?.totals24h.cost)}
-                </p>
-              </div>
-              <div className="rounded-md border border-border-default bg-bg-primary/60 p-2">
-                <p className="text-text-dim">7d</p>
-                <p className="mt-1 text-text-primary">
-                  {runOverview?.totals7d.runCount ?? 0} runs •{" "}
-                  {formatCost(runOverview?.totals7d.cost)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border-default bg-bg-secondary p-4">
-            <h3 className="text-sm font-semibold text-text-primary">
-              Recent Runs
-            </h3>
-            <div className="mt-2 space-y-2">
-              {(runOverview?.recentRuns ?? []).slice(0, 8).map((run) => (
-                <div
-                  key={run._id}
-                  className="rounded-md border border-border-default bg-bg-primary/60 p-2 text-xs"
-                >
-                  <p className="text-text-primary">
-                    {run.taskTitle ?? "No task"}
-                  </p>
-                  <p className="mt-1 text-text-muted">
-                    {new Date(run.createdAt).toLocaleString()} •{" "}
-                    {run.tokensUsed.toLocaleString("en-US")} tokens •{" "}
-                    {formatDuration(run.durationMs)} • {formatCost(run.cost)}
-                  </p>
-                </div>
-              ))}
-              {(runOverview?.recentRuns?.length ?? 0) === 0 ? (
-                <p className="text-xs text-text-muted">No runs recorded yet.</p>
-              ) : null}
-            </div>
+            <p className="mt-2 text-xs text-text-primary">
+              {formatDuration(agent.telemetry?.lastRunDurationMs)}
+            </p>
           </div>
 
           <div className="rounded-xl border border-border-default bg-bg-secondary p-4">

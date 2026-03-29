@@ -2,7 +2,6 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/permissions";
 import { hashApiKey, generateApiKey, getKeyPrefix } from "./lib/apiAuth";
-import { canUseFeature } from "./lib/billing";
 
 // ─── Queries ──────────────────────────────────────────────────────
 
@@ -38,14 +37,6 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const membership = await requireRole(ctx, args.workspaceId, "owner");
-    const workspace = await ctx.db.get(args.workspaceId);
-    if (!workspace) throw new Error("Workspace not found");
-    if (!canUseFeature(workspace, "api_keys")) {
-      throw new Error(
-        "API keys are available on Starter/Pro plans. Upgrade in Settings -> Billing.",
-      );
-    }
-
     // Generate the API key
     const plainKey = generateApiKey();
     const keyHash = await hashApiKey(plainKey);

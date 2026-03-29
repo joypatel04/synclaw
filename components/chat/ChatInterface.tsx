@@ -8,7 +8,6 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { clearChatDraft, consumeChatDraft } from "@/lib/chatDraft";
+import { consumeChatDraft } from "@/lib/chatDraft";
 import {
   extractDisplayMessagesFromHistory,
   extractExecTracesFromHistory,
@@ -47,7 +46,6 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   const { workspaceId, canEdit, membershipId } = useWorkspace();
-  const searchParams = useSearchParams();
   const members = useQuery(api.workspaces.getMembers, { workspaceId }) ?? [];
   const me = useMemo(
     () => members.find((m) => m._id === membershipId),
@@ -79,18 +77,22 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   const localSeqRef = useRef(1);
   const pendingAssistantKeyRef = useRef<string | null>(null);
 
-  // Direct WS is now mandatory for chat.
-  const useDirectWs = true;
-
   const openclawConfig = useQuery(
     api.openclaw.getClientConfig,
     canEdit ? { workspaceId } : "skip",
   );
+  const isConnectorMode =
+    (openclawConfig?.transportMode ?? "direct_ws") === "connector";
+  const useDirectWs = !isConnectorMode;
   const includeCron = openclawConfig?.includeCron ?? false;
   const historyPollMs = openclawConfig?.historyPollMs ?? 0;
 
   const canChatBase = Boolean(
-    canEdit && openclawConfig && openclawConfig.wsUrl,
+    canEdit &&
+      openclawConfig &&
+      (isConnectorMode
+        ? Boolean(openclawConfig.connectorStatus === "online")
+        : Boolean(openclawConfig.wsUrl)),
   );
   const gatewayBlocked = Boolean(
     gatewayBlock &&
@@ -100,7 +102,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         gatewayBlock.state === "SCOPES_INSUFFICIENT" ||
         gatewayBlock.state === "INVALID_CONFIG"),
   );
-  const canChat = canChatBase && !gatewayBlocked;
+  const canChat = canChatBase && !gatewayBlocked && !isConnectorMode;
   const gatewayConfigKey = useMemo(
     () => (openclawConfig ? JSON.stringify(openclawConfig) : ""),
     [openclawConfig],
@@ -189,21 +191,16 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     () => `${String(workspaceId)}:${agent.sessionKey}`,
     [workspaceId, agent.sessionKey],
   );
-  const setupIntent = searchParams.get("setup") === "1";
   const [draft, setDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    const key = {
-      workspaceId: String(workspaceId),
-      sessionKey: agent.sessionKey,
-    };
-    if (!setupIntent) {
-      clearChatDraft(key);
-      setDraft(null);
-      return;
-    }
-    setDraft(consumeChatDraft(key));
-  }, [draftKey, workspaceId, agent.sessionKey, setupIntent]);
+    setDraft(
+      consumeChatDraft({
+        workspaceId: String(workspaceId),
+        sessionKey: agent.sessionKey,
+      }),
+    );
+  }, [draftKey, workspaceId, agent.sessionKey]);
 
   const rebuildIndex = (next: UiChatMessage[]) => {
     const map = new Map<string, number>();
@@ -284,8 +281,24 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       const closeInTime =
         Math.abs((m.createdAt ?? 0) - (last.createdAt ?? 0)) <= windowMs;
 
+      const assistantInFlightMerge =
+        m.role === "assistant" &&
+        last.role === "assistant" &&
+        (m.state === "streaming" ||
+          m.state === "sending" ||
+          last.state === "streaming" ||
+          last.state === "sending");
+      const assistantIdMerge =
+        m.role === "assistant" &&
+        last.role === "assistant" &&
+        ((Boolean(m.externalRunId) && m.externalRunId === last.externalRunId) ||
+          (Boolean(m.externalMessageId) &&
+            m.externalMessageId === last.externalMessageId));
+      const allowAssistantTextMerge =
+        m.role !== "assistant" || assistantInFlightMerge || assistantIdMerge;
+
       // Only merge if they look like the same message arriving twice right away.
-      if (sameKind && sameText && closeInTime) {
+      if (sameKind && sameText && closeInTime && allowAssistantTextMerge) {
         const keep = last;
         const incoming = m;
         const merged: UiChatMessage = {
@@ -375,6 +388,21 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         if (Math.abs(mt - ts) > windowMs) continue;
         return i;
       }
+    }
+
+    // Assistant messages are high-risk for accidental mid-thread merges when text
+    // repeats (e.g. short completions). Without a stable run id, only merge into an
+    // active in-flight assistant bubble.
+    if (candidate.role === "assistant" && !candidate.fromUser) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.role !== "assistant") continue;
+        if (m.state !== "streaming" && m.state !== "sending") continue;
+        const mt = m.createdAt ?? 0;
+        if (Math.abs(mt - ts) > windowMs) continue;
+        return i;
+      }
+      return undefined;
     }
 
     // Scan from the end (most likely duplicates are recent).
@@ -590,6 +618,11 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         "OpenClaw is not configured for this workspace. Go to Settings → OpenClaw.",
       );
     }
+    if ((openclawConfig.transportMode ?? "direct_ws") === "connector") {
+      throw new Error(
+        "Connector mode chat relay is not available in this client yet. Use direct WS mode or finish connector relay setup.",
+      );
+    }
     if (!openclawConfig.wsUrl) {
       throw new Error("OpenClaw wsUrl is missing.");
     }
@@ -601,6 +634,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           protocol: openclawConfig.protocol,
           authToken: openclawConfig.authToken,
           password: openclawConfig.password,
+          forceDisableDeviceAuth:
+            (openclawConfig.deploymentMode ?? "manual") === "managed",
           clientId: openclawConfig.clientId,
           clientMode: openclawConfig.clientMode,
           clientPlatform: openclawConfig.clientPlatform,
@@ -1044,10 +1079,6 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
 
   const handleSend = async (content: string) => {
     await enqueueOrSend(content);
-    clearChatDraft({
-      workspaceId: String(workspaceId),
-      sessionKey: agent.sessionKey,
-    });
   };
 
   const handleRetry = async (externalMessageId: string | undefined) => {
@@ -1120,8 +1151,8 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       .slice()
       .sort(
         (a, b) =>
-          (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
           (a.localSeq ?? 0) - (b.localSeq ?? 0) ||
+          (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
           a.id.localeCompare(b.id),
       );
   }, [localMessages]);
@@ -1256,6 +1287,19 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
                   className="bg-accent-orange hover:bg-accent-orange/90 text-white"
                 >
                   <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
+                </Button>
+              </EmptyState>
+            ) : isConnectorMode ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="Connector mode selected"
+                description="This workspace is configured for Private Connector. Finish relay setup to enable chat in browser."
+              >
+                <Button
+                  asChild
+                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                >
+                  <Link href="/settings/openclaw">Open OpenClaw settings</Link>
                 </Button>
               </EmptyState>
             ) : sortedMessages.length === 0 ? (

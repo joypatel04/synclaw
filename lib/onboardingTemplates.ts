@@ -169,14 +169,14 @@ export function buildMcpServerConfigTemplate(args: {
 
   const cfg = {
     servers: {
-      "sutraha-hq": {
+      "synclaw-hq": {
         command: "npx",
         args: [SYNCLAW_MCP_SERVER_NPX_SPEC],
         env: {
           CONVEX_URL: convexUrl,
           CONVEX_SITE_URL: convexSiteUrl,
-          SUTRAHA_API_KEY: "<SUTRAHA_API_KEY>",
-          SUTRAHA_WORKSPACE_ID: args.workspaceId,
+          SYNCLAW_API_KEY: "<SYNCLAW_API_KEY>",
+          SYNCLAW_WORKSPACE_ID: args.workspaceId,
         },
       },
     },

@@ -57,7 +57,7 @@ export function useWorkspace(): WorkspaceContext {
 
 // ─── Storage helpers ─────────────────────────────────────────────
 
-const STORAGE_KEY = "sutraha-hq:active-workspace";
+const STORAGE_KEY = "synclaw-hq:active-workspace";
 
 function loadSaved(): string | null {
   if (typeof window === "undefined") return null;

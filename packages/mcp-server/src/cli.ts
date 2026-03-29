@@ -7,14 +7,14 @@ import { api } from "./api.js";
  * Useful for debugging and manual operations.
  *
  * Usage:
- *   sutraha-cli <resource> <action> [options]
+ *   synclaw-cli <resource> <action> [options]
  *
  * Examples:
- *   sutraha-cli agents list
- *   sutraha-cli tasks list
- *   sutraha-cli tasks create --title "Fix bug" --priority high
- *   sutraha-cli tasks update-status --id <id> --status blocked --blocked-reason "Waiting on API key"
- *   sutraha-cli chat send --session-id chat:key --message "Hello"
+ *   synclaw-cli agents list
+ *   synclaw-cli tasks list
+ *   synclaw-cli tasks create --title "Fix bug" --priority high
+ *   synclaw-cli tasks update-status --id <id> --status blocked --blocked-reason "Waiting on API key"
+ *   synclaw-cli chat send --session-id chat:key --message "Hello"
  */
 import { createClientFromEnv } from "./convex-client.js";
 
@@ -25,7 +25,7 @@ function usage() {
     `
 Synclaw CLI
 
-Usage: sutraha-cli <resource> <action> [options]
+Usage: synclaw-cli <resource> <action> [options]
 
 Resources:
   agents     list | get --id <id> | create --name <n> --role <r> [--emoji <e>] [--session-key <sk>] [--external-agent-id <id>] [--create-setup-task] | heartbeat --id <id> | status --id <id> --status <active|idle|error|offline>
@@ -39,8 +39,8 @@ Resources:
 Environment variables:
   CONVEX_URL             Convex cloud URL
   CONVEX_SITE_URL        Convex site URL (for token exchange)
-  SUTRAHA_API_KEY        Workspace API key
-  SUTRAHA_WORKSPACE_ID   Workspace ID
+  SYNCLAW_API_KEY        Workspace API key
+  SYNCLAW_WORKSPACE_ID   Workspace ID
   `.trim(),
   );
 }

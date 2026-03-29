@@ -18,7 +18,7 @@ export function buildAgentsMd(args: {
     .sort((a, b) => a.sessionKey.localeCompare(b.sessionKey))
     .map((a) => {
       const agentId = a.agentId ? `\`${a.agentId}\`` : "(create in Synclaw)";
-      return `| ${a.emoji || "🤖"} ${a.name} | \`${a.sessionKey}\` | ${a.role || ""} | ${agentId} | <fill> |`;
+      return `| ${a.emoji || "🤖"} ${a.name} | \`${a.sessionKey}\` | ${a.role || ""} | <fill> |`;
     })
     .join("\n");
 
@@ -30,9 +30,9 @@ export function buildAgentsMd(args: {
 
 ## Agent Identity
 
-| Agent | Session Key | Role | Agent ID (Synclaw) | OpenClaw Workspace Path |
-|-------|-------------|------|------------------------|--------------------------|
-${rows || "| (none) |  |  |  |  |"}
+| Agent | Session Key | Role | Workspace Path |
+|-------|-------------|------|--------------------------|
+${rows || "| (none) |  |  |  |"}
 
 ## Notes
 - Each agent is a real agent with its own identity (sessionKey). Never reuse another agent's sessionKey.

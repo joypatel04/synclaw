@@ -8,7 +8,7 @@ interface TokenResponse {
   expiresAt: number;
 }
 
-export class SutrahaClient {
+export class SynclawClient {
   private client: ConvexHttpClient;
   private siteUrl: string;
   private apiKey: string;
@@ -87,16 +87,16 @@ export class SutrahaClient {
 }
 
 /** Create a client from environment variables. */
-export function createClientFromEnv(): SutrahaClient {
+export function createClientFromEnv(): SynclawClient {
   const convexUrl = process.env.CONVEX_URL;
   const convexSiteUrl = process.env.CONVEX_SITE_URL;
-  const apiKey = process.env.SUTRAHA_API_KEY;
-  const workspaceId = process.env.SUTRAHA_WORKSPACE_ID;
+  const apiKey = process.env.SYNCLAW_API_KEY;
+  const workspaceId = process.env.SYNCLAW_WORKSPACE_ID;
 
   if (!convexUrl) throw new Error("Missing CONVEX_URL env var");
   if (!convexSiteUrl) throw new Error("Missing CONVEX_SITE_URL env var");
-  if (!apiKey) throw new Error("Missing SUTRAHA_API_KEY env var");
-  if (!workspaceId) throw new Error("Missing SUTRAHA_WORKSPACE_ID env var");
+  if (!apiKey) throw new Error("Missing SYNCLAW_API_KEY env var");
+  if (!workspaceId) throw new Error("Missing SYNCLAW_WORKSPACE_ID env var");
 
-  return new SutrahaClient({ convexUrl, convexSiteUrl, apiKey, workspaceId });
+  return new SynclawClient({ convexUrl, convexSiteUrl, apiKey, workspaceId });
 }

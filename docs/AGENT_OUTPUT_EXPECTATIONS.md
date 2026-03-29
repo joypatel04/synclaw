@@ -102,7 +102,7 @@ RISKS:
 - ✅ Work independently toward shared goals
 - ✅ Deliver clear, actionable results
 - ✅ Tag user (@Joy or workspace owner's `atMention`) only when decision/approval needed
-- ✅ Mark tasks complete via `sutraha_update_task_status`
+- ✅ Mark tasks complete via `synclaw_update_task_status`
 - ✅ Move to next task or await dependencies
 
 ---

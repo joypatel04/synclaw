@@ -1,7 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
-import { maxAgentsForWorkspace } from "./lib/billing";
+import { internalMutation, mutation, query } from "./_generated/server";
+
 import {
   requireMember,
   requireRole,
@@ -11,9 +10,7 @@ import {
 const defaultTelemetry = {
   currentModel: "unknown",
   openclawVersion: "unknown",
-  totalTokensUsed: 0,
   lastRunDurationMs: 0,
-  lastRunCost: 0,
 };
 
 const MAIN_AGENT_SESSION_KEY = "agent:main:main";
@@ -76,12 +73,10 @@ export const getAgentDetail = query({
       name: agent.name,
       sessionKey: agent.sessionKey,
     });
-    const effectiveWorkspaceFolderPath =
-      (agent.workspaceFolderPath ?? "").trim() || defaultWorkspaceFolderPath;
     return {
       agent,
       defaultWorkspaceFolderPath,
-      effectiveWorkspaceFolderPath,
+      effectiveWorkspaceFolderPath: defaultWorkspaceFolderPath,
       renameChoiceNeeded: false,
     };
   },
@@ -175,9 +170,7 @@ export const agentPulse = mutation({
       v.object({
         currentModel: v.optional(v.string()),
         openclawVersion: v.optional(v.string()),
-        totalTokensUsed: v.optional(v.number()),
         lastRunDurationMs: v.optional(v.number()),
-        lastRunCost: v.optional(v.float64()),
       }),
     ),
   },
@@ -284,9 +277,7 @@ export const endTaskSession = mutation({
       v.object({
         currentModel: v.optional(v.string()),
         openclawVersion: v.optional(v.string()),
-        totalTokensUsed: v.optional(v.number()),
         lastRunDurationMs: v.optional(v.number()),
-        lastRunCost: v.optional(v.float64()),
       }),
     ),
     runSummary: v.optional(v.string()),
@@ -300,7 +291,6 @@ export const endTaskSession = mutation({
       ...defaultTelemetry,
       ...(agent.telemetry ?? {}),
     };
-    const runTokens = args.telemetry?.totalTokensUsed ?? 0;
     const nextTelemetry =
       args.telemetry === undefined
         ? previous
@@ -308,10 +298,8 @@ export const endTaskSession = mutation({
             currentModel: args.telemetry.currentModel ?? previous.currentModel,
             openclawVersion:
               args.telemetry.openclawVersion ?? previous.openclawVersion,
-            totalTokensUsed: previous.totalTokensUsed + Math.max(0, runTokens),
             lastRunDurationMs:
               args.telemetry.lastRunDurationMs ?? previous.lastRunDurationMs,
-            lastRunCost: args.telemetry.lastRunCost ?? previous.lastRunCost,
           };
 
     const patch: Partial<typeof agent> = {
@@ -349,20 +337,6 @@ export const endTaskSession = mutation({
       },
       createdAt: now,
     });
-
-    // Log run for cost tracking (if telemetry provided)
-    // Note: We log runs even if cost is $0.00 (free models) to track activity
-    if (args.telemetry?.lastRunCost !== undefined) {
-      await ctx.db.insert("agentRuns", {
-        workspaceId: agent.workspaceId,
-        agentId: args.agentId,
-        taskId: currentTaskId,
-        cost: args.telemetry.lastRunCost, // Can be 0.00 for free models
-        tokensUsed: runTokens,
-        durationMs: args.telemetry.lastRunDurationMs ?? 0,
-        createdAt: now,
-      });
-    }
   },
 });
 
@@ -403,13 +377,6 @@ export const create = mutation({
       .query("agents")
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
-    const activeCount = existingAgents.filter((a) => !a.isArchived).length;
-    const maxAgents = maxAgentsForWorkspace(workspace);
-    if (activeCount >= maxAgents) {
-      throw new Error(
-        "Free workspaces can run up to 3 active agents. Upgrade in Settings -> Billing for more.",
-      );
-    }
 
     const duplicate = existingAgents.find(
       (a) => !a.isArchived && a.sessionKey === args.sessionKey,
@@ -525,13 +492,6 @@ export const createManual = mutation({
       .query("agents")
       .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
-    const activeCount = existingAgents.filter((a) => !a.isArchived).length;
-    const maxAgents = maxAgentsForWorkspace(workspace);
-    if (activeCount >= maxAgents) {
-      throw new Error(
-        "Free workspaces can run up to 3 active agents. Upgrade in Settings -> Billing for more.",
-      );
-    }
 
     const duplicate = existingAgents.find(
       (a) => !a.isArchived && a.sessionKey === args.sessionKey,
@@ -614,32 +574,12 @@ export const update = mutation({
 
     const nextName = args.name ?? agent.name;
     const nextSessionKey = args.sessionKey ?? agent.sessionKey;
-    const previousDefaultPath = deriveDefaultWorkspaceFolderPath({
-      name: agent.name,
-      sessionKey: agent.sessionKey,
-    });
     const nextDefaultPath = deriveDefaultWorkspaceFolderPath({
       name: nextName,
       sessionKey: nextSessionKey,
     });
-    const currentEffectivePath =
-      (agent.workspaceFolderPath ?? "").trim() || previousDefaultPath;
-    const mappingWouldChange = nextDefaultPath !== previousDefaultPath;
-
-    if (mappingWouldChange && !args.workspaceFolderPathChoice) {
-      const errorPayload = {
-        code: "WORKSPACE_FOLDER_RENAME_CHOICE_REQUIRED",
-        currentWorkspaceFolderPath: currentEffectivePath,
-        newDefaultWorkspaceFolderPath: nextDefaultPath,
-      };
-      throw new Error(JSON.stringify(errorPayload));
-    }
-
-    if (args.workspaceFolderPathChoice === "keep_existing") {
-      updates.workspaceFolderPath = currentEffectivePath;
-    } else if (args.workspaceFolderPathChoice === "use_new_default") {
-      updates.workspaceFolderPath = nextDefaultPath;
-    }
+    // Enforce name-based folder mapping. We do not keep arbitrary/custom paths.
+    updates.workspaceFolderPath = nextDefaultPath;
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(args.id, updates);
@@ -657,7 +597,7 @@ export const update = mutation({
   },
 });
 
-/** Set a custom workspace folder path for an agent (owner only). */
+/** Set workspace folder path for an agent (owner only, validated to default mapping). */
 export const setWorkspaceFolderPath = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -671,14 +611,16 @@ export const setWorkspaceFolderPath = mutation({
       throw new Error("Agent not found");
     }
     const normalized = args.workspaceFolderPath.trim().replace(/\\/g, "/");
-    if (
-      !normalized ||
-      normalized.includes("..") ||
-      normalized.startsWith("/")
-    ) {
-      throw new Error("Invalid workspace folder path");
+    const expected = deriveDefaultWorkspaceFolderPath({
+      name: agent.name,
+      sessionKey: agent.sessionKey,
+    });
+    if (normalized !== expected) {
+      throw new Error(
+        `workspaceFolderPath must match agent name mapping. Expected "${expected}".`,
+      );
     }
-    await ctx.db.patch(args.id, { workspaceFolderPath: normalized });
+    await ctx.db.patch(args.id, { workspaceFolderPath: expected });
   },
 });
 
@@ -715,156 +657,59 @@ export const toggleArchive = mutation({
 });
 
 /**
- * Calculate daily burn rate (total cost spent today).
- * Aggregates all agent runs from today.
+ * Internal rollback used by one-click setup orchestration.
+ * Archives a newly created agent and removes setup-progress artifacts.
  */
-export const getDailyBurnRate = query({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayStartMs = todayStart.getTime();
-
-    const runs = await ctx.db
-      .query("agentRuns")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .filter((q) => q.gte(q.field("createdAt"), todayStartMs))
-      .collect();
-
-    const totalCost = runs.reduce((sum, run) => sum + run.cost, 0);
-    const totalTokens = runs.reduce((sum, run) => sum + run.tokensUsed, 0);
-    const totalDuration = runs.reduce((sum, run) => sum + run.durationMs, 0);
-
-    // Get unique agents that ran today
-    const agentIds = new Set(runs.map((r) => r.agentId));
-    const allAgents = await ctx.db
-      .query("agents")
-      .withIndex("byWorkspace", (q) => q.eq("workspaceId", args.workspaceId))
-      .collect();
-
-    return {
-      totalCost,
-      totalTokens,
-      totalDurationMs: totalDuration,
-      runCount: runs.length,
-      activeAgentCount: agentIds.size,
-      totalAgentCount: allAgents.filter((a) => !a.isArchived).length,
-      currency: "USD",
-    };
-  },
-});
-
-/**
- * Get cost breakdown for a specific task.
- * Sums all runs associated with this task.
- */
-export const getTaskCost = query({
+export const _rollbackCreatedAgentForSetupFailure = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
-    taskId: v.id("tasks"),
+    id: v.id("agents"),
+    reason: v.string(),
+    source: v.union(
+      v.literal("onboarding_main"),
+      v.literal("recipe"),
+      v.literal("agents_page"),
+    ),
   },
   handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
-
-    const runs = await ctx.db
-      .query("agentRuns")
-      .withIndex("byTask", (q) => q.eq("taskId", args.taskId))
-      .collect();
-
-    const totalCost = runs.reduce((sum, run) => sum + run.cost, 0);
-    const totalTokens = runs.reduce((sum, run) => sum + run.tokensUsed, 0);
-    const totalDuration = runs.reduce((sum, run) => sum + run.durationMs, 0);
-
-    // Group by agent
-    const byAgent: Record<string, { cost: number; runs: number }> = {};
-    for (const run of runs) {
-      const agentId = run.agentId;
-      if (!byAgent[agentId]) {
-        byAgent[agentId] = { cost: 0, runs: 0 };
-      }
-      byAgent[agentId].cost += run.cost;
-      byAgent[agentId].runs += 1;
-    }
-
-    return {
-      taskId: args.taskId,
-      totalCost,
-      totalTokens,
-      totalDurationMs: totalDuration,
-      runCount: runs.length,
-      byAgent,
-      currency: "USD",
-    };
-  },
-});
-
-/** Get run telemetry summary and recent runs for an agent (viewer+). */
-export const getRunOverviewByAgent = query({
-  args: {
-    workspaceId: v.id("workspaces"),
-    agentId: v.id("agents"),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await requireMember(ctx, args.workspaceId);
-    const agent = await ctx.db.get(args.agentId);
+    const agent = await ctx.db.get(args.id);
     if (!agent || agent.workspaceId !== args.workspaceId) {
       throw new Error("Agent not found");
     }
 
-    const limit = Math.max(1, Math.min(args.limit ?? 20, 100));
-    const runs = await ctx.db
-      .query("agentRuns")
-      .withIndex("byAgent", (q) => q.eq("agentId", args.agentId))
-      .order("desc")
-      .take(limit);
+    await ctx.db.patch(args.id, {
+      isArchived: true,
+      status: "idle",
+    });
 
-    const now = Date.now();
-    const window24h = now - 24 * 60 * 60 * 1000;
-    const window7d = now - 7 * 24 * 60 * 60 * 1000;
-
-    const runs24h = runs.filter((r) => r.createdAt >= window24h);
-    const runs7d = runs.filter((r) => r.createdAt >= window7d);
-
-    const allTaskIds = [
-      ...new Set(
-        runs
-          .map((r) => r.taskId)
-          .filter((id): id is Id<"tasks"> => id !== null),
-      ),
-    ];
-    const taskTitleById = new Map<string, string>();
-    for (const taskId of allTaskIds) {
-      const task = await ctx.db.get(taskId);
-      if (task && task.workspaceId === args.workspaceId) {
-        taskTitleById.set(task._id, task.title);
-      }
+    const setupRow = await ctx.db
+      .query("agentSetupProgress")
+      .withIndex("byWorkspaceAndAgent", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("agentId", args.id),
+      )
+      .first();
+    if (setupRow) {
+      await ctx.db.delete(setupRow._id);
     }
 
-    const sum = (items: typeof runs) =>
-      items.reduce(
-        (acc, run) => {
-          acc.cost += run.cost;
-          acc.tokensUsed += run.tokensUsed;
-          acc.durationMs += run.durationMs;
-          acc.runCount += 1;
-          return acc;
-        },
-        { cost: 0, tokensUsed: 0, durationMs: 0, runCount: 0 },
-      );
+    await ctx.db.insert("activities", {
+      workspaceId: args.workspaceId,
+      type: "agent_status",
+      agentId: args.id,
+      taskId: null,
+      message: `${agent.emoji} ${agent.name} setup rollback executed`,
+      metadata: {
+        action: "setup_rollback",
+        source: args.source,
+        reason: args.reason,
+      },
+      createdAt: Date.now(),
+    });
 
     return {
-      recentRuns: runs.map((run) => ({
-        ...run,
-        taskTitle:
-          run.taskId && taskTitleById.get(String(run.taskId))
-            ? taskTitleById.get(String(run.taskId))
-            : null,
-      })),
-      totals24h: sum(runs24h),
-      totals7d: sum(runs7d),
+      ok: true,
+      archived: true,
+      setupProgressCleared: Boolean(setupRow),
     };
   },
 });

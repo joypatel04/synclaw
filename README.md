@@ -5,8 +5,41 @@ Synclaw is a Next.js + Convex dashboard for managing an OpenClaw-powered agent w
 - Tasks, documents, broadcasts, and activity feed (Convex)
 - Chat UI streaming directly from OpenClaw Gateway over WebSocket (no Convex chat persistence)
 - Settings / workspace membership management
-- Razorpay per-workspace billing (`/settings/billing`)
 - MCP server package (see `packages/mcp-server`)
+
+## Editions
+
+- `core` (OSS): manual/BYO OpenClaw workflows and core product surfaces.
+- `commercial`: internal/extended ops surfaces used for private testing.
+
+Set edition using:
+
+```bash
+SYNCLAW_EDITION=core|commercial
+NEXT_PUBLIC_SYNCLAW_EDITION=core|commercial
+```
+
+## Public OSS Beta Profile
+
+For open-source beta launch (Public WSS/BYO OpenClaw only), use:
+
+```bash
+SYNCLAW_EDITION=core
+NEXT_PUBLIC_SYNCLAW_EDITION=core
+SYNCLAW_MANAGED_BETA_ENABLED=false
+SYNCLAW_ASSISTED_LAUNCH_ENABLED=false
+NEXT_PUBLIC_MANAGED_BETA_ENABLED=false
+NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED=false
+NEXT_PUBLIC_BILLING_ENABLED=false
+```
+
+For internal extended-flow testing, switch to `commercial` and enable the related flags.
+
+To prepare an OSS beta bundle quickly:
+
+```bash
+bun run export:oss-beta
+```
 
 ## Local Dev
 
@@ -22,8 +55,8 @@ bun install
 cp .env.local.example .env.local
 ```
 
-Update `.env.local` values for your Convex deployment + Convex Auth GitHub OAuth keys.
-If you want billing enabled, configure Razorpay keys and plan IDs.
+Update `.env.local` values for your Convex deployment + Convex Auth GitHub/Google OAuth keys.
+If you run `commercial`, configure internal ops env vars as needed.
 
 ### 3) Start Convex + Next.js
 
@@ -45,11 +78,6 @@ Open the app (see the dev URL printed by Next.js).
 
 Open **Settings -> OpenClaw** (`/settings/openclaw`) and set your gateway URL/token/scopes.
 
-Open **Settings -> Billing** (`/settings/billing`) to manage plan checkout/portal flows.
-
-Webhook endpoint:
-- Razorpay: `/api/v1/billing/razorpay/webhook`
-
 Note: to encrypt tokens at rest, set the Convex env var:
 
 ```bash
@@ -58,16 +86,14 @@ OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX=<openssl rand -hex 32>
 
 ## Docs
 
-- Deployment: `docs/DEPLOYMENT.md`
+- Public docs index: `docs/README.md`
+- Legacy/internal docs archive: `docs/legacy/`
+- OSS edition track: `docs/oss/README.md`
 - OpenClaw chat: `docs/OPENCLAW_CHAT.md`
 - Product overview: `docs/product/OVERVIEW.md`
 - Hosting guide: `docs/product/HOSTING_GUIDE.md`
-- Cloud setup: `docs/product/CLOUD_GET_STARTED.md`
-- Self-hosted prerequisites: `docs/product/SELF_HOSTED_PREREQUISITES.md`
-- Self-hosted Convex setup: `docs/product/SELF_HOSTED_SETUP_CONVEX.md`
-- Self-hosted MCP setup: `docs/product/SELF_HOSTED_SETUP_MCP.md`
-- Self-hosted local run: `docs/product/SELF_HOSTED_RUN_LOCAL.md`
-- Self-hosted troubleshooting: `docs/product/SELF_HOSTED_TROUBLESHOOTING.md`
+- Public WSS setup: `docs/product/CLOUD_GET_STARTED.md`
+- Self-hosted guide: `docs/product/SELF_HOSTED_GUIDE.md`
 - Pricing model: `docs/product/PRICING.md`
 - FAQ: `docs/product/FAQ.md`
 # Vercel build trigger - Mon Feb 23 05:12:08 PM UTC 2026

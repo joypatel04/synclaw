@@ -1,15 +1,17 @@
 import { v } from "convex/values";
-import { api } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import { action, mutation, query } from "./_generated/server";
-import { requireMember, requireRole } from "./lib/permissions";
+import { AGENT_RECIPES } from "../lib/agentRecipes";
 import {
+  type AgentSetupSource,
+  type AgentSetupTemplateProfile,
   buildAgentSetupFiles,
   deriveRoleModule,
   deriveWorkspaceFolderPath,
   REQUIRED_AGENT_SETUP_FILES,
-  type AgentSetupSource,
 } from "../lib/agentSetupTemplates";
+import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import { action, mutation, query } from "./_generated/server";
+import { requireMember, requireRole } from "./lib/permissions";
 
 const stepLiteral = v.union(
   v.literal("bootstrapPrimed"),
@@ -47,6 +49,30 @@ type SetupRow = {
   lastValidationAt?: number;
   lastValidationErrors?: string[];
 };
+
+type OneClickFailureCode =
+  | "BRIDGE_UNAVAILABLE"
+  | "BRIDGE_WRITE_FAILED"
+  | "TEMPLATE_VALIDATION_FAILED"
+  | "ROLLBACK_FAILED"
+  | "DUPLICATE_SESSION_KEY"
+  | "AGENT_LIMIT_REACHED";
+
+type OneClickFailure = {
+  ok: false;
+  code: OneClickFailureCode;
+  message: string;
+  rollbackAttempted: boolean;
+  rollbackSucceeded: boolean;
+};
+
+type OneClickSuccess = {
+  ok: true;
+  agentId: Id<"agents">;
+  message: string;
+};
+
+type OneClickResult = OneClickFailure | OneClickSuccess;
 
 function allRequiredFilesConfirmed(fileChecks: FileCheckRecord | undefined) {
   if (!fileChecks) return false;
@@ -156,7 +182,7 @@ function contentErrorsForFile(args: {
         !args.content.includes(args.sessionKey)
           ? "Missing session key in heartbeat"
           : "",
-        !lower.includes("sutraha_agent_pulse") ? "Missing pulse call" : "",
+        !lower.includes("synclaw_agent_pulse") ? "Missing pulse call" : "",
       ].filter(Boolean);
     case "AGENTS.md":
       return [
@@ -169,18 +195,49 @@ function contentErrorsForFile(args: {
       ].filter(Boolean);
     case "SYNCLAW_PROTOCOL.md":
       return [
-        !lower.includes("sutraha") && !lower.includes("synclaw")
-          ? "Missing Synclaw/Sutraha backend context"
-          : "",
+        !lower.includes("synclaw") ? "Missing Synclaw backend context" : "",
         !args.content.includes(args.workspaceId)
           ? "Missing workspaceId reference"
           : "",
         !lower.includes("stage 1") ? "Missing staged workflow" : "",
-        !lower.includes("sutraha_agent_pulse") ? "Missing pulse stage" : "",
+        !lower.includes("synclaw_agent_pulse") ? "Missing pulse stage" : "",
       ].filter(Boolean);
     default:
       return [];
   }
+}
+
+function resolveTemplateProfile(
+  templateId: string | undefined,
+): AgentSetupTemplateProfile | undefined {
+  const normalized = templateId?.trim();
+  if (!normalized) return undefined;
+  const recipe = AGENT_RECIPES.find((candidate) => candidate.id === normalized);
+  if (!recipe) return undefined;
+  return {
+    id: recipe.id,
+    title: recipe.title,
+    description: recipe.description,
+    rules: recipe.rules,
+  };
+}
+
+function resolveTemplateProfileFromRole(
+  role: string,
+): AgentSetupTemplateProfile | undefined {
+  const normalizedRole = role.trim().toLowerCase();
+  if (!normalizedRole) return undefined;
+  const recipe = AGENT_RECIPES.find(
+    (candidate) =>
+      candidate.defaultRole.trim().toLowerCase() === normalizedRole,
+  );
+  if (!recipe) return undefined;
+  return {
+    id: recipe.id,
+    title: recipe.title,
+    description: recipe.description,
+    rules: recipe.rules,
+  };
 }
 
 export const getStatus = query({
@@ -214,6 +271,7 @@ export const getSetupPlan = query({
   args: {
     workspaceId: v.id("workspaces"),
     agentId: v.id("agents"),
+    templateId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireMember(ctx, args.workspaceId);
@@ -228,6 +286,10 @@ export const getSetupPlan = query({
       )
       .collect();
 
+    const templateProfile =
+      resolveTemplateProfile(args.templateId) ??
+      resolveTemplateProfileFromRole(agent.role);
+
     const files = buildAgentSetupFiles({
       workspaceId: String(args.workspaceId),
       workspaceName: workspace.name,
@@ -239,6 +301,7 @@ export const getSetupPlan = query({
         role: agent.role,
         sessionKey: agent.sessionKey,
       }),
+      templateProfile,
       agent: {
         id: String(agent._id),
         name: agent.name,
@@ -473,6 +536,7 @@ export const validateSetup = action({
   args: {
     workspaceId: v.id("workspaces"),
     agentId: v.id("agents"),
+    includeRuntimeChecks: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const status = await ctx.runQuery(api.agentSetup.getStatus, {
@@ -495,7 +559,16 @@ export const validateSetup = action({
           workspaceId: args.workspaceId,
           basePath,
           path: filename,
+          allowMissing: true,
         });
+        if (result?.missing) {
+          fileChecks[filename] = {
+            exists: false,
+            source: "manual",
+          };
+          errors.push(`${filename}: File not found`);
+          continue;
+        }
         const content = String(result?.content ?? "");
         const localErrors = contentErrorsForFile({
           filename,
@@ -532,14 +605,16 @@ export const validateSetup = action({
       }
     }
 
-    if (!status.bootstrapPrimed) {
-      errors.push("Setup step missing: bootstrap not confirmed");
-    }
-    if (!status.cronConfirmed) {
-      errors.push("Setup step missing: cron not confirmed");
-    }
-    if (!status.pulseDetected) {
-      errors.push("Runtime signal missing: first pulse not detected");
+    if (args.includeRuntimeChecks !== false) {
+      if (!status.bootstrapPrimed) {
+        errors.push("Setup step missing: bootstrap not confirmed");
+      }
+      if (!status.cronConfirmed) {
+        errors.push("Setup step missing: cron not confirmed");
+      }
+      if (!status.pulseDetected) {
+        errors.push("Runtime signal missing: first pulse not detected");
+      }
     }
 
     await ctx.runMutation(api.agentSetup.persistValidation, {
@@ -555,6 +630,220 @@ export const validateSetup = action({
       fileChecks,
       requiredFiles: REQUIRED_AGENT_SETUP_FILES,
     };
+  },
+});
+
+function parseCreateFailureCode(message: string): OneClickFailureCode | null {
+  const lower = message.toLowerCase();
+  if (lower.includes("session key") && lower.includes("already exists")) {
+    return "DUPLICATE_SESSION_KEY";
+  }
+  if (
+    lower.includes("up to 3 active agents") ||
+    lower.includes("upgrade in settings")
+  ) {
+    return "AGENT_LIMIT_REACHED";
+  }
+  return null;
+}
+
+function normalizeOneClickError(args: {
+  stage: "preflight" | "create" | "write" | "validate" | "rollback";
+  message: string;
+}): OneClickFailureCode {
+  if (args.stage === "create") {
+    const parsed = parseCreateFailureCode(args.message);
+    if (parsed) return parsed;
+  }
+  if (args.stage === "preflight") return "BRIDGE_UNAVAILABLE";
+  if (args.stage === "validate") return "TEMPLATE_VALIDATION_FAILED";
+  if (args.stage === "rollback") return "ROLLBACK_FAILED";
+  return "BRIDGE_WRITE_FAILED";
+}
+
+export const createAgentOneClick = action({
+  args: {
+    workspaceId: v.id("workspaces"),
+    name: v.string(),
+    role: v.string(),
+    emoji: v.string(),
+    sessionKey: v.string(),
+    externalAgentId: v.optional(v.string()),
+    templateId: v.optional(v.string()),
+    source: v.union(
+      v.literal("onboarding_main"),
+      v.literal("recipe"),
+      v.literal("agents_page"),
+    ),
+  },
+  handler: async (ctx, args): Promise<OneClickResult> => {
+    let createdAgentId: Id<"agents"> | null = null;
+    let setupBasePath: string | null = null;
+    const createdFiles: string[] = [];
+
+    const fail = (
+      code: OneClickFailureCode,
+      message: string,
+      extra?: {
+        rollbackAttempted?: boolean;
+        rollbackSucceeded?: boolean;
+      },
+    ): OneClickFailure => {
+      return {
+        ok: false,
+        code,
+        message,
+        rollbackAttempted: extra?.rollbackAttempted ?? false,
+        rollbackSucceeded: extra?.rollbackSucceeded ?? false,
+      };
+    };
+
+    try {
+      await ctx.runAction(api.openclaw_files.testBridge, {
+        workspaceId: args.workspaceId,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return fail("BRIDGE_UNAVAILABLE", message);
+    }
+
+    try {
+      createdAgentId = await ctx.runMutation(api.agents.createManual, {
+        workspaceId: args.workspaceId,
+        name: args.name,
+        role: args.role,
+        emoji: args.emoji,
+        sessionKey: args.sessionKey,
+        externalAgentId: args.externalAgentId,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const code = normalizeOneClickError({ stage: "create", message });
+      return fail(code, message);
+    }
+
+    try {
+      const setupPlan = await ctx.runQuery(api.agentSetup.getSetupPlan, {
+        workspaceId: args.workspaceId,
+        agentId: createdAgentId,
+        templateId: args.templateId,
+      });
+      const basePath = setupPlan.agent.workspaceFolderPath;
+      if (!basePath) {
+        throw new Error("Missing agent workspace folder path");
+      }
+      setupBasePath = basePath;
+
+      for (const filename of REQUIRED_AGENT_SETUP_FILES) {
+        const expected = setupPlan.files[filename];
+        if (!expected || typeof expected !== "string") {
+          throw new Error(`Missing template content for ${filename}`);
+        }
+
+        const existing = (await ctx.runAction(api.openclaw_files.readFile, {
+          workspaceId: args.workspaceId,
+          basePath,
+          path: filename,
+          allowMissing: true,
+        })) as { missing?: boolean };
+
+        const writeResult = (await ctx.runAction(api.openclaw_files.writeFile, {
+          workspaceId: args.workspaceId,
+          basePath,
+          path: filename,
+          content: expected,
+        })) as { hash?: string };
+
+        await ctx.runMutation(api.agentSetup.confirmFile, {
+          workspaceId: args.workspaceId,
+          agentId: createdAgentId,
+          filename,
+          hash: writeResult?.hash,
+          source: "template",
+        });
+
+        if (existing?.missing) {
+          createdFiles.push(filename);
+        }
+      }
+
+      await ctx.runMutation(api.agentSetup.markStep, {
+        workspaceId: args.workspaceId,
+        agentId: createdAgentId,
+        step: "localFilesWritten",
+      });
+
+      const validation = (await ctx.runAction(api.agentSetup.validateSetup, {
+        workspaceId: args.workspaceId,
+        agentId: createdAgentId,
+        includeRuntimeChecks: false,
+      })) as { ok: boolean; errors?: string[] };
+
+      if (!validation.ok) {
+        throw new Error(
+          `Template validation failed: ${(validation.errors ?? []).join(" | ")}`,
+        );
+      }
+
+      return {
+        ok: true as const,
+        agentId: createdAgentId,
+        message: "Setup completed, opening chat",
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stage = message.toLowerCase().includes("validation")
+        ? "validate"
+        : "write";
+      const code = normalizeOneClickError({ stage, message });
+
+      if (!createdAgentId) {
+        return fail(code, message);
+      }
+
+      if (setupBasePath && createdFiles.length > 0) {
+        for (const filename of createdFiles) {
+          try {
+            await ctx.runAction(api.openclaw_files.deleteFile, {
+              workspaceId: args.workspaceId,
+              basePath: setupBasePath,
+              path: filename,
+            });
+          } catch {
+            // Best-effort cleanup only.
+          }
+        }
+      }
+
+      try {
+        await ctx.runMutation(
+          internal.agents._rollbackCreatedAgentForSetupFailure,
+          {
+            workspaceId: args.workspaceId,
+            id: createdAgentId,
+            reason: message,
+            source: args.source,
+          },
+        );
+        return fail(code, message, {
+          rollbackAttempted: true,
+          rollbackSucceeded: true,
+        });
+      } catch (rollbackError) {
+        const rollbackMessage =
+          rollbackError instanceof Error
+            ? rollbackError.message
+            : String(rollbackError);
+        return fail(
+          "ROLLBACK_FAILED",
+          `${message} | rollback failed: ${rollbackMessage}`,
+          {
+            rollbackAttempted: true,
+            rollbackSucceeded: false,
+          },
+        );
+      }
+    }
   },
 });
 
@@ -665,7 +954,14 @@ export const getWorkspaceSetupOverview = query({
       .filter((s) => !s.isComplete);
 
     let firstBlockingReason: string | null = null;
-    if (!onboarding?.wsUrl) {
+    const transportMode = onboarding?.transportMode ?? "direct_ws";
+    const hasConnectionTarget = Boolean(
+      onboarding &&
+        (transportMode === "connector"
+          ? onboarding.connectorId
+          : onboarding.wsUrl),
+    );
+    if (!hasConnectionTarget) {
       firstBlockingReason = "openclaw_not_configured";
     } else if (!mainAgent) {
       firstBlockingReason = "main_agent_missing";
@@ -674,7 +970,7 @@ export const getWorkspaceSetupOverview = query({
     }
 
     return {
-      openclawConfigured: Boolean(onboarding?.wsUrl),
+      openclawConfigured: hasConnectionTarget,
       mainAgentId: mainAgent?._id ?? null,
       mainAgentReady: mainAgent
         ? !incompleteAgents.some((a) => String(a.id) === String(mainAgent._id))

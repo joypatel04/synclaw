@@ -1,7 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { Check, Copy, Sparkles } from "lucide-react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,14 +10,9 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
-import {
-  AGENT_RECIPES,
-  type AgentRecipe,
-  buildAgentRecipePrompt,
-} from "@/lib/agentRecipes";
-import { setChatDraft } from "@/lib/chatDraft";
+import { AGENT_RECIPES, type AgentRecipe } from "@/lib/agentRecipes";
+import { AGENT_SETUP_ADVANCED_ENABLED } from "@/lib/features";
 
 function slugify(input: string): string {
   return input
@@ -28,8 +23,27 @@ function slugify(input: string): string {
     .slice(0, 48);
 }
 
+function mapOneClickSetupError(code: string | undefined, message: string) {
+  switch (code) {
+    case "BRIDGE_UNAVAILABLE":
+      return "OpenClaw file bridge is unavailable. Verify OpenClaw connection first.";
+    case "BRIDGE_WRITE_FAILED":
+      return "Could not write required setup files. Check bridge connectivity and retry.";
+    case "TEMPLATE_VALIDATION_FAILED":
+      return "Template validation failed after setup. Please retry.";
+    case "ROLLBACK_FAILED":
+      return "Setup failed and rollback was incomplete. Please contact support with this error.";
+    case "DUPLICATE_SESSION_KEY":
+      return "This session key already exists in this workspace. Pick a unique one.";
+    case "AGENT_LIMIT_REACHED":
+      return "Agent limit reached for this workspace.";
+    default:
+      return message;
+  }
+}
+
 export function AgentRecipeWizard() {
-  const { workspaceId, workspace, canAdmin } = useWorkspace();
+  const { workspaceId, canAdmin } = useWorkspace();
   const router = useRouter();
   const searchParams = useSearchParams();
   const recipeParam = searchParams.get("recipe");
@@ -38,7 +52,7 @@ export function AgentRecipeWizard() {
       api.agents.list,
       canAdmin ? { workspaceId, includeArchived: true } : "skip",
     ) ?? [];
-  const createAgent = useMutation(api.agents.create);
+  const createAgentOneClick = useAction(api.agentSetup.createAgentOneClick);
   const createAgentManual = useMutation(api.agents.createManual);
 
   const [selectedId, setSelectedId] = useState<AgentRecipe["id"]>("research");
@@ -49,14 +63,12 @@ export function AgentRecipeWizard() {
   const [agentName, setAgentName] = useState(recipe.title);
   const [agentEmoji, setAgentEmoji] = useState(recipe.defaultEmoji);
   const [agentRole, setAgentRole] = useState(recipe.defaultRole);
-  const [spec, setSpec] = useState("");
 
   const applyRecipe = useCallback((r: AgentRecipe) => {
     setSelectedId(r.id);
     setAgentName(r.title);
     setAgentEmoji(r.defaultEmoji);
     setAgentRole(r.defaultRole);
-    setSpec("");
     setSessionKeyTouched(false);
   }, []);
 
@@ -88,32 +100,6 @@ export function AgentRecipeWizard() {
     );
   }, [defaultSessionKey, sessionKeyTouched]);
 
-  const prompt = useMemo(() => {
-    return buildAgentRecipePrompt({
-      workspaceName: workspace.name,
-      workspaceId: String(workspaceId),
-      agentName: agentName.trim() || recipe.title,
-      sessionKey: sessionKey.trim() || defaultSessionKey,
-      recipe,
-      spec,
-    });
-  }, [
-    workspace.name,
-    workspaceId,
-    agentName,
-    sessionKey,
-    defaultSessionKey,
-    recipe,
-    spec,
-  ]);
-
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    await navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   const collision =
     sessionKey.trim().length > 0 && existingSessionKeys.has(sessionKey.trim());
 
@@ -128,21 +114,23 @@ export function AgentRecipeWizard() {
     setCreateError(null);
     try {
       const nextSessionKey = sessionKey.trim() || defaultSessionKey;
-      const id = await createAgent({
+      const result = (await createAgentOneClick({
         workspaceId,
         name: agentName.trim() || recipe.title,
         role: agentRole.trim() || recipe.defaultRole,
         emoji: agentEmoji.trim() || recipe.defaultEmoji,
         sessionKey: nextSessionKey,
         externalAgentId: nextSessionKey,
-      });
-
-      setChatDraft({
-        workspaceId: String(workspaceId),
-        sessionKey: nextSessionKey,
-        content: prompt,
-      });
-      router.push(`/chat/${id}?setup=1`);
+        templateId: selectedId,
+        source: "recipe",
+      })) as
+        | { ok: true; agentId: string }
+        | { ok: false; code?: string; message: string };
+      if (!result.ok) {
+        setCreateError(mapOneClickSetupError(result.code, result.message));
+        return;
+      }
+      router.push(`/chat/${result.agentId}`);
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -168,7 +156,6 @@ export function AgentRecipeWizard() {
       });
       setManualCreateOk(true);
       setTimeout(() => setManualCreateOk(false), 2200);
-      setSpec("");
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -188,19 +175,25 @@ export function AgentRecipeWizard() {
 
   return (
     <div className="mx-auto max-w-3xl p-3 sm:p-6">
-      <div className="flex items-start justify-between gap-3 mb-6">
+      <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-text-primary">
             New agent (recipe)
           </h1>
           <p className="mt-1 text-xs text-text-muted">
-            Create agent metadata + SPEC prompt. You can either register only
-            (no redirect) or continue guided setup in Chat.
+            Pick a recipe and create a fully configured agent in one click.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" className="h-8">
-          <Link href="/agents">Back</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {AGENT_SETUP_ADVANCED_ENABLED ? (
+            <Button asChild variant="outline" size="sm" className="h-8">
+              <Link href="/help/agent-setup">Open Setup Guide</Link>
+            </Button>
+          ) : null}
+          <Button asChild variant="outline" size="sm" className="h-8">
+            <Link href="/agents">Back</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -236,7 +229,7 @@ export function AgentRecipeWizard() {
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-wider text-text-dim mb-3">
-            2) Configure agent + spec
+            2) Configure agent
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -288,49 +281,18 @@ export function AgentRecipeWizard() {
               </p>
             )}
           </div>
-
-          <div className="mt-4 space-y-2">
-            <Label className="text-text-secondary">Your spec</Label>
-            <Textarea
-              value={spec}
-              onChange={(e) => setSpec(e.target.value)}
-              rows={6}
-              placeholder={recipe.specHint}
-              className="bg-bg-primary border-border-default text-text-primary"
-            />
-          </div>
         </div>
 
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
-                3) Prompt template
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                Keep your requirements inside{" "}
-                <span className="font-mono">SPEC_START</span> /{" "}
-                <span className="font-mono">SPEC_END</span>.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void copy()}
-              className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-bg-hover"
-              title={copied ? "Copied" : "Copy"}
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-status-active" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-dim">
+              3) Create and launch
+            </p>
+            <p className="mt-1 text-xs text-text-muted">
+              Synclaw will create the agent, apply canonical setup files, and
+              open chat.
+            </p>
           </div>
-
-          <pre className="mt-3 max-h-[420px] overflow-auto rounded-lg bg-bg-primary border border-border-default p-3 font-mono text-[11px] text-text-primary whitespace-pre-wrap">
-            {prompt}
-          </pre>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -346,31 +308,30 @@ export function AgentRecipeWizard() {
                 title={
                   collision
                     ? "Session key must be unique"
-                    : "Create agent in Synclaw"
+                    : "Create and configure agent"
                 }
               >
-                {creating ? "Creating..." : "Create and continue setup in chat"}
+                {creating ? "Creating..." : "Create & Configure Agent"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => void onCreateManual()}
-                disabled={
-                  creating ||
-                  !agentName.trim() ||
-                  !sessionKey.trim() ||
-                  collision
-                }
-                title={
-                  collision
-                    ? "Session key must be unique"
-                    : "Create on Convex only (stay on this page)"
-                }
-              >
-                {creating ? "Creating..." : "Create on Convex only"}
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/help/agent-setup">Setup cookbook</Link>
-              </Button>
+              {AGENT_SETUP_ADVANCED_ENABLED ? (
+                <Button
+                  variant="outline"
+                  onClick={() => void onCreateManual()}
+                  disabled={
+                    creating ||
+                    !agentName.trim() ||
+                    !sessionKey.trim() ||
+                    collision
+                  }
+                  title={
+                    collision
+                      ? "Session key must be unique"
+                      : "Create on Convex only (internal debug path)"
+                  }
+                >
+                  {creating ? "Creating..." : "Create on Convex only"}
+                </Button>
+              ) : null}
             </div>
             {createError ? (
               <p className="text-xs text-status-blocked">{createError}</p>
@@ -381,8 +342,8 @@ export function AgentRecipeWizard() {
               </p>
             ) : (
               <p className="text-[11px] text-text-dim">
-                Use chat setup for guided files/cron, or register only if your
-                OpenClaw agent is already configured.
+                One-click writes the canonical setup pack, opens chat, and you
+                can customize agent files anytime from Filesystem.
               </p>
             )}
           </div>

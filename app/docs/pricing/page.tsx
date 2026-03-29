@@ -1,29 +1,36 @@
-import { Coins } from "lucide-react";
-import { PublicDocsCard, PublicDocsShell } from "@/app/docs/_components/PublicDocsShell";
+import {
+  PublicDocsCard,
+  PublicDocsShell,
+} from "@/app/docs/_components/PublicDocsShell";
 
 export default function PublicPricingDocsPage() {
   return (
     <PublicDocsShell
-      title="Pricing Strategy"
-      description="Cloud-first monetization with self-hosted OSS option."
-      icon={Coins}
+      title="Packaging Model"
+      description="How OSS core and hosted/commercial offerings are separated."
+      iconName="Coins"
     >
-      <PublicDocsCard title="Plan structure">
+      <PublicDocsCard title="Current model">
         <ul className="list-disc space-y-2 pl-5">
-          <li>Cloud Starter: managed setup and core usage.</li>
-          <li>Cloud Pro: expanded limits and advanced controls.</li>
-          <li>Self-hosted OSS: free software path for technical teams.</li>
+          <li>OSS core focuses on Public WSS + BYO OpenClaw workflows.</li>
+          <li>
+            Self-hosted remains available for teams needing infra ownership.
+          </li>
+          <li>
+            Internal/extended operations are separate from OSS launch docs.
+          </li>
         </ul>
       </PublicDocsCard>
 
-      <PublicDocsCard title="Commercial model">
+      <PublicDocsCard title="Why this split exists">
         <ul className="list-disc space-y-2 pl-5">
-          <li>Cloud sells convenience and reliability.</li>
-          <li>Self-hosted sells control and customization.</li>
-          <li>Support plans monetize implementation and priority assistance.</li>
+          <li>OSS docs stay clean and actionable for builders shipping now.</li>
+          <li>
+            Extended features can evolve without destabilizing core setup docs.
+          </li>
+          <li>Teams can start in OSS mode and expand operations later.</li>
         </ul>
       </PublicDocsCard>
     </PublicDocsShell>
   );
 }
-

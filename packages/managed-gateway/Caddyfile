@@ -1,0 +1,7 @@
+managed.synclaw.in {
+  @ws path /ws/*
+  reverse_proxy @ws managed-gateway:8788
+
+  @control path /control/*
+  reverse_proxy @control managed-gateway:8788
+}

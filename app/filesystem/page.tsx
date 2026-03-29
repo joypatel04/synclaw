@@ -32,7 +32,7 @@ function FilesystemContent() {
         workspaceId={workspaceId}
         canAdmin={canAdmin}
         canEditFiles={canEditFiles}
-        rootLabel="/root/.openclaw/workspace"
+        rootLabel="/root/.openclaw"
         showBridgeSetup
       />
 

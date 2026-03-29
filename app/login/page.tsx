@@ -63,6 +63,30 @@ export default function LoginPage() {
             </svg>
             {brand.auth.providerLabelGithub}
           </Button>
+          <Button
+            onClick={() => void signIn("google")}
+            className="w-full bg-bg-secondary border border-border-default hover:bg-bg-hover text-text-primary h-12 text-sm font-medium gap-3"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="#EA4335"
+                d="M12 10.2v3.9h5.4c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.9 0-.6-.1-1.3-.2-1.9H12z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 21.6c2.5 0 4.6-.8 6.2-2.3l-3-2.3c-.8.6-1.9 1-3.2 1-2.5 0-4.5-1.6-5.2-3.9l-3.1 2.4c1.5 3 4.6 5.1 8.3 5.1z"
+              />
+              <path
+                fill="#4A90E2"
+                d="M6.8 14.1c-.2-.6-.3-1.3-.3-2.1s.1-1.4.3-2.1l-3.1-2.4C3 9 2.6 10.4 2.6 12s.3 3 1.1 4.4l3.1-2.3z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M12 6c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.6 2.8 14.5 2 12 2c-3.7 0-6.8 2.1-8.3 5.1l3.1 2.4C7.5 7.6 9.5 6 12 6z"
+              />
+            </svg>
+            {brand.auth.providerLabelGoogle}
+          </Button>
         </div>
 
         <p className="text-center text-xs text-text-dim">
