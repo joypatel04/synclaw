@@ -16,14 +16,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDuration, getRunStatusColor } from "@/lib/cron-utils";
 import {
-  type GatewayProtocol,
+  normalizeGatewayProtocol,
   OpenClawBrowserGatewayClient,
 } from "@/lib/openclaw-gateway-client";
 import type { CronRun } from "./types";
-
-function toGatewayProtocol(value: string): GatewayProtocol {
-  return value === "jsonrpc" ? "jsonrpc" : "req";
-}
 
 const DEFAULT_CRON_GATEWAY_SCOPES = [
   "operator.read",
@@ -90,7 +86,7 @@ export function CronRunHistory({
       const client = new OpenClawBrowserGatewayClient(
         {
           wsUrl: gatewayConfig.wsUrl,
-          protocol: toGatewayProtocol(gatewayConfig.protocol),
+          protocol: normalizeGatewayProtocol(gatewayConfig.protocol),
           authToken: gatewayConfig.authToken,
           password: gatewayConfig.password,
           forceDisableDeviceAuth: gatewayConfig.forceDisableDeviceAuth,

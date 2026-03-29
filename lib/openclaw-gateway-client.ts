@@ -7,6 +7,12 @@ import {
 } from "@/lib/openclaw/device-auth-v3";
 
 export type GatewayProtocol = "req" | "jsonrpc";
+
+/** Coerce stored/JSON protocol strings into the wire union (default `req`). */
+export function normalizeGatewayProtocol(value: string): GatewayProtocol {
+  return value === "jsonrpc" ? "jsonrpc" : "req";
+}
+
 type GatewayWireProtocol = GatewayProtocol | "raw";
 
 type GatewayMessage = Record<string, unknown>;
