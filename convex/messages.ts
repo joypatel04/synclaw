@@ -52,6 +52,11 @@ export const create = mutation({
       membership.userId,
       args.agentId,
     );
+
+    // Get user's profile image
+    const user = await ctx.db.get(membership.userId);
+    const authorImage = user?.image as string | undefined;
+
     const now = Date.now();
     const agents = await ctx.db
       .query("agents")
@@ -78,8 +83,10 @@ export const create = mutation({
     const messageId = await ctx.db.insert("messages", {
       workspaceId: args.workspaceId,
       taskId: args.taskId,
+      userId: membership.userId,
       agentId: args.agentId,
       authorName,
+      authorImage,
       content: args.content,
       attachments: args.attachments ?? [],
       createdAt: now,
@@ -196,6 +203,35 @@ export const list = query({
       .withIndex("byTask", (q) => q.eq("taskId", args.taskId))
       .order("asc")
       .collect();
+  },
+});
+
+/** List messages with author images for a task (viewer+). */
+export const listWithAuthors = query({
+  args: { workspaceId: v.id("workspaces"), taskId: v.id("tasks") },
+  handler: async (ctx, args) => {
+    await requireMember(ctx, args.workspaceId);
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("byTask", (q) => q.eq("taskId", args.taskId))
+      .order("asc")
+      .collect();
+
+    // Enrich messages with author images for non-agent messages
+    return await Promise.all(
+      messages.map(async (message) => {
+        let authorImage = message.authorImage;
+        // If no stored authorImage and this is a user message (not an agent), try to fetch it
+        if (!authorImage && message.userId && !message.agentId) {
+          const user = await ctx.db.get(message.userId);
+          authorImage = user?.image as string | undefined;
+        }
+        return {
+          ...message,
+          authorImage,
+        };
+      }),
+    );
   },
 });
 
