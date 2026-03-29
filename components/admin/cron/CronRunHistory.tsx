@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
-import { OpenClawBrowserGatewayClient } from "@/lib/openclaw-gateway-client";
-import { getRunStatusColor, formatDuration } from "@/lib/cron-utils";
-import type { CronRun } from "./types";
-
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +14,22 @@ import {
 } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDuration, getRunStatusColor } from "@/lib/cron-utils";
+import {
+  type GatewayProtocol,
+  OpenClawBrowserGatewayClient,
+} from "@/lib/openclaw-gateway-client";
+import type { CronRun } from "./types";
+
+function toGatewayProtocol(value: string): GatewayProtocol {
+  return value === "jsonrpc" ? "jsonrpc" : "req";
+}
+
+const DEFAULT_CRON_GATEWAY_SCOPES = [
+  "operator.read",
+  "operator.write",
+  "operator.admin",
+] as const;
 
 /** Same fields as workspace OpenClaw client config (browser gateway connect). */
 export type CronRunGatewayConfig = {
@@ -78,15 +90,15 @@ export function CronRunHistory({
       const client = new OpenClawBrowserGatewayClient(
         {
           wsUrl: gatewayConfig.wsUrl,
-          protocol: gatewayConfig.protocol,
+          protocol: toGatewayProtocol(gatewayConfig.protocol),
           authToken: gatewayConfig.authToken,
           password: gatewayConfig.password,
           forceDisableDeviceAuth: gatewayConfig.forceDisableDeviceAuth,
-          clientId: gatewayConfig.clientId,
-          clientMode: gatewayConfig.clientMode,
-          clientPlatform: gatewayConfig.clientPlatform,
-          role: gatewayConfig.role,
-          scopes: gatewayConfig.scopes,
+          clientId: gatewayConfig.clientId ?? "openclaw-control-ui",
+          clientMode: gatewayConfig.clientMode ?? "webchat",
+          clientPlatform: gatewayConfig.clientPlatform ?? "web",
+          role: gatewayConfig.role ?? "operator",
+          scopes: gatewayConfig.scopes ?? [...DEFAULT_CRON_GATEWAY_SCOPES],
           subscribeOnConnect: false,
           subscribeMethod: gatewayConfig.subscribeMethod ?? "chat.subscribe",
         },
@@ -119,7 +131,7 @@ export function CronRunHistory({
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load run history"
+        err instanceof Error ? err.message : "Failed to load run history",
       );
     } finally {
       setLoading(false);
@@ -206,9 +218,7 @@ export function CronRunHistory({
                       {getRunIcon(run.status)}
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {run.id}
-                          </span>
+                          <span className="text-sm font-medium">{run.id}</span>
                           <Badge
                             variant="outline"
                             className={getRunStatusColor(run.status)}
