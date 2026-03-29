@@ -20,11 +20,7 @@ export function LandingShell({
 }) {
   return (
     <div className="landing-root min-h-screen bg-[var(--landing-dark-base)] text-[var(--landing-dark-text)] antialiased">
-      <LandingNav
-        brand={brand}
-        links={content.nav}
-        ctaLabel={content.hero.primaryCta}
-      />
+      <LandingNav links={content.nav} ctaLabel={content.hero.primaryCta} />
 
       <div
         className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"

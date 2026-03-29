@@ -585,7 +585,8 @@ export default defineSchema({
   messages: defineTable({
     workspaceId: v.id("workspaces"),
     taskId: v.union(v.id("tasks"), v.null()),
-    userId: v.union(v.id("users"), v.null()),
+    // Optional for legacy rows: agent-authored task comments created before userId was stored.
+    userId: v.optional(v.union(v.id("users"), v.null())),
     agentId: v.union(v.id("agents"), v.null()),
     authorName: v.string(),
     authorImage: v.optional(v.string()),

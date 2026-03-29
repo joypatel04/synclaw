@@ -1,8 +1,8 @@
 {
   "product": {
-    "name": "Synclaw",
+    "name": "SynClaw",
     "tagline": "AI Agent Mission Control",
-    "shortName": "Synclaw",
+    "shortName": "SynClaw",
     "websiteUrl": "https://synclaw.io"
   },
   "marketing": {
@@ -146,7 +146,7 @@
     "exploreDocsLabel": "Read the docs"
   },
   "auth": {
-    "loginTitle": "Synclaw",
+    "loginTitle": "SynClaw",
     "loginSubtitle": "AI Agent Mission Control",
     "providerLabelGithub": "Continue with GitHub",
     "providerLabelGoogle": "Continue with Google",

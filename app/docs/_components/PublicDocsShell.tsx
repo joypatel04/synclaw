@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SynClawMark } from "@/components/brand/SynClawMark";
 import { brand } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -148,7 +149,7 @@ export function PublicDocsShell({
       <header className="sticky top-0 z-40 border-b border-border-default bg-bg-secondary/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/docs" className="flex items-center gap-2">
-            <BookOpenText className="h-4 w-4 text-accent-orange" />
+            <SynClawMark className="h-5 w-6" />
             <span className="text-sm font-semibold">
               {brand.product.shortName} Docs
             </span>

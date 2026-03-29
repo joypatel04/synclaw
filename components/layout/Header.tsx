@@ -18,11 +18,11 @@ import {
   Settings,
   Users,
   Webhook,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { SynClawMark } from "@/components/brand/SynClawMark";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -44,10 +44,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  OPENCLAW_FILES_ENABLED,
-  WEBHOOKS_ENABLED,
-} from "@/lib/features";
+import { OPENCLAW_FILES_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 const baseNavItems = [
@@ -90,8 +87,11 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-orange/20">
-                <Zap className="h-4 w-4 text-accent-orange" />
+                <SynClawMark className="h-5 w-6" />
               </div>
+              <span className="hidden text-sm font-semibold tracking-tight text-text-primary sm:inline">
+                SynClaw
+              </span>
             </Link>
 
             {/* Workspace Switcher */}

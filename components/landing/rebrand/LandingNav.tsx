@@ -1,14 +1,11 @@
-import { Zap } from "lucide-react";
 import Link from "next/link";
-import type { BrandConfig } from "@/lib/brand";
+import { SynClawMark } from "@/components/brand/SynClawMark";
 import { GlowButton } from "./GlowButton";
 
 export function LandingNav({
-  brand,
   links,
   ctaLabel,
 }: {
-  brand: BrandConfig;
   links: Array<{ label: string; href: string }>;
   ctaLabel: string;
 }) {
@@ -17,10 +14,10 @@ export function LandingNav({
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04]">
-            <Zap className="h-4 w-4 text-[#8A7DFF]" />
+            <SynClawMark className="h-5 w-6" />
           </span>
           <span className="font-semibold tracking-tight text-white/90">
-            {brand.product.name}
+            SynClaw
           </span>
         </Link>
 
