@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { GlowButton } from "./GlowButton";
 
+const LOGO_SRC = "/brand/synclaw-logo-20260329.png";
+
 export function LandingNav({
   links,
   ctaLabel,
@@ -14,11 +16,11 @@ export function LandingNav({
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/brand/synclaw-logo.png"
+            src={LOGO_SRC}
             alt="SynClaw logo"
-            width={34}
-            height={34}
-            className="h-[34px] w-[34px]"
+            width={48}
+            height={48}
+            className="h-[48px] w-[48px]"
           />
           <span className="font-semibold tracking-tight text-white/90">
             SynClaw

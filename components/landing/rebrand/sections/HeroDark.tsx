@@ -1,4 +1,5 @@
 import { PlayCircle } from "lucide-react";
+import Image from "next/image";
 import { HeroDashboardCarousel } from "@/components/landing/HeroDashboardCarousel";
 import type { BrandConfig } from "@/lib/brand";
 import { landingTheme, toHeroCarouselPalette } from "@/lib/landingTheme";
@@ -18,6 +19,23 @@ export function HeroDark({
     <SectionFrame className="landing-reveal pt-18 sm:pt-20 lg:pt-20">
       <div className="grid items-start gap-12 lg:grid-cols-[1fr_0.95fr] lg:gap-14">
         <div>
+          <div className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-3">
+            <Image
+              src="/brand/synclaw-logo-20260329.png"
+              alt="SynClaw logo"
+              width={48}
+              height={48}
+              className="h-[48px] w-[48px]"
+            />
+            <div>
+              <p className="text-xs font-mono uppercase tracking-[0.16em] text-white/45">
+                OpenClaw Mission Control
+              </p>
+              <p className="text-[26px] font-semibold tracking-tight text-white/90 landing-display">
+                SynClaw
+              </p>
+            </div>
+          </div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
             {content.hero.eyebrow}
           </p>

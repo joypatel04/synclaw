@@ -29,6 +29,7 @@ type DocsNavItem = {
   label: string;
   icon?: LucideIcon;
 };
+const LOGO_SRC = "/brand/synclaw-logo-20260329.png";
 
 const docsHeaderIcons = {
   AlertTriangle,
@@ -150,11 +151,11 @@ export function PublicDocsShell({
         <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/docs" className="flex items-center gap-2">
             <Image
-              src="/brand/synclaw-logo.png"
+              src={LOGO_SRC}
               alt="SynClaw logo"
-              width={24}
-              height={24}
-              className="h-6 w-6"
+              width={48}
+              height={48}
+              className="h-[48px] w-[48px]"
             />
             <span className="text-sm font-semibold">
               {brand.product.shortName} Docs

@@ -47,6 +47,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { OPENCLAW_FILES_ENABLED, WEBHOOKS_ENABLED } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
+const LOGO_SRC = "/brand/synclaw-logo-20260329.png";
+
 const baseNavItems = [
   { href: "/", label: "Dashboard", icon: Activity },
   { href: "/chat", label: "Chat", icon: MessageSquare },
@@ -87,11 +89,11 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2.5">
               <Image
-                src="/brand/synclaw-logo.png"
+                src={LOGO_SRC}
                 alt="SynClaw logo"
-                width={30}
-                height={30}
-                className="h-[30px] w-[30px]"
+                width={48}
+                height={48}
+                className="h-[48px] w-[48px]"
               />
               <span className="hidden text-sm font-semibold tracking-tight text-text-primary sm:inline">
                 SynClaw
