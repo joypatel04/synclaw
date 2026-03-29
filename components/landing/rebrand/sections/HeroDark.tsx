@@ -23,9 +23,9 @@ export function HeroDark({
             <Image
               src="/brand/synclaw-logo-20260329.png"
               alt="SynClaw logo"
-              width={48}
-              height={48}
-              className="h-[48px] w-[48px]"
+              width={44}
+              height={44}
+              className="h-11 w-11"
             />
             <div>
               <p className="text-xs font-mono uppercase tracking-[0.16em] text-white/45">
@@ -39,7 +39,7 @@ export function HeroDark({
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/45">
             {content.hero.eyebrow}
           </p>
-          <h1 className="mt-5 max-w-3xl text-[clamp(2.6rem,6vw,6rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-[#E6EAFF] landing-display">
+          <h1 className="mt-5 max-w-3xl text-[clamp(2.6rem,5vw,5rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-[#E6EAFF] landing-display">
             {content.hero.title}
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/60">
