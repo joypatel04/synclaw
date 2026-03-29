@@ -57,10 +57,12 @@ export function AgentDetailsPanel({
     limit: 10,
   });
 
-  const currentTask = useQuery(api.tasks.getById, {
-    workspaceId: workspaceId as any,
-    id: agentDetail?.currentTaskId as any,
-  });
+  const currentTask = useQuery(
+    api.tasks.getById,
+    agentDetail?.currentTaskId
+      ? { workspaceId: workspaceId as any, id: agentDetail.currentTaskId as any }
+      : "skip",
+  );
 
   if (!agentDetail) {
     return null;
