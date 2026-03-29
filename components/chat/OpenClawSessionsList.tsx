@@ -1,20 +1,20 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Activity, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
-import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { api } from "@/convex/_generated/api";
+import type { Doc } from "@/convex/_generated/dataModel";
 import {
-  extractDisplayMessagesFromHistory,
   extractContextSizeFromHistory,
+  extractDisplayMessagesFromHistory,
   OpenClawBrowserGatewayClient,
 } from "@/lib/openclaw-gateway-client";
+import { cn } from "@/lib/utils";
 
 type OpenClawSessionRow = {
   key: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import {
   Sheet,
@@ -8,7 +9,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 export function ToolOutputSheet({
   toolCallId,

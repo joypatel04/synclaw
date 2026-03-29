@@ -1,32 +1,17 @@
 "use client";
 
+import { Check, Copy, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { MarkdownContent } from "@/components/shared/MarkdownContent";
 import { Timestamp } from "@/components/shared/Timestamp";
-import { cn } from "@/lib/utils";
-import { Check, Copy, X } from "lucide-react";
-import { ToolOutputSheet } from "./ToolOutputSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { ToolOutputSheet } from "./ToolOutputSheet";
 
-export type UiChatMessage = {
-  id: string;
-  fromUser: boolean;
-  role: "user" | "assistant" | "system" | "tool";
-  content: string;
-  createdAt: number;
-  localSeq?: number;
-  state?:
-    | "queued"
-    | "sending"
-    | "streaming"
-    | "completed"
-    | "failed"
-    | "aborted";
-  errorMessage?: string;
-  externalMessageId?: string;
-  externalRunId?: string;
-};
+// Re-export from canonical location for backward compatibility.
+export type { UiChatMessage } from "./types";
+import type { UiChatMessage } from "./types";
 
 interface ChatMessageProps {
   message: UiChatMessage;
