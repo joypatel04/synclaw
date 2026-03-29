@@ -128,7 +128,11 @@ function CronJobsPageContent() {
       const result = await client.request("cron.list", {
         includeDisabled: true,
       });
-      setJobs(Array.isArray(result) ? result : []);
+      // Gateway may return jobs as a direct array or wrapped in { payload: { jobs: [...] } }
+      const parsed = Array.isArray(result)
+        ? result
+        : (result as { payload?: { jobs?: CronJob[] } })?.payload?.jobs ?? [];
+      setJobs(Array.isArray(parsed) ? (parsed as CronJob[]) : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch jobs");
       toast({ title: "Failed to fetch jobs", variant: "destructive" });
