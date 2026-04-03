@@ -87,7 +87,7 @@
     "proofStrip": [
       { "label": "Agent monitoring", "value": "Real-time" },
       { "label": "Onboarding", "value": "Founder-led" },
-      { "label": "Early access pricing", "value": "From $99/yr" }
+      { "label": "Early access pricing", "value": "From $9.99/mo" }
     ],
     "productInActionTitle": "Everything your agents need",
     "productInActionSubtitle": "Built for teams running OpenClaw in production",

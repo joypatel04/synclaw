@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "sutraha-hq",
+      "name": "synclaw",
       "dependencies": {
         "@auth/core": "0.37.0",
         "@convex-dev/auth": "^0.0.90",
