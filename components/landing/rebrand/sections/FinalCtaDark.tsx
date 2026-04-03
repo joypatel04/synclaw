@@ -2,6 +2,8 @@ import type { LandingContent } from "../content";
 import { GlowButton } from "../GlowButton";
 import { SectionFrame } from "../SectionFrame";
 
+const CAL_BOOKING_URL = "https://cal.com/joypatel/30min";
+
 export function FinalCtaDark({ content }: { content: LandingContent }) {
   return (
     <SectionFrame className="landing-reveal py-24 text-center sm:py-28">
@@ -16,9 +18,10 @@ export function FinalCtaDark({ content }: { content: LandingContent }) {
       </p>
       <div className="mt-10 flex justify-center">
         <GlowButton
-          href="/login"
+          href={CAL_BOOKING_URL}
           label={content.finalCta.cta}
           className="px-7 py-3"
+          newTab
         />
       </div>
     </SectionFrame>

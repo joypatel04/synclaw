@@ -6,10 +6,8 @@ const LOGO_SRC = "/brand/synclaw-logo-20260329.png";
 
 export function LandingNav({
   links,
-  ctaLabel,
 }: {
   links: Array<{ label: string; href: string }>;
-  ctaLabel: string;
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06080F]/75 backdrop-blur-xl">
@@ -39,11 +37,19 @@ export function LandingNav({
           ))}
         </nav>
 
-        <GlowButton
-          href="/login"
-          label={ctaLabel}
-          className="px-4 py-2 text-sm"
-        />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/login"
+            className="inline-flex items-center rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/40 hover:text-white"
+          >
+            Sign in
+          </Link>
+          <GlowButton
+            href="/login"
+            label="Sign up"
+            className="px-4 py-2 text-sm"
+          />
+        </div>
       </div>
     </header>
   );

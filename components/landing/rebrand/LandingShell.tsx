@@ -20,7 +20,7 @@ export function LandingShell({
 }) {
   return (
     <div className="landing-root min-h-screen bg-[var(--landing-dark-base)] text-[var(--landing-dark-text)] antialiased">
-      <LandingNav links={content.nav} ctaLabel={content.hero.primaryCta} />
+      <LandingNav links={content.nav} />
 
       <div
         className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
@@ -47,7 +47,9 @@ export function LandingShell({
 
       {/* Regular <style> tag (not styled-jsx) so this works as a server component */}
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: CSS injection for landing theme */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         :root {
           --landing-dark-base: ${landingTheme.dark.base};
           --landing-dark-surface: ${landingTheme.dark.surface};
@@ -203,7 +205,9 @@ export function LandingShell({
             transform: none !important;
           }
         }
-      ` }} />
+      `,
+        }}
+      />
     </div>
   );
 }
