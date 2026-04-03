@@ -22,14 +22,14 @@ function DashboardContent() {
 
   return (
     <>
-      <div className="hidden h-[calc(100dvh-4rem)] lg:flex bg-[radial-gradient(circle_at_10%_0%,rgba(79,70,229,0.12),transparent_42%),radial-gradient(circle_at_84%_2%,rgba(20,184,166,0.1),transparent_46%)]">
-        <div className="w-[300px] overflow-hidden border-r border-border-default/80 bg-bg-secondary/72 backdrop-blur-sm">
+      <div className="hidden h-[calc(100dvh-4rem)] lg:flex">
+        <div className="w-[300px] overflow-hidden border-r border-border-default/80 bg-bg-secondary/60">
           <AgentPanel />
         </div>
         <div className="flex-1 overflow-auto p-5 lg:p-6">
           <KanbanBoard />
         </div>
-        <div className="min-h-0 w-[330px] overflow-hidden border-l border-border-default/80 bg-bg-secondary/72 backdrop-blur-sm">
+        <div className="min-h-0 w-[330px] overflow-hidden border-l border-border-default/80 bg-bg-secondary/60">
           <LiveFeed />
         </div>
       </div>

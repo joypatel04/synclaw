@@ -23,9 +23,9 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex min-w-[220px] flex-1 flex-col rounded-2xl border border-border-default/80 bg-[linear-gradient(160deg,var(--cw-bg-primary),color-mix(in_oklab,var(--cw-bg-secondary)_82%,transparent))] shadow-[0_12px_28px_rgba(2,6,20,0.35)]",
+        "flex min-w-[220px] flex-1 flex-col rounded-2xl border border-border-default/75 bg-bg-secondary/68",
         isBlockedColumn &&
-          "border-status-blocked/35 bg-[linear-gradient(160deg,color-mix(in_oklab,var(--cw-bg-primary)_86%,var(--cw-status-blocked)_14%),color-mix(in_oklab,var(--cw-bg-secondary)_90%,var(--cw-status-blocked)_10%))]",
+          "border-status-blocked/35 bg-status-blocked/5",
       )}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border-default/60 px-3 py-2.5">
@@ -55,7 +55,7 @@ export function KanbanColumn({
             className={cn(
               "scrollbar-none min-h-[80px] flex-1 space-y-2 overflow-y-auto px-2 pb-2 transition-smooth",
               snapshot.isDraggingOver &&
-                "rounded-b-2xl bg-[color-mix(in_oklab,var(--cw-accent-orange)_14%,transparent)]",
+                "rounded-b-2xl bg-accent-orange/8",
             )}
           >
             {tasks.map((task, index) => (

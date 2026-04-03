@@ -661,16 +661,14 @@ function OpenClawSettingsContent() {
 
   if (!canAdmin) {
     return (
-      <div className="mx-auto max-w-2xl p-3 sm:p-6">
-        <div className="flex items-center gap-2.5 mb-6 sm:mb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary">
+      <div className="app-page">
+        <div className="app-page-header mb-6 sm:mb-8">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-default/70 bg-bg-tertiary/70">
             <Settings className="h-4 w-4 text-text-muted" />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-text-primary">
-              Workspace Settings
-            </h1>
-            <p className="text-xs text-text-muted hidden sm:block">
+            <h1 className="app-page-title">Workspace Settings</h1>
+            <p className="app-page-subtitle hidden sm:block">
               Manage OpenClaw gateway configuration
             </p>
           </div>
@@ -689,16 +687,14 @@ function OpenClawSettingsContent() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-3 sm:p-6">
-      <div className="flex items-center gap-2.5 mb-6 sm:mb-8">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary">
+    <div className="app-page">
+      <div className="app-page-header mb-6 sm:mb-8">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-default/70 bg-bg-tertiary/70">
           <Settings className="h-4 w-4 text-text-muted" />
         </div>
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-text-primary">
-            Workspace Settings
-          </h1>
-          <p className="text-xs text-text-muted hidden sm:block">
+          <h1 className="app-page-title">Workspace Settings</h1>
+          <p className="app-page-subtitle hidden sm:block">
             Configure OpenClaw Gateway for this workspace
           </p>
         </div>

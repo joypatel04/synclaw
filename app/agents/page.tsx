@@ -435,18 +435,16 @@ function AgentsContent() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-3 sm:p-6">
+    <div className="app-page">
       {/* Header */}
-      <div className="mb-4 flex flex-col gap-3 border-b border-border-default/65 pb-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="app-page-header flex-col sm:flex-row sm:items-center">
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-teal/35 bg-teal/20">
             <Bot className="h-4 w-4 text-teal" />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-text-primary">
-              Agents
-            </h1>
-            <p className="text-xs text-text-muted hidden sm:block">
+            <h1 className="app-page-title">Agents</h1>
+            <p className="app-page-subtitle hidden sm:block">
               Manage your AI agents
             </p>
           </div>

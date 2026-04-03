@@ -23,12 +23,12 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
   const content = (
     <div
       className={cn(
-        "group min-w-0 overflow-hidden rounded-2xl border border-border-default/80 bg-[linear-gradient(145deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_72%,transparent))] p-4 shadow-[0_12px_28px_rgba(3,6,16,0.35)] transition-smooth",
-        "hover:-translate-y-0.5 hover:border-border-hover hover:shadow-[0_18px_38px_rgba(3,6,16,0.45)]",
+        "group min-w-0 overflow-hidden rounded-2xl border border-border-default/75 bg-bg-secondary/70 p-4 transition-smooth",
+        "hover:border-border-hover hover:bg-bg-secondary/90",
         agent.status === "active" &&
-          "border-l-2 border-l-status-active shadow-[0_14px_28px_rgba(20,184,166,0.18)]",
+          "border-l-2 border-l-status-active/90",
         agent.status === "error" &&
-          "border-l-2 border-l-status-blocked shadow-[0_14px_28px_rgba(239,68,68,0.18)]",
+          "border-l-2 border-l-status-blocked/90",
         href && "cursor-pointer",
       )}
     >
@@ -62,7 +62,7 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
       </div>
 
       {currentTask && agent.status === "active" && (
-        <div className="mt-3 w-full min-w-0 rounded-xl border border-border-default/60 bg-bg-primary/65 px-3 py-2.5">
+        <div className="mt-3 w-full min-w-0 rounded-xl border border-border-default/60 bg-bg-primary/55 px-3 py-2.5">
           <p className="text-xs text-text-muted">Working on</p>
           <p className="mt-0.5 w-full break-words text-xs font-medium leading-relaxed text-text-primary">
             {currentTask.title}

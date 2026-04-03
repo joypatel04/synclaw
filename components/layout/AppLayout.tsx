@@ -43,7 +43,7 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
       <BillingBanner />
       <main className="app-reveal flex-1">
         {blocking ? (
-          <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center">
+          <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
               <p className="text-sm text-text-muted">Redirecting to setup...</p>

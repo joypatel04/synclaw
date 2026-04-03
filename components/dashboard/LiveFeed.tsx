@@ -115,7 +115,7 @@ export function LiveFeed() {
       <div className="border-b border-border-default/70 px-4 py-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-            <span className="inline-flex h-2 w-2 rounded-full bg-status-active shadow-[0_0_10px_rgba(34,197,94,0.45)]" />
+            <span className="inline-flex h-2 w-2 rounded-full bg-status-active" />
             LIVE FEED
           </h2>
           <span className="text-[10px] text-text-muted font-mono">Last 7 days</span>
@@ -135,7 +135,7 @@ export function LiveFeed() {
                 className={cn(
                   "h-7 rounded-full border px-2.5 text-[10px] font-medium transition-smooth inline-flex items-center gap-2",
                   isActive
-                    ? "bg-accent-orange/18 border-accent-orange/55 text-accent-orange"
+                    ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
                     : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
                 )}
               >
@@ -171,10 +171,10 @@ export function LiveFeed() {
           <button
             type="button"
             onClick={() => setSelectedAgentId("all")}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
-              selectedAgentId === "all"
-                ? "bg-accent-orange/18 border-accent-orange/55 text-accent-orange"
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
+                selectedAgentId === "all"
+                ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
                 : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
             )}
           >
@@ -194,7 +194,7 @@ export function LiveFeed() {
                 className={cn(
                   "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
                   isActive
-                    ? "bg-accent-orange/18 border-accent-orange/55 text-accent-orange"
+                    ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
                     : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
                 )}
               >

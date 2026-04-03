@@ -26,18 +26,16 @@ function ChatContent() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-3 sm:p-6">
+    <div className="app-page-wide">
       <div className="min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3 border-b border-border-default/65 pb-4 sm:mb-6">
+        <div className="app-page-header">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-teal/30 bg-teal/20">
               <MessageSquare className="h-4 w-4 text-teal" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-text-primary">
-                Chat
-              </h1>
-              <p className="text-xs text-text-muted hidden sm:block">
+              <h1 className="app-page-title">Chat</h1>
+              <p className="app-page-subtitle hidden sm:block">
                 Direct conversations with your agents
               </p>
             </div>

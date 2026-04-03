@@ -32,7 +32,7 @@ function ChatDetailContent({ agentId }: { agentId: Id<"agents"> }) {
     );
 
   return (
-    <div className="mx-auto flex h-full min-h-0 max-w-7xl flex-col p-3 sm:p-6">
+    <div className="app-page-wide flex h-full min-h-0 flex-col">
       <div className="min-w-0 flex-1 min-h-0 flex flex-col">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2 border-b border-border-default/65 pb-3">
           {canAdmin && AGENT_SETUP_ADVANCED_ENABLED ? (
