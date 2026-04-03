@@ -1,9 +1,9 @@
 {
   "product": {
     "name": "SynClaw",
-    "tagline": "AI Agent Mission Control",
+    "tagline": "AI Agent Mission Control for OpenClaw",
     "shortName": "SynClaw",
-    "websiteUrl": "https://synclaw.io"
+    "websiteUrl": "https://synclaw.in"
   },
   "marketing": {
     "landingNavLinks": [
@@ -41,7 +41,7 @@
       {
         "title": "Provider-flexible by design",
         "body": "Run your own model/provider setup and retain control while Synclaw handles coordination UX.",
-        "chips": ["Public WSS", "BYO provider keys", "No lock-in"]
+        "chips": ["Public WSS", "BYO OpenClaw config", "No lock-in"]
       }
     ],
     "useCaseCards": [

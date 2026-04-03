@@ -1,118 +1,16 @@
-"use client";
-
-import { useConvexAuth } from "convex/react";
-import { Activity, Bot, LayoutDashboard } from "lucide-react";
-import { useState } from "react";
-import { AgentPanel } from "@/components/dashboard/AgentPanel";
-import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
-import { LiveFeed } from "@/components/dashboard/LiveFeed";
 import { LandingPageV1 } from "@/components/landing/rebrand/LandingPageV1";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { brand } from "@/lib/brand";
-import { cn } from "@/lib/utils";
+import { AuthenticatedDashboard } from "./AuthenticatedDashboard";
 
-type MobileTab = "board" | "agents" | "activity";
-
-const mobileTabs: { id: MobileTab; label: string; icon: typeof Bot }[] = [
-  { id: "agents", label: "Agents", icon: Bot },
-  { id: "board", label: "Board", icon: LayoutDashboard },
-  { id: "activity", label: "Live Feed", icon: Activity },
-];
-
-function DashboardContent() {
-  const [activeTab, setActiveTab] = useState<MobileTab>("board");
-
-  return (
-    <>
-      <div className="hidden h-[calc(100dvh-3.5rem)] lg:flex">
-        <div className="w-[280px] overflow-hidden border-r border-border-default bg-bg-secondary">
-          <AgentPanel />
-        </div>
-        <div className="flex-1 overflow-auto p-6">
-          <KanbanBoard />
-        </div>
-        <div className="min-h-0 w-[300px] overflow-hidden border-l border-border-default bg-bg-secondary">
-          <LiveFeed />
-        </div>
-      </div>
-
-      <div className="flex h-[calc(100dvh-3.5rem)] flex-col lg:hidden">
-        <div className="flex-1 overflow-hidden">
-          {activeTab === "board" && (
-            <div className="h-full overflow-auto p-3">
-              <KanbanBoard />
-            </div>
-          )}
-          {activeTab === "agents" && (
-            <div className="h-full bg-bg-secondary">
-              <AgentPanel />
-            </div>
-          )}
-          {activeTab === "activity" && (
-            <div className="h-full min-h-0 overflow-hidden bg-bg-secondary">
-              <LiveFeed />
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-border-default bg-bg-secondary pb-[env(safe-area-inset-bottom)]">
-          <div className="flex items-center justify-around">
-            {mobileTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "transition-smooth flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium",
-                    isActive
-                      ? "text-accent-orange"
-                      : "text-text-muted hover:text-text-secondary",
-                  )}
-                >
-                  <tab.icon
-                    className={cn(
-                      "h-5 w-5",
-                      isActive &&
-                        "drop-shadow-[0_0_6px_var(--cw-accent-orange)]",
-                    )}
-                  />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function LandingLegacy() {
-  return <LandingPageV1 brand={brand} />;
-}
-
+/**
+ * Homepage: server-renders the landing page so search engines see real content.
+ * The AuthenticatedDashboard is a client boundary that swaps in the dashboard
+ * when the user is logged in.
+ */
 export default function HomePage() {
-  const { isAuthenticated, isLoading } = useConvexAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    const rebrandEnabled =
-      process.env.NEXT_PUBLIC_LANDING_REBRAND_V1 === "true";
-    return rebrandEnabled ? <LandingPageV1 brand={brand} /> : <LandingLegacy />;
-  }
-
   return (
-    <AppLayout>
-      <DashboardContent />
-    </AppLayout>
+    <AuthenticatedDashboard>
+      <LandingPageV1 brand={brand} />
+    </AuthenticatedDashboard>
   );
 }

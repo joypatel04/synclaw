@@ -79,7 +79,6 @@ export const PUBLIC_WSS_SECURITY_CHECKLIST = [
 export function mapOpenClawSetupError(
   message: string,
   mode: OpenClawTransportMode,
-  options?: { deploymentMode?: "managed" | "manual" },
 ): string {
   const lower = message.toLowerCase();
   if (lower.includes("closed before open") || lower.includes("mixed content")) {
@@ -89,9 +88,6 @@ export function mapOpenClawSetupError(
     return "OpenClaw is not configured for this workspace yet.";
   }
   if (lower.includes("pair") || lower.includes("scope")) {
-    if (options?.deploymentMode === "managed") {
-      return "Managed OpenClaw provisioning is not fully healthy yet. Use Restart setup in onboarding to re-run managed bootstrap and routing checks.";
-    }
     return "Pairing/scopes are incomplete. Run the checklist in Settings -> OpenClaw.";
   }
   if (mode === "connector" && lower.includes("offline")) {

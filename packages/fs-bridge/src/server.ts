@@ -349,7 +349,7 @@ async function main() {
   server.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.log(
-      `sutraha-fs-bridge listening on :${PORT}, root=${ROOT_PATH}, max=${MAX_FILE_BYTES}`,
+      `synclaw-fs-bridge listening on :${PORT}, root=${ROOT_PATH}, max=${MAX_FILE_BYTES}`,
     );
   });
 }

@@ -64,7 +64,11 @@ const docsNavGroups: Array<{ title: string; items: DocsNavItem[] }> = [
     title: "Hosting Guides",
     items: [
       { href: "/docs/hosting", label: "Hosting Overview", icon: Server },
-      { href: "/docs/hosting/cloud", label: "Public WSS Hosting", icon: Cloud },
+      {
+        href: "/docs/hosting/public-wss",
+        label: "Public WSS Hosting",
+        icon: Cloud,
+      },
       {
         href: "/docs/hosting/self-hosted",
         label: "Self-hosted Hosting",

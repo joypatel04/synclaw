@@ -665,7 +665,7 @@ export function OnboardingWizard() {
       const raw = e instanceof Error ? e.message : String(e);
       setTestResult({
         status: "error",
-        message: mapOpenClawSetupError(raw, transportMode, { deploymentMode }),
+        message: mapOpenClawSetupError(raw, transportMode),
       });
     } finally {
       setTesting(false);
@@ -690,7 +690,7 @@ export function OnboardingWizard() {
       setDeviceApprovalProbeResult({
         status: "error",
         message:
-          `${mapOpenClawSetupError(raw, transportMode, { deploymentMode })} ` +
+          `${mapOpenClawSetupError(raw, transportMode)} ` +
           "If pairing is pending, approve this browser/device in OpenClaw and run this probe again.",
       });
     } finally {
@@ -705,7 +705,7 @@ export function OnboardingWizard() {
       setNeedsManagedSetup(false);
       setDeploymentMode("manual");
       setServiceMessage(
-        "Managed flow is no longer supported. Continue with BYO OpenClaw.",
+        "This launch supports Public WSS + BYO OpenClaw.",
       );
       return;
     }
@@ -772,7 +772,7 @@ export function OnboardingWizard() {
     setServiceMessage(null);
     if (!managedProvisioningEnabled) {
       setServiceMessage(
-        "Managed flow is no longer supported. Continue with BYO OpenClaw.",
+        "This launch supports Public WSS + BYO OpenClaw.",
       );
       return;
     }
@@ -992,7 +992,7 @@ export function OnboardingWizard() {
                     setDeploymentMode("manual");
                     setServiceError(null);
                     setServiceMessage(
-                      "Managed flow is no longer supported. Continue with BYO OpenClaw.",
+                      "This launch supports Public WSS + BYO OpenClaw.",
                     );
                     return;
                   }
@@ -1614,10 +1614,10 @@ export function OnboardingWizard() {
                         Run connector on private host
                       </p>
                       <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-bg-primary p-2 font-mono text-[11px] text-text-primary">
-                        {`SUTRAHA_CONNECTOR_ID=${connectorId || "<connector-id>"}
-SUTRAHA_WORKSPACE_ID=${String(workspaceId)}
+                        {`SYNCLAW_CONNECTOR_ID=${connectorId || "<connector-id>"}
+SYNCLAW_WORKSPACE_ID=${String(workspaceId)}
 OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
-./sutraha-connector start`}
+./synclaw-connector start`}
                       </pre>
                     </div>
                     <div className="space-y-2">

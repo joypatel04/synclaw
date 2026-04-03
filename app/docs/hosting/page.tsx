@@ -16,7 +16,7 @@ import {
 
 const sections = [
   {
-    href: "/docs/hosting/cloud",
+    href: "/docs/hosting/public-wss",
     title: "Public WSS hosting guide",
     description: "Fastest path for OSS launch with BYO OpenClaw.",
     icon: Cloud,

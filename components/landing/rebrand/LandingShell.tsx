@@ -45,7 +45,9 @@ export function LandingShell({
 
       <FooterDark brand={brand} />
 
-      <style jsx global>{`
+      {/* Regular <style> tag (not styled-jsx) so this works as a server component */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: CSS injection for landing theme */}
+      <style dangerouslySetInnerHTML={{ __html: `
         :root {
           --landing-dark-base: ${landingTheme.dark.base};
           --landing-dark-surface: ${landingTheme.dark.surface};
@@ -201,7 +203,7 @@ export function LandingShell({
             transform: none !important;
           }
         }
-      `}</style>
+      ` }} />
     </div>
   );
 }

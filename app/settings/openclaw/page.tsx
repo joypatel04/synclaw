@@ -515,7 +515,6 @@ function OpenClawSettingsContent() {
       const message = mapOpenClawSetupError(
         e instanceof Error ? e.message : String(e),
         transportMode,
-        { deploymentMode },
       );
       setTestResult({ status: "error", message });
       if (client) {
@@ -550,7 +549,7 @@ function OpenClawSettingsContent() {
     setServiceMessage(null);
     if (!managedProvisioningEnabled) {
       setServiceMessage(
-        "Managed flow is no longer supported. Continue with BYO OpenClaw.",
+        "This launch supports Public WSS + BYO OpenClaw.",
       );
       return;
     }
@@ -1270,7 +1269,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     className="bg-bg-primary border-border-default text-text-primary font-mono text-xs"
                   />
                   <p className="text-[11px] text-text-dim">
-                    Role/scopes are managed automatically for this workspace.
+                    Role/scopes are configured from your OpenClaw gateway for
+                    this workspace.
                   </p>
                 </div>
               </>
@@ -1321,9 +1321,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
             </div>
 
             <div className="rounded-lg border border-border-default bg-bg-tertiary px-3 py-2">
-              <p className="text-[11px] text-text-dim">
-                Client identity (managed automatically)
-              </p>
+              <p className="text-[11px] text-text-dim">Client identity</p>
               <p className="mt-1 font-mono text-[11px] text-text-primary">
                 openclaw-control-ui / webchat / req
               </p>
@@ -1335,19 +1333,13 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Secrets
           </h2>
-          {managedModeActive ? (
-            <p className="text-[11px] text-text-dim">
-              Managed mode handles gateway credentials automatically. No manual
-              token/password entry is required.
+          <>
+            <p className="mb-4 text-[11px] text-text-dim">
+              {transportMode === "connector"
+                ? "For connector/private network flows, you can use token or password auth."
+                : "For direct WebSocket flows, use token/password as required by your gateway."}
             </p>
-          ) : (
-            <>
-              <p className="mb-4 text-[11px] text-text-dim">
-                {transportMode === "connector"
-                  ? "For connector/private network flows, you can use token or password auth."
-                  : "For direct WebSocket flows, use token/password as required by your gateway."}
-              </p>
-              <div className="space-y-4">
+            <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary font-medium">
@@ -1443,9 +1435,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     </p>
                   )}
                 </div>
-              </div>
-            </>
-          )}
+            </div>
+          </>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

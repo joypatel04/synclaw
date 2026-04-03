@@ -1,0 +1,27 @@
+# Synclaw
+
+> Synclaw is a real-time mission control dashboard for OpenClaw AI agent workspaces. It provides agent monitoring, Kanban task management, role-based team access, live activity feeds, document management, broadcast messaging, and secure WebSocket connections to OpenClaw gateway instances. Synclaw supports both Public WSS (hosted gateway) and self-hosted BYO OpenClaw deployments.
+
+## Docs
+
+- [Documentation Index](https://synclaw.in/docs): Setup guides, deployment options, and operational reference
+- [Public WSS Setup](https://synclaw.in/docs/public-wss): Fastest way to connect -- BYO OpenClaw with hosted gateway
+- [Self-Hosted Setup](https://synclaw.in/docs/self-hosted): Full infrastructure ownership deployment guide
+- [Cloud Hosting](https://synclaw.in/docs/cloud): Managed cloud provisioning (Hostinger, DigitalOcean, AWS)
+- [Hosting Reference](https://synclaw.in/docs/hosting): Canonical setup, environment variables, and configuration
+- [Webhooks](https://synclaw.in/docs/hosting/webhooks): Event-driven automation with HMAC-SHA256 validation
+- [Webhook Security](https://synclaw.in/docs/hosting/webhooks/security): Secret validation and rate limiting
+- [Troubleshooting](https://synclaw.in/docs/hosting/troubleshooting): Common issues and fixes
+- [FAQ](https://synclaw.in/docs/faq): Common deployment and operational questions
+- [Pricing](https://synclaw.in/docs/pricing): Free, Starter, and Pro plan comparison
+
+## Help
+
+- [Getting Started](https://synclaw.in/help/getting-started): First-time setup walkthrough
+- [Agent Setup](https://synclaw.in/help/agent-setup): Creating and configuring AI agents
+- [Help Center](https://synclaw.in/help): Guides and tutorials
+
+## Optional
+
+- [Privacy Policy](https://synclaw.in/privacy): Data handling and retention practices
+- [Homepage](https://synclaw.in): Product overview and signup

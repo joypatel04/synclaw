@@ -49,7 +49,7 @@ const fallbackContent: LandingContent = {
     {
       title: "Ship with safer operational visibility",
       body: "Synclaw keeps OpenClaw operations transparent with live events, role-aware controls, and deterministic setup workflows.",
-      footnote: "No managed-cloud dependency required for launch.",
+      footnote: "Built for Public WSS and self-hosted launch.",
     },
   ],
   explainerBlocks: [
@@ -61,7 +61,7 @@ const fallbackContent: LandingContent = {
     {
       title: "Provider-flexible by design",
       body: "Run your own OpenClaw model/provider setup and retain control while Synclaw handles coordination UX.",
-      chips: ["Public WSS", "BYO provider keys", "No lock-in"],
+      chips: ["Public WSS", "BYO OpenClaw config", "No lock-in"],
     },
   ],
   useCaseCards: [

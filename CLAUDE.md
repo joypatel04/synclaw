@@ -4,7 +4,7 @@
 
 **Synclaw HQ** is a Next.js + Convex full-stack dashboard for managing an OpenClaw-powered AI agent workspace. It serves as mission control for AI agents with multi-tenant support, billing, provisioning, and real-time orchestration.
 
-- **Codename**: Synclaw / Sutraha HQ
+- **Codename**: Synclaw
 - **Stack**: Next.js 16 (App Router) + Convex + React 19 + Tailwind CSS 4 + Shadcn/ui
 - **Package Manager**: Bun
 - **Linter/Formatter**: Biome 2.2.0

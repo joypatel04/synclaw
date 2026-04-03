@@ -40,7 +40,7 @@ export default function PublicWssDocsPage() {
 
       <PublicDocsCard title="Need production-level hosting docs?">
         <Link
-          href="/docs/hosting/cloud"
+          href="/docs/hosting/public-wss"
           className="inline-flex items-center gap-1 rounded-lg border border-border-default bg-bg-tertiary px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
         >
           Open detailed Public WSS hosting guide{" "}

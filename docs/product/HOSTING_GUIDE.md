@@ -61,7 +61,7 @@ This guide documents production-style setup for both Public WSS and Self-hosted 
 ## Reference public docs routes
 
 - `/docs/hosting`
-- `/docs/hosting/cloud` (Public WSS hosting route)
+- `/docs/hosting/public-wss` (Public WSS hosting route)
 - `/docs/hosting/self-hosted`
 - `/docs/hosting/self-hosted/convex`
 - `/docs/hosting/self-hosted/mcp`
