@@ -1,7 +1,7 @@
-import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireMember } from "./lib/permissions";
+import { query } from "./_generated/server";
 import { isCommercialCapabilityEnabled } from "./lib/edition";
+import { requireMember } from "./lib/permissions";
 
 /**
  * Workspace onboarding status.

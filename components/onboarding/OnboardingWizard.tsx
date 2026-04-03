@@ -17,8 +17,6 @@ import { canUseCapability } from "@/lib/edition";
 import {
   AGENT_SETUP_ADVANCED_ENABLED,
   ASSISTED_LAUNCH_BETA_ENABLED,
-  MANAGED_BETA_ENABLED,
-  MANAGED_INTERNAL_CONTROLS_ENABLED,
 } from "@/lib/features";
 import {
   MANAGED_REGION_OPTIONS,
@@ -160,12 +158,8 @@ export function OnboardingWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const convex = useConvex();
-  const managedCapabilityEnabled = canUseCapability("managedProvisioning");
-  const managedProvisioningEnabled =
-    managedCapabilityEnabled &&
-    MANAGED_BETA_ENABLED &&
-    MANAGED_INTERNAL_CONTROLS_ENABLED;
-  const managedSelfServeVisible = managedCapabilityEnabled;
+  const managedProvisioningEnabled = false;
+  const managedSelfServeVisible = false;
   const assistedLaunchEnabled =
     canUseCapability("assistedLaunch") && ASSISTED_LAUNCH_BETA_ENABLED;
 
@@ -409,7 +403,7 @@ export function OnboardingWizard() {
     Object.values(securityChecklistAck).every(Boolean);
 
   const step1Done = Boolean(status?.openclawConfigured);
-  const requiresProviderKey = Boolean(status?.requiresProviderKey);
+  const requiresProviderKey = false;
   const step2Done = requiresProviderKey
     ? Boolean(status?.providerKeyReady)
     : true;
@@ -711,13 +705,13 @@ export function OnboardingWizard() {
       setNeedsManagedSetup(false);
       setDeploymentMode("manual");
       setServiceMessage(
-        "Managed setup is private beta right now. Continue with BYO OpenClaw, or contact support for managed access.",
+        "Managed flow is no longer supported. Continue with BYO OpenClaw.",
       );
       return;
     }
     if (!isManagedProviderId(providerId)) {
       setServiceError(
-        "Managed setup supports OpenAI, Anthropic, or Gemini only.",
+        "Only OpenAI, Anthropic, or Gemini are supported for provider validation.",
       );
       return;
     }
@@ -778,7 +772,7 @@ export function OnboardingWizard() {
     setServiceMessage(null);
     if (!managedProvisioningEnabled) {
       setServiceMessage(
-        "Managed setup is private beta right now. Continue with BYO OpenClaw, or contact support for managed access.",
+        "Managed flow is no longer supported. Continue with BYO OpenClaw.",
       );
       return;
     }
@@ -833,7 +827,7 @@ export function OnboardingWizard() {
       ) {
         if (!isManagedProviderId(providerId)) {
           setProviderError(
-            "Managed setup supports OpenAI, Anthropic, or Gemini only.",
+            "Only OpenAI, Anthropic, or Gemini are supported for provider validation.",
           );
           return;
         }
@@ -863,7 +857,7 @@ export function OnboardingWizard() {
         ) {
           setProviderMessage(
             validCount > 0
-              ? "Provider key saved and validated. Launch managed OpenClaw to apply this key to your managed host."
+              ? "Provider key saved and validated."
               : "Provider key saved but validation failed. Check key and retry.",
           );
         } else {
@@ -998,7 +992,7 @@ export function OnboardingWizard() {
                     setDeploymentMode("manual");
                     setServiceError(null);
                     setServiceMessage(
-                      "Managed setup is private beta right now. Continue with BYO OpenClaw, or contact support for managed access.",
+                      "Managed flow is no longer supported. Continue with BYO OpenClaw.",
                     );
                     return;
                   }
@@ -1019,7 +1013,7 @@ export function OnboardingWizard() {
                 <p className="text-xs font-semibold text-text-primary">
                   {managedProvisioningEnabled
                     ? "Set up OpenClaw for me"
-                    : "Join managed beta"}
+                    : "Use BYO OpenClaw"}
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
                   {managedProvisioningEnabled
@@ -1263,7 +1257,7 @@ export function OnboardingWizard() {
                         onClick={() => void onCreateProvisioningJob()}
                         disabled={!canLaunchManagedProvisioning}
                       >
-                        Launch managed OpenClaw
+                        Launch OpenClaw
                       </Button>
                     )}
                   </>
@@ -1369,7 +1363,7 @@ export function OnboardingWizard() {
             step={1}
             title={
               managedSetupUiEnabled
-                ? "Managed setup status"
+                ? "OpenClaw setup status"
                 : "Connect OpenClaw"
             }
             subtitle={
@@ -1439,7 +1433,7 @@ export function OnboardingWizard() {
                 </div>
                 {managedSetupFailed ? (
                   <p className="mt-2 text-[11px] text-status-blocked">
-                    Managed setup failed. Restart provisioning to recover this
+                    Setup failed. Restart provisioning to recover this
                     workspace.
                   </p>
                 ) : null}

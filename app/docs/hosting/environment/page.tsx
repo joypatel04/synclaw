@@ -80,18 +80,6 @@ export default function HostingEnvironmentReferencePage() {
           </li>
           <li>
             <code className="rounded bg-bg-primary px-1 py-0.5">
-              SYNCLAW_MANAGED_BETA_ENABLED
-            </code>{" "}
-            and{" "}
-            <code className="rounded bg-bg-primary px-1 py-0.5">
-              NEXT_PUBLIC_MANAGED_BETA_ENABLED
-            </code>
-            : keep{" "}
-            <code className="rounded bg-bg-primary px-1 py-0.5">false</code> for
-            OSS public WSS launch.
-          </li>
-          <li>
-            <code className="rounded bg-bg-primary px-1 py-0.5">
               SYNCLAW_ASSISTED_LAUNCH_ENABLED
             </code>{" "}
             and{" "}
@@ -137,9 +125,7 @@ bunx convex env set OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX <generated-hex-value>`}
         <PublicDocsCodeBlock
           code={`SYNCLAW_EDITION=core
 NEXT_PUBLIC_SYNCLAW_EDITION=core
-SYNCLAW_MANAGED_BETA_ENABLED=false
 SYNCLAW_ASSISTED_LAUNCH_ENABLED=false
-NEXT_PUBLIC_MANAGED_BETA_ENABLED=false
 NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED=false
 NEXT_PUBLIC_OPENCLAW_FILES_ENABLED=true
 NEXT_PUBLIC_AGENT_SETUP_ADVANCED_ENABLED=false`}

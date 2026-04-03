@@ -10,15 +10,9 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean) {
   return defaultValue;
 }
 
-export const MANAGED_BETA_ENABLED = parseBooleanEnv(
-  process.env.NEXT_PUBLIC_MANAGED_BETA_ENABLED,
-  false,
-);
-
-export const MANAGED_INTERNAL_CONTROLS_ENABLED = parseBooleanEnv(
-  process.env.NEXT_PUBLIC_MANAGED_INTERNAL_CONTROLS_ENABLED,
-  process.env.NODE_ENV !== "production",
-);
+// Managed flow is permanently disabled for launch profile.
+export const MANAGED_BETA_ENABLED = false;
+export const MANAGED_INTERNAL_CONTROLS_ENABLED = false;
 
 export const ASSISTED_LAUNCH_BETA_ENABLED = parseBooleanEnv(
   process.env.NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED,

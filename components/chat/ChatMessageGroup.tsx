@@ -25,7 +25,10 @@ export function ChatMessageGroup({
 
   return (
     <div
-      className={cn("flex gap-2.5", isUser ? "flex-row-reverse" : "flex-row")}
+      className={cn(
+        "flex gap-2 sm:gap-2.5 overflow-hidden",
+        isUser ? "flex-row-reverse" : "flex-row",
+      )}
     >
       {/* Avatar — shown once per group */}
       <div className="shrink-0 pt-1">
@@ -43,10 +46,11 @@ export function ChatMessageGroup({
         )}
       </div>
 
-      {/* Bubbles — tight vertical spacing within group */}
+      {/* Bubbles — tight vertical spacing within group.
+          min-w-0 prevents flex child from overflowing parent on mobile. */}
       <div
         className={cn(
-          "flex min-w-0 flex-1 flex-col gap-1",
+          "flex min-w-0 flex-col gap-1",
           isUser ? "items-end" : "items-start",
         )}
       >

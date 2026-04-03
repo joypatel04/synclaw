@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { ChatComposer } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessageGroup } from "./ChatMessageGroup";
-import { ChatStreamingIndicator } from "./ChatStreamingIndicator";
 import { useChatGateway } from "./hooks/useChatGateway";
 import { useChatMessages } from "./hooks/useChatMessages";
 import { useChatScroll } from "./hooks/useChatScroll";
@@ -86,7 +85,6 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
     handleSend,
     handleRetry,
     handleAbort,
-    isAgentResponding,
     activeRun,
     queuedCount,
     draft,
@@ -193,7 +191,9 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   return (
     <div
       className={cn(
-        "flex h-dvh sm:h-full min-h-0 flex-col overflow-hidden",
+        "flex flex-col overflow-hidden",
+        // On mobile: fill the dynamic viewport. On desktop: fill parent.
+        "h-dvh sm:h-full",
         className,
       )}
     >
@@ -211,13 +211,14 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         onMobileActionsOpen={() => setShowMobileActions(true)}
       />
 
-      {/* Message area */}
-      <div className="relative flex-1 min-h-0">
+      {/* Message area — flex-1 + min-h-0 + overflow-hidden ensures
+          the ScrollArea gets a bounded height even on mobile */}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         <ScrollArea
           className="h-full bg-bg-secondary"
           viewportRef={viewportRef}
         >
-          <div className="space-y-4 p-2.5 sm:space-y-5 sm:p-6">
+          <div className="space-y-4 p-2.5 sm:space-y-5 sm:p-6 overflow-x-hidden">
             {emptyState ??
               messageGroups.map((group) => (
                 <div key={group.id}>
@@ -252,12 +253,6 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
                     )}
                 </div>
               ))}
-            {isAgentResponding && !emptyState && (
-              <ChatStreamingIndicator
-                agentEmoji={agent.emoji}
-                agentName={agent.name}
-              />
-            )}
           </div>
         </ScrollArea>
 
@@ -286,9 +281,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         statusText={
           queuedCount > 0
             ? `Queued: ${queuedCount} (will send after the agent finishes)`
-            : isAgentResponding
-              ? "Agent is responding... new messages will be queued"
-              : undefined
+            : undefined
         }
       />
 

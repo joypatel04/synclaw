@@ -62,18 +62,17 @@ export function ChatBubble({
     }
   };
 
+  // Only show status for non-streaming states — the streaming cursor is the indicator.
   const statusText =
     state === "queued"
       ? "Queued"
       : state === "sending"
         ? "Sending..."
-        : state === "streaming"
-          ? "Streaming..."
-          : state === "failed"
-            ? "Failed"
-            : state === "aborted"
-              ? "Aborted"
-              : null;
+        : state === "failed"
+          ? "Failed"
+          : state === "aborted"
+            ? "Aborted"
+            : null;
 
   // ---- Tool card ----
   if (isTool) {
@@ -86,7 +85,7 @@ export function ChatBubble({
     const commandPreview = plainText.split("\n")[0] ?? plainText;
 
     return (
-      <div className="w-fit max-w-[95%] sm:max-w-[44rem]">
+      <div className="w-fit max-w-full sm:max-w-176 overflow-hidden">
         {isGroupStart && (
           <p className="mb-1 text-xs font-medium text-text-muted">
             {agentName}
@@ -146,7 +145,7 @@ export function ChatBubble({
   return (
     <div
       className={cn(
-        "group relative w-fit max-w-[95%] sm:max-w-[44rem] rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 border shadow-xs",
+        "group relative w-fit max-w-full sm:max-w-176 rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 border shadow-xs overflow-hidden wrap-break-word",
         isUser
           ? "bg-accent-orange-dim border-accent-orange/25 rounded-tr-sm"
           : "bg-bg-primary border-border-default rounded-tl-sm",

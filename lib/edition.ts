@@ -6,7 +6,10 @@ export type CommercialCapability =
   | "prioritySupport"
   | "managedGatewayAutomation";
 
-const CAPABILITY_MATRIX: Record<Edition, Record<CommercialCapability, boolean>> = {
+const CAPABILITY_MATRIX: Record<
+  Edition,
+  Record<CommercialCapability, boolean>
+> = {
   core: {
     managedProvisioning: false,
     assistedLaunch: false,
@@ -14,10 +17,10 @@ const CAPABILITY_MATRIX: Record<Edition, Record<CommercialCapability, boolean>> 
     managedGatewayAutomation: false,
   },
   commercial: {
-    managedProvisioning: true,
+    managedProvisioning: false,
     assistedLaunch: true,
     prioritySupport: true,
-    managedGatewayAutomation: true,
+    managedGatewayAutomation: false,
   },
 };
 

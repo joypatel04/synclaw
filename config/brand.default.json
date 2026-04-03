@@ -29,7 +29,7 @@
       {
         "title": "Ship with safer operational visibility",
         "body": "Live events, role-aware controls, and deterministic setup workflows keep the system transparent.",
-        "footnote": "No managed-cloud dependency required for launch."
+        "footnote": "Built for Public WSS and self-hosted launch."
       }
     ],
     "explainerBlocks": [
@@ -137,7 +137,7 @@
     "pricingHeadline": "Simple pricing. No surprises.",
     "pricingCtaLabel": "Book a Setup Call",
     "trialTitle": "Free Self-Host",
-    "trialSummary": "For technical users who want full control. Full codebase, community support, self-managed infrastructure.",
+    "trialSummary": "For technical users who want full control. Full codebase, community support, self-hosted infrastructure.",
     "starterSummary": "Monthly plan for solo operators. All features included, cancel anytime.",
     "proSummary": "Yearly plan for committed teams. Best value with early access pricing locked in forever.",
     "finalCtaKicker": "Ready to get proper mission control?",

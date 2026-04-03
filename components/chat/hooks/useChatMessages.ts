@@ -7,15 +7,6 @@ import type { UiChatMessage, UpsertPartial } from "../types";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const normalizeChatText = (s: string) =>
-  s
-    .replace(/\r\n/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .trim();
-
-const normalizeForDedupe = (s: string) =>
-  normalizeChatText(s).replace(/\s+/g, " ").trim();
-
 const richnessScore = (s: string) => {
   const newlines = (s.match(/\n/g) ?? []).length;
   const fences = (s.match(/```/g) ?? []).length;
@@ -44,6 +35,13 @@ const stateRank = (s: UiChatMessage["state"] | undefined) => {
   }
 };
 
+const normalizeForDedupe = (s: string) =>
+  s
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\s+/g, " ")
+    .trim();
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -51,21 +49,26 @@ const stateRank = (s: UiChatMessage["state"] | undefined) => {
 export function useChatMessages() {
   const [localMessages, setLocalMessages] = useState<UiChatMessage[]>([]);
   const localMessagesRef = useRef<UiChatMessage[]>([]);
+  // Canonical key → array index. Rebuilt on every state update.
   const localIndexRef = useRef<Map<string, number>>(new Map());
   const localSeqRef = useRef(1);
   const pendingAssistantKeyRef = useRef<string | null>(null);
 
-  // Keep ref in sync with state for non-reactive reads.
   const syncRef = useCallback((next: UiChatMessage[]) => {
     localMessagesRef.current = next;
   }, []);
 
-  // Rebuild the canonical-key → index lookup.
   const rebuildIndex = useCallback((next: UiChatMessage[]) => {
     const map = new Map<string, number>();
     for (let i = 0; i < next.length; i++) {
-      const key = next[i].externalMessageId ?? next[i].id;
-      map.set(key, i);
+      const m = next[i];
+      // Index by externalMessageId (primary), id (fallback), AND externalRunId
+      // so all lookup paths hit the same entry.
+      const primary = m.externalMessageId ?? m.id;
+      map.set(primary, i);
+      if (m.externalRunId) {
+        map.set(`${m.externalRunId}:assistant`, i);
+      }
     }
     localIndexRef.current = map;
   }, []);
@@ -82,8 +85,7 @@ export function useChatMessages() {
   );
 
   // ------------------------------------------------------------------
-  // Core upsert — single canonical-ID dedup (Bug 1 fix)
-  // + always-forward streaming content  (Bug 2 fix)
+  // Core upsert with simplified dedup and correct ordering
   // ------------------------------------------------------------------
   const upsertLocal = useCallback(
     (partial: UpsertPartial) => {
@@ -110,35 +112,35 @@ export function useChatMessages() {
         const key = canonicalKey ?? partial.id;
         if (!key) return prev;
 
-        // ---- Lookup ----
+        // ---- Lookup: try canonical key first ----
         let idx = localIndexRef.current.get(key);
 
-        // Adopt the pending assistant slot when runId becomes available.
+        // Adopt the pending assistant slot when runId arrives.
+        // The rebuildIndex now indexes by runId too, so the canonical key
+        // lookup above should find it — but the pending key is a fallback.
         if (
           idx === undefined &&
           isAssistant &&
           partial.externalRunId &&
           pendingAssistantKeyRef.current
         ) {
-          const pendingIdx = localIndexRef.current.get(
-            pendingAssistantKeyRef.current,
-          );
-          if (pendingIdx !== undefined) idx = pendingIdx;
+          idx = localIndexRef.current.get(pendingAssistantKeyRef.current);
         }
 
-        // Extra safety: match by runId if key didn't hit.
+        // Last resort: linear scan by runId (handles rare index misses).
         if (idx === undefined && isAssistant && partial.externalRunId) {
-          const byRunId = prev.findIndex(
-            (m) =>
-              m.role === "assistant" &&
-              m.externalRunId === partial.externalRunId,
-          );
-          if (byRunId !== -1) idx = byRunId;
+          for (let i = prev.length - 1; i >= 0; i--) {
+            if (
+              prev[i].role === "assistant" &&
+              prev[i].externalRunId === partial.externalRunId
+            ) {
+              idx = i;
+              break;
+            }
+          }
         }
 
         const now = Date.now();
-        const tailCreatedAt =
-          prev.length > 0 ? prev[prev.length - 1].createdAt : 0;
 
         // ---- Insert new message ----
         if (idx === undefined) {
@@ -147,7 +149,7 @@ export function useChatMessages() {
             fromUser: partial.fromUser,
             role: partial.role,
             content: partial.content ?? "",
-            createdAt: Math.max(partial.createdAt ?? now, tailCreatedAt + 1),
+            createdAt: partial.createdAt ?? now,
             localSeq: localSeqRef.current++,
             state: partial.state,
             errorMessage: partial.errorMessage,
@@ -163,23 +165,21 @@ export function useChatMessages() {
         // ---- Update existing message ----
         const existing = prev[idx];
 
-        // BUG 2 FIX: During streaming, always take the latest content.
-        // Only use preferRicherContent when BOTH are in a terminal state.
+        // Content resolution:
+        // - During streaming: always take the latest content
+        // - Both terminal: prefer richer content
         const bothTerminal =
           stateRank(existing.state) >= 30 && stateRank(partial.state) >= 30;
 
         let nextContent: string;
         if (partial.append) {
-          // True incremental delta — append.
           nextContent = `${existing.content}${partial.content ?? ""}`;
         } else if (
           partial.state === "streaming" ||
           (!bothTerminal && partial.content !== undefined)
         ) {
-          // Streaming or transitional update — always use the incoming content.
           nextContent = partial.content ?? existing.content;
         } else if (bothTerminal) {
-          // Both completed/failed/aborted — prefer richer content.
           nextContent = preferRicherContent(
             existing.content,
             partial.content ?? "",
@@ -193,12 +193,14 @@ export function useChatMessages() {
           ...partial,
           id: existing.id,
           content: nextContent,
+          // Keep original insertion time for stable ordering.
           createdAt: existing.createdAt,
           localSeq: existing.localSeq,
           state:
             stateRank(partial.state) > stateRank(existing.state)
               ? partial.state
               : existing.state,
+          // Promote canonical IDs when we learn them.
           externalMessageId:
             canonicalKey ??
             partial.externalMessageId ??
@@ -209,6 +211,7 @@ export function useChatMessages() {
 
         const next = prev.slice();
         next[idx] = updated;
+        // Rebuild indexes so all alias keys (pending, runId, canonical) point here.
         rebuildIndex(next);
         syncRef(next);
 
@@ -228,7 +231,7 @@ export function useChatMessages() {
     [rebuildIndex, syncRef, makePendingAssistantKey],
   );
 
-  // Check if a user message with similar content already exists (echo suppression).
+  // Echo suppression for user messages from history.
   const hasSimilarUserMessage = useCallback((content: string, ts: number) => {
     const windowMs = 60_000;
     const needle = normalizeForDedupe(content);
@@ -241,22 +244,19 @@ export function useChatMessages() {
     );
   }, []);
 
-  // Reset pending slot on session key change.
   const resetPendingSlot = useCallback(() => {
     pendingAssistantKeyRef.current = null;
   }, []);
 
-  // Sorted messages for rendering.
+  // Sorted by insertion order (localSeq). localSeq is immutable per message,
+  // so ordering is stable even when messages are updated in place.
   const messages = useMemo(
     () =>
-      localMessages
-        .slice()
-        .sort(
-          (a, b) =>
-            (a.localSeq ?? 0) - (b.localSeq ?? 0) ||
-            (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
-            a.id.localeCompare(b.id),
-        ),
+      localMessages.slice().sort((a, b) => {
+        const seqDiff = (a.localSeq ?? 0) - (b.localSeq ?? 0);
+        if (seqDiff !== 0) return seqDiff;
+        return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+      }),
     [localMessages],
   );
 

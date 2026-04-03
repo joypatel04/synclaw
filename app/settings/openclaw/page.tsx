@@ -24,8 +24,6 @@ import { canUseCapability } from "@/lib/edition";
 import {
   AGENT_SETUP_ADVANCED_ENABLED,
   ASSISTED_LAUNCH_BETA_ENABLED,
-  MANAGED_BETA_ENABLED,
-  MANAGED_INTERNAL_CONTROLS_ENABLED,
 } from "@/lib/features";
 import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import {
@@ -74,10 +72,7 @@ const FIXED_GATEWAY_SCOPES = [
 function OpenClawSettingsContent() {
   const { workspaceId, canAdmin, canManage, workspace } = useWorkspace();
   const convex = useConvex();
-  const managedProvisioningEnabled =
-    canUseCapability("managedProvisioning") &&
-    MANAGED_BETA_ENABLED &&
-    MANAGED_INTERNAL_CONTROLS_ENABLED;
+  const managedProvisioningEnabled = false;
   const assistedLaunchEnabled =
     canUseCapability("assistedLaunch") && ASSISTED_LAUNCH_BETA_ENABLED;
 
@@ -555,7 +550,7 @@ function OpenClawSettingsContent() {
     setServiceMessage(null);
     if (!managedProvisioningEnabled) {
       setServiceMessage(
-        "Managed setup is private beta right now. Continue with BYO OpenClaw, or contact support for managed access.",
+        "Managed flow is no longer supported. Continue with BYO OpenClaw.",
       );
       return;
     }
@@ -1005,7 +1000,7 @@ function OpenClawSettingsContent() {
                     className="h-8"
                     onClick={() => void onCreateProvisioningJob()}
                   >
-                    Launch managed OpenClaw
+                    Launch OpenClaw
                   </Button>
                 )}
                 <Button
