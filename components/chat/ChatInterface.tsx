@@ -191,7 +191,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden",
+        "flex flex-col overflow-hidden rounded-2xl border border-border-default/75 bg-[linear-gradient(170deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] shadow-[0_18px_36px_rgba(3,6,16,0.34)]",
         // On mobile: fill the dynamic viewport. On desktop: fill parent.
         "h-dvh sm:h-full",
         className,
@@ -215,10 +215,10 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           the ScrollArea gets a bounded height even on mobile */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         <ScrollArea
-          className="h-full bg-bg-secondary"
+          className="h-full bg-transparent"
           viewportRef={viewportRef}
         >
-          <div className="space-y-4 p-2.5 sm:space-y-5 sm:p-6 overflow-x-hidden">
+          <div className="space-y-4 overflow-x-hidden p-2.5 sm:space-y-5 sm:p-6">
             {emptyState ??
               messageGroups.map((group) => (
                 <div key={group.id}>

@@ -55,6 +55,7 @@ const baseNavItems = [
   { href: "/broadcasts", label: "Broadcasts", icon: Radio },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/help", label: "Resources", icon: LifeBuoy },
 ];
 
@@ -83,19 +84,19 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-secondary/80 backdrop-blur-xl">
-        <div className="flex h-14 items-center justify-between px-4 sm:px-6">
+      <header className="sticky top-0 z-50 border-b border-border-default/80 bg-bg-secondary/65 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-4 sm:px-6">
           {/* Logo + Workspace Switcher */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5">
+            <Link href="/" className="flex items-center gap-3">
               <Image
                 src={LOGO_SRC}
                 alt="SynClaw logo"
                 width={48}
                 height={48}
-                className="h-[48px] w-[48px]"
+                className="h-[44px] w-[44px]"
               />
-              <span className="hidden text-sm font-semibold tracking-tight text-text-primary sm:inline">
+              <span className="hidden text-base font-semibold tracking-tight text-text-primary sm:inline">
                 SynClaw
               </span>
             </Link>
@@ -105,7 +106,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-text-primary hover:bg-bg-hover transition-smooth"
+                  className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-semibold text-text-primary transition-smooth hover:border-border-default hover:bg-bg-hover"
                 >
                   {workspace.name}
                   <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
@@ -151,14 +152,14 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
             </DropdownMenu>
 
             {/* Role badge */}
-            <span className="hidden sm:inline-flex items-center rounded-md bg-accent-orange/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+            <span className="hidden sm:inline-flex items-center rounded-full border border-accent-orange/25 bg-accent-orange/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
               {role}
             </span>
           </div>
 
           {/* Navigation */}
           {!onboardingLocked && (
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1.5">
               {navItems.map((item) => {
                 const isActive =
                   pathname === item.href ||
@@ -168,10 +169,10 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-smooth",
+                      "flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition-smooth",
                       isActive
-                        ? "bg-accent-orange/10 text-accent-orange"
-                        : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+                        ? "border-accent-orange/25 bg-accent-orange/12 text-accent-orange"
+                        : "border-transparent text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -210,7 +211,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full bg-accent-orange/20 text-accent-orange hover:bg-accent-orange/30"
+                  className="h-8 w-8 rounded-full border border-accent-orange/30 bg-accent-orange/15 text-accent-orange hover:bg-accent-orange/25"
                 >
                   <Users className="h-4 w-4" />
                 </Button>
@@ -272,7 +273,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
 
         {/* Mobile nav */}
         {!onboardingLocked && (
-          <nav className="flex md:hidden items-center gap-1 px-4 pb-2 overflow-x-auto">
+          <nav className="flex md:hidden items-center gap-1.5 overflow-x-auto px-4 pb-2">
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -282,10 +283,10 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth",
+                    "flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-1.5 text-xs font-medium transition-smooth",
                     isActive
-                      ? "bg-accent-orange/10 text-accent-orange"
-                      : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
+                      ? "border-accent-orange/25 bg-accent-orange/12 text-accent-orange"
+                      : "border-transparent text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
                   )}
                 >
                   <item.icon className="h-3.5 w-3.5" />

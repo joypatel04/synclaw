@@ -57,13 +57,18 @@ export function KanbanBoard() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-1 mb-4 shrink-0">
-        <h2 className="text-lg font-semibold text-text-primary">Tasks</h2>
+      <div className="mb-4 flex shrink-0 items-center justify-between border-b border-border-default/70 px-1 pb-3">
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-dim">
+            Control Board
+          </p>
+          <h2 className="text-lg font-semibold text-text-primary">Tasks</h2>
+        </div>
         {canEdit && (
           <Button
             onClick={() => setShowCreateModal(true)}
             size="sm"
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5"
+            className="gap-1.5 bg-accent-orange text-white shadow-[0_12px_24px_rgba(79,70,229,0.35)] hover:bg-accent-orange/90"
           >
             <Plus className="h-4 w-4" />
             New Task
@@ -72,7 +77,7 @@ export function KanbanBoard() {
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 flex-1 min-h-0 overflow-x-auto scrollbar-none">
+        <div className="scrollbar-none flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
           {columns.map((col) => (
             <KanbanColumn
               key={col.id}

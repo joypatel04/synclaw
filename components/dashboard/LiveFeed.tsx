@@ -112,7 +112,7 @@ export function LiveFeed() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="px-4 py-3">
+      <div className="border-b border-border-default/70 px-4 py-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
             <span className="inline-flex h-2 w-2 rounded-full bg-status-active shadow-[0_0_10px_rgba(34,197,94,0.45)]" />
@@ -122,7 +122,7 @@ export function LiveFeed() {
         </div>
       </div>
 
-      <div className="px-3 pb-2 space-y-2">
+      <div className="space-y-2 border-b border-border-default/60 px-3 py-2">
         <div className="flex flex-wrap gap-2">
           {categories.map((c) => {
             const isActive = category === c.id;
@@ -135,8 +135,8 @@ export function LiveFeed() {
                 className={cn(
                   "h-7 rounded-full border px-2.5 text-[10px] font-medium transition-smooth inline-flex items-center gap-2",
                   isActive
-                    ? "bg-accent-orange/20 border-accent-orange text-accent-orange"
-                    : "bg-bg-primary border-border-default text-text-muted hover:text-text-secondary",
+                    ? "bg-accent-orange/18 border-accent-orange/55 text-accent-orange"
+                    : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
                 )}
               >
                 <span>{c.label}</span>
@@ -162,7 +162,7 @@ export function LiveFeed() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter…"
-              className="h-8 w-full rounded-md border border-border-default bg-bg-primary pl-7 pr-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-accent-orange/30"
+              className="h-8 w-full rounded-lg border border-border-default bg-bg-primary/85 pl-7 pr-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-accent-orange/30"
             />
           </div>
         </div>
@@ -174,8 +174,8 @@ export function LiveFeed() {
             className={cn(
               "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
               selectedAgentId === "all"
-                ? "bg-accent-orange/20 border-accent-orange text-accent-orange"
-                : "bg-bg-primary border-border-default text-text-muted hover:text-text-secondary",
+                ? "bg-accent-orange/18 border-accent-orange/55 text-accent-orange"
+                : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
             )}
           >
             <span>All Agents</span>
@@ -194,8 +194,8 @@ export function LiveFeed() {
                 className={cn(
                   "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
                   isActive
-                    ? "bg-accent-orange/20 border-accent-orange text-accent-orange"
-                    : "bg-bg-primary border-border-default text-text-muted hover:text-text-secondary",
+                    ? "bg-accent-orange/18 border-accent-orange/55 text-accent-orange"
+                    : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
                 )}
               >
                 <span className="text-[11px]">{agent.emoji}</span>
@@ -216,8 +216,8 @@ export function LiveFeed() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="space-y-0.5 px-1">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="space-y-0.5 px-2 py-2">
           {filtered.length === 0 ? (
             <EmptyState
               icon={Activity}
@@ -230,7 +230,7 @@ export function LiveFeed() {
         </div>
       </ScrollArea>
 
-      <div className="px-4 py-2 border-t border-border-default bg-bg-secondary">
+      <div className="border-t border-border-default/65 bg-bg-secondary/70 px-4 py-2">
         <div className="flex items-center justify-center gap-2 text-[10px] text-text-muted">
           <span className="inline-flex h-1.5 w-1.5 rounded-full bg-status-active" />
           LIVE

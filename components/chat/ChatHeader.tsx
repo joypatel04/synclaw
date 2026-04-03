@@ -37,7 +37,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-border-default bg-bg-secondary px-3 py-2.5 sm:px-6 sm:py-3">
+      <div className="flex items-center gap-3 border-b border-border-default/70 bg-bg-secondary/75 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3">
         <AgentAvatar
           emoji={agent.emoji}
           name={agent.name}
@@ -59,7 +59,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-8 rounded-lg border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
               onClick={() => setShowGatewayPanel((v: boolean) => !v)}
             >
               OpenClaw
@@ -69,7 +69,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-8 rounded-lg border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
               onClick={handleAbort}
             >
               Stop
@@ -83,7 +83,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-8 rounded-lg border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
               onClick={handleAbort}
             >
               Stop
@@ -93,7 +93,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="icon-sm"
-              className="h-7 w-7"
+              className="h-8 w-8 rounded-lg border-border-default/80 bg-bg-primary/50"
               aria-label="Open chat actions"
               onClick={onMobileActionsOpen}
             >
@@ -105,12 +105,12 @@ export function ChatHeader({
 
       {/* Gateway feature badges panel */}
       {showGatewayPanel && canChatBase && (
-        <div className="border-b border-border-default bg-bg-secondary px-4 py-2 sm:px-6">
+        <div className="border-b border-border-default/70 bg-bg-secondary/65 px-4 py-2 backdrop-blur sm:px-6">
           <div className="flex flex-wrap gap-1.5">
             {gatewayFeatures.map((feature) => (
               <span
                 key={feature}
-                className="rounded-full border border-border-default bg-bg-tertiary px-2 py-0.5 text-[11px] text-text-secondary"
+                className="rounded-full border border-border-default/80 bg-bg-primary/55 px-2 py-0.5 text-[11px] text-text-secondary"
               >
                 {feature}
               </span>

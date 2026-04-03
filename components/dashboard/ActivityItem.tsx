@@ -65,8 +65,10 @@ export function ActivityItem({ activity }: ActivityItemProps) {
     <Wrapper
       {...wrapperProps}
       className={cn(
-        "group flex gap-3 rounded-lg px-3 py-2.5 transition-smooth",
-        href ? "hover:bg-bg-hover cursor-pointer" : "opacity-90",
+        "group flex gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-smooth",
+        href
+          ? "cursor-pointer hover:border-border-default/70 hover:bg-bg-hover/75"
+          : "opacity-90",
       )}
       aria-label={href ? "Open activity target" : undefined}
     >
@@ -80,7 +82,7 @@ export function ActivityItem({ activity }: ActivityItemProps) {
         <div className="mt-1 flex items-center gap-2">
           <Timestamp time={activity.createdAt} />
           {href && (
-            <span className="text-[10px] font-medium text-accent-orange">
+            <span className="text-[10px] font-medium text-accent-orange/95">
               View →
             </span>
           )}

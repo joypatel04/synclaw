@@ -46,13 +46,13 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
     <Link href={`/tasks/${task._id}`}>
       <div
         className={cn(
-          "group rounded-lg border border-border-default bg-bg-secondary p-3 transition-smooth cursor-pointer",
-          "hover:border-border-hover hover:bg-bg-tertiary hover:shadow-md",
+          "group cursor-pointer rounded-xl border border-border-default/80 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_78%,transparent))] p-3 transition-smooth",
+          "hover:-translate-y-0.5 hover:border-border-hover hover:bg-bg-tertiary hover:shadow-[0_16px_30px_rgba(2,8,28,0.35)]",
           isDragging && "opacity-60 border-dashed border-accent-orange rotate-1",
         )}
       >
         <div className="flex items-start justify-between gap-2">
-          <h4 className="text-sm font-medium text-text-primary leading-tight line-clamp-2">
+          <h4 className="line-clamp-2 text-sm font-medium leading-tight text-text-primary">
             {task.title}
           </h4>
           <PriorityBadge priority={task.priority} />
@@ -69,7 +69,7 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
           </p>
         ) : null}
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between border-t border-border-default/60 pt-2.5">
           <div className="flex items-center gap-2">
             <div className="flex -space-x-1.5">
               {assignees.map((agent) => (

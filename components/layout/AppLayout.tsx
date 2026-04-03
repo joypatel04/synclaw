@@ -41,7 +41,7 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
       <OnboardingGate shouldRedirect={shouldRedirect} />
       <Header onboardingLocked={onboardingLocked} />
       <BillingBanner />
-      <main className="flex-1">
+      <main className="app-reveal flex-1">
         {blocking ? (
           <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center">
             <div className="flex flex-col items-center gap-3">

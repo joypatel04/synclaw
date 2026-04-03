@@ -15,17 +15,17 @@ export function AgentPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border-default/70 px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           <Bot className="h-4 w-4 text-accent-orange" />
           Agents
         </h2>
-        <span className="text-[10px] text-text-muted font-mono">
+        <span className="rounded-full border border-border-default bg-bg-primary/80 px-2 py-0.5 text-[10px] text-text-muted font-mono">
           {agents.filter((a) => a.status === "active").length} active
         </span>
       </div>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-3 px-4 pb-4 pr-5">
+        <div className="space-y-3 px-4 pb-4 pr-5 pt-3">
           {agents.length === 0 ? (
             <EmptyState
               icon={Bot}

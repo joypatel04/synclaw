@@ -437,9 +437,9 @@ function AgentsContent() {
   return (
     <div className="mx-auto max-w-4xl p-3 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
+      <div className="mb-4 flex flex-col gap-3 border-b border-border-default/65 pb-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-teal/35 bg-teal/20">
             <Bot className="h-4 w-4 text-teal" />
           </div>
           <div>
@@ -490,7 +490,7 @@ function AgentsContent() {
             {canAdmin ? (
             <Button
               size="sm"
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+              className="w-full gap-1.5 bg-accent-orange text-white shadow-[0_10px_24px_rgba(79,70,229,0.35)] hover:bg-accent-orange/90 sm:w-auto"
               onClick={openCreateModal}
             >
               Create & Configure Agent
@@ -511,7 +511,7 @@ function AgentsContent() {
         {activeAgents.map((agent) => renderAgentCard(agent, false))}
 
         {activeAgents.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default bg-bg-secondary/50 py-16">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border-default bg-bg-secondary/50 py-16">
             <Bot className="h-10 w-10 text-text-dim mb-3" />
             <p className="text-sm text-text-muted">No active agents</p>
             {canAdmin && (

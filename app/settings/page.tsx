@@ -56,13 +56,13 @@ function SettingsContent() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-3 sm:p-6">
-      <div className="flex items-center gap-2.5 mb-6 sm:mb-8">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-tertiary">
+    <div className="mx-auto max-w-3xl p-3 sm:p-6">
+      <div className="mb-6 flex items-center gap-2.5 border-b border-border-default/65 pb-4 sm:mb-8">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-default/70 bg-bg-tertiary/70">
           <Settings className="h-4 w-4 text-text-muted" />
         </div>
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-text-primary">
+          <h1 className="text-xl font-bold text-text-primary sm:text-2xl">
             Workspace Settings
           </h1>
           <p className="text-xs text-text-muted hidden sm:block">
@@ -75,7 +75,7 @@ function SettingsContent() {
 
       <div className="space-y-8">
         {/* Workspace Name */}
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+        <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-4 shadow-[0_14px_32px_rgba(2,8,24,0.28)] sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Workspace Details
           </h2>
@@ -122,7 +122,7 @@ function SettingsContent() {
         </div>
 
         {/* Permissions overview */}
-        <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
+        <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-4 shadow-[0_14px_32px_rgba(2,8,24,0.28)] sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Role Permissions
           </h2>
@@ -181,7 +181,7 @@ function SettingsContent() {
 
         {/* Danger Zone — owner only */}
         {role === "owner" && (
-          <div className="rounded-xl border border-status-blocked/30 bg-bg-secondary p-4 sm:p-6">
+          <div className="rounded-2xl border border-status-blocked/35 bg-[linear-gradient(165deg,color-mix(in_oklab,var(--cw-bg-secondary)_90%,var(--cw-status-blocked)_10%),color-mix(in_oklab,var(--cw-bg-tertiary)_90%,var(--cw-status-blocked)_10%))] p-4 shadow-[0_14px_32px_rgba(80,12,12,0.2)] sm:p-6">
             <h2 className="text-sm font-semibold text-status-blocked mb-1 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               Danger Zone

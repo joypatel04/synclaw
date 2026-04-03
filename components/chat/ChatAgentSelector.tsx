@@ -85,8 +85,8 @@ export function ChatAgentSelector() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-dim">
+      <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(160deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-4 sm:p-5">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-dim">
           Agents
         </p>
         <div className="flex flex-col gap-3">
@@ -97,7 +97,7 @@ export function ChatAgentSelector() {
                 href={`/chat/${agent._id}`}
                 className="block"
               >
-                <div className="group flex items-center gap-4 rounded-xl border border-border-default bg-bg-secondary p-4 transition-smooth hover:border-border-hover hover:bg-bg-tertiary">
+                <div className="group flex items-center gap-4 rounded-xl border border-border-default/70 bg-bg-primary/55 p-4 transition-smooth hover:-translate-y-0.5 hover:border-border-hover hover:bg-bg-hover/70">
                   <AgentAvatar
                     emoji={agent.emoji}
                     name={agent.name}
@@ -123,7 +123,9 @@ export function ChatAgentSelector() {
         </div>
       </div>
 
-      <OpenClawSessionsList agents={agents} />
+      <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(170deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_82%,transparent))] p-3">
+        <OpenClawSessionsList agents={agents} />
+      </div>
     </div>
   );
 }

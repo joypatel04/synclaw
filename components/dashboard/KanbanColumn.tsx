@@ -23,11 +23,12 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex flex-1 min-w-[200px] flex-col rounded-xl bg-bg-primary/50 border border-border-default",
-        isBlockedColumn && "border-status-blocked/30 bg-status-blocked/5",
+        "flex min-w-[220px] flex-1 flex-col rounded-2xl border border-border-default/80 bg-[linear-gradient(160deg,var(--cw-bg-primary),color-mix(in_oklab,var(--cw-bg-secondary)_82%,transparent))] shadow-[0_12px_28px_rgba(2,6,20,0.35)]",
+        isBlockedColumn &&
+          "border-status-blocked/35 bg-[linear-gradient(160deg,color-mix(in_oklab,var(--cw-bg-primary)_86%,var(--cw-status-blocked)_14%),color-mix(in_oklab,var(--cw-bg-secondary)_90%,var(--cw-status-blocked)_10%))]",
       )}
     >
-      <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
+      <div className="flex shrink-0 items-center justify-between border-b border-border-default/60 px-3 py-2.5">
         <h3
           className={cn(
             "text-[11px] font-semibold uppercase tracking-wider text-text-secondary",
@@ -52,8 +53,9 @@ export function KanbanColumn({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex-1 space-y-2 px-2 pb-2 min-h-[80px] overflow-y-auto scrollbar-none transition-smooth",
-              snapshot.isDraggingOver && "bg-accent-orange-glow rounded-b-xl",
+              "scrollbar-none min-h-[80px] flex-1 space-y-2 overflow-y-auto px-2 pb-2 transition-smooth",
+              snapshot.isDraggingOver &&
+                "rounded-b-2xl bg-[color-mix(in_oklab,var(--cw-accent-orange)_14%,transparent)]",
             )}
           >
             {tasks.map((task, index) => (
