@@ -3,16 +3,16 @@
 import { useConvexAuth, useQuery } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Header } from "./Header";
-import { BillingBanner } from "./BillingBanner";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import {
-  WorkspaceProvider,
   useWorkspace,
+  WorkspaceProvider,
 } from "@/components/providers/workspace-provider";
 import { api } from "@/convex/_generated/api";
-import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
-import { isAllowedWhileLocked as isAllowedWhileLockedRoute } from "@/lib/onboardingGate";
 import { brand } from "@/lib/brand";
+import { isAllowedWhileLocked as isAllowedWhileLockedRoute } from "@/lib/onboardingGate";
+import { BillingBanner } from "./BillingBanner";
+import { Header } from "./Header";
 
 interface AppLayoutProps {
   children: React.ReactNode;

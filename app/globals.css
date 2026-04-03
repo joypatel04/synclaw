@@ -158,63 +158,63 @@
 }
 
 .dark {
-  --background: #060810;
-  --foreground: #e6ebff;
-  --card: #0e1324;
-  --card-foreground: #e6ebff;
-  --popover: #10162a;
-  --popover-foreground: #e6ebff;
-  --primary: #6d5cff;
+  --background: #05070d;
+  --foreground: #e7ecff;
+  --card: #0b0f1b;
+  --card-foreground: #e7ecff;
+  --popover: #0d1222;
+  --popover-foreground: #e7ecff;
+  --primary: #5f63ff;
   --primary-foreground: #ffffff;
-  --secondary: #121935;
-  --secondary-foreground: #dbe3ff;
-  --muted: #101731;
-  --muted-foreground: #7f8bb7;
-  --accent: #141d3d;
-  --accent-foreground: #e6ebff;
+  --secondary: #10162a;
+  --secondary-foreground: #d7def8;
+  --muted: #0f1424;
+  --muted-foreground: #7e88ac;
+  --accent: #121a2f;
+  --accent-foreground: #e7ecff;
   --destructive: #ef4444;
-  --border: #212c57;
-  --input: #212c57;
-  --ring: #6d5cff;
-  --chart-1: #6d5cff;
-  --chart-2: #10c895;
+  --border: #1a223f;
+  --input: #1a223f;
+  --ring: #5f63ff;
+  --chart-1: #5f63ff;
+  --chart-2: #18b57f;
   --chart-3: #22c55e;
-  --chart-4: #8474ff;
+  --chart-4: #7b7eff;
   --chart-5: #ef4444;
-  --sidebar: #0e1324;
-  --sidebar-foreground: #e6ebff;
-  --sidebar-primary: #6d5cff;
+  --sidebar: #0b0f1b;
+  --sidebar-foreground: #e7ecff;
+  --sidebar-primary: #5f63ff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #111b39;
-  --sidebar-accent-foreground: #dbe3ff;
-  --sidebar-border: #212c57;
-  --sidebar-ring: #6d5cff;
+  --sidebar-accent: #101933;
+  --sidebar-accent-foreground: #d7def8;
+  --sidebar-border: #1a223f;
+  --sidebar-ring: #5f63ff;
 
-  --app-surface-base: #060810;
-  --app-surface-subtle: #0b1126;
-  --app-surface-elevated: #0f1730;
-  --app-surface-hover: #162146;
-  --app-text-primary: #e6ebff;
-  --app-text-secondary: #a7b3dd;
-  --app-text-muted: #7f8bb7;
-  --app-text-dim: #62709f;
-  --app-accent-primary: #6d5cff;
-  --app-accent-primary-soft: rgba(109, 92, 255, 0.2);
-  --app-accent-primary-glow: rgba(109, 92, 255, 0.35);
-  --app-accent-success: #10c895;
-  --app-accent-success-soft: rgba(16, 200, 149, 0.2);
+  --app-surface-base: #05070d;
+  --app-surface-subtle: #080d19;
+  --app-surface-elevated: #0d1222;
+  --app-surface-hover: #121933;
+  --app-text-primary: #e7ecff;
+  --app-text-secondary: #aab4d4;
+  --app-text-muted: #7e88ac;
+  --app-text-dim: #5f6a8e;
+  --app-accent-primary: #5f63ff;
+  --app-accent-primary-soft: rgba(95, 99, 255, 0.14);
+  --app-accent-primary-glow: rgba(95, 99, 255, 0.18);
+  --app-accent-success: #18b57f;
+  --app-accent-success-soft: rgba(24, 181, 127, 0.14);
   --cw-status-active: #22c55e;
   --cw-status-idle: #6b7280;
   --cw-status-blocked: #ef4444;
   --cw-status-review: #8474ff;
   --cw-status-error: #ef4444;
   --cw-status-offline: #6b7280;
-  --app-border-default: #212c57;
-  --app-border-hover: #33427b;
-  --app-border-focus: #6d5cff;
-  --app-scrollbar-track: #080d1d;
-  --app-scrollbar-thumb: #243161;
-  --app-scrollbar-thumb-hover: #3b4d8f;
+  --app-border-default: #1a223f;
+  --app-border-hover: #29355e;
+  --app-border-focus: #5f63ff;
+  --app-scrollbar-track: #070b16;
+  --app-scrollbar-thumb: #1f294f;
+  --app-scrollbar-thumb-hover: #324277;
 
   /* Compatibility aliases */
   --cw-bg-primary: var(--app-surface-base);
@@ -244,10 +244,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
-    background-image:
-      radial-gradient(1200px 520px at 12% -8%, color-mix(in oklab, var(--cw-accent-orange) 18%, transparent), transparent 65%),
-      radial-gradient(900px 500px at 92% 8%, color-mix(in oklab, var(--cw-teal) 12%, transparent), transparent 68%);
-    background-attachment: fixed;
+    background-image: none;
   }
 }
 
@@ -264,28 +261,26 @@
   .surface-glass {
     background: color-mix(in oklab, var(--cw-bg-secondary) 88%, transparent);
     backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in oklab, var(--cw-border-default) 85%, transparent);
+    border: 1px solid
+      color-mix(in oklab, var(--cw-border-default) 85%, transparent);
     box-shadow:
       0 10px 28px color-mix(in oklab, #000 22%, transparent),
       0 1px 0 color-mix(in oklab, #fff 6%, transparent) inset;
   }
   .surface-elevated {
-    background: linear-gradient(
-      155deg,
-      color-mix(in oklab, var(--cw-bg-tertiary) 98%, var(--cw-accent-orange) 2%),
-      color-mix(in oklab, var(--cw-bg-secondary) 98%, var(--cw-teal) 2%)
-    );
+    background: var(--cw-bg-tertiary);
     border: 1px solid var(--cw-border-default);
-    box-shadow: 0 14px 28px color-mix(in oklab, #000 18%, transparent);
+    box-shadow: 0 8px 20px color-mix(in oklab, #000 12%, transparent);
   }
   .surface-card {
     border: 1px solid var(--cw-border-default);
     background: var(--cw-bg-tertiary);
-    box-shadow: 0 8px 22px color-mix(in oklab, #000 10%, transparent);
+    box-shadow: 0 4px 14px color-mix(in oklab, #000 8%, transparent);
   }
   .focus-ring {
     outline: none;
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--cw-accent-orange) 26%, transparent);
+    box-shadow: 0 0 0 3px
+      color-mix(in oklab, var(--cw-accent-orange) 26%, transparent);
   }
 }
 
@@ -296,14 +291,27 @@
   color: var(--cw-accent-orange);
 }
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 /* Chat: typing indicator dots */
 @keyframes dotPulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Scrollbar (theme-aware) */
@@ -357,7 +365,8 @@
   gap: 0.875rem;
   padding-bottom: 0.875rem;
   margin-bottom: 1.125rem;
-  border-bottom: 1px solid color-mix(in oklab, var(--cw-border-default) 78%, transparent);
+  border-bottom: 1px solid
+    color-mix(in oklab, var(--cw-border-default) 78%, transparent);
 }
 
 .app-page-title {
@@ -376,13 +385,15 @@
 }
 
 .app-section {
-  border: 1px solid color-mix(in oklab, var(--cw-border-default) 80%, transparent);
+  border: 1px solid
+    color-mix(in oklab, var(--cw-border-default) 80%, transparent);
   border-radius: 1rem;
   background: color-mix(in oklab, var(--cw-bg-secondary) 72%, transparent);
 }
 
 .app-panel {
-  border: 1px solid color-mix(in oklab, var(--cw-border-default) 80%, transparent);
+  border: 1px solid
+    color-mix(in oklab, var(--cw-border-default) 80%, transparent);
   border-radius: 0.875rem;
   background: color-mix(in oklab, var(--cw-bg-primary) 52%, transparent);
 }

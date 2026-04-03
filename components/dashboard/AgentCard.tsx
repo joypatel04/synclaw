@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { Timestamp } from "@/components/shared/Timestamp";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
 interface AgentCardProps {
   agent: Doc<"agents">;
@@ -25,10 +25,8 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
       className={cn(
         "group min-w-0 overflow-hidden rounded-2xl border border-border-default/75 bg-bg-secondary/70 p-4 transition-smooth",
         "hover:border-border-hover hover:bg-bg-secondary/90",
-        agent.status === "active" &&
-          "border-l-2 border-l-status-active/90",
-        agent.status === "error" &&
-          "border-l-2 border-l-status-blocked/90",
+        agent.status === "active" && "border-l-2 border-l-status-active/90",
+        agent.status === "error" && "border-l-2 border-l-status-blocked/90",
         href && "cursor-pointer",
       )}
     >

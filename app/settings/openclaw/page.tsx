@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LocalOpenClawConfigEditor } from "@/components/openclaw/LocalOpenClawConfigEditor";
 import { useWorkspace } from "@/components/providers/workspace-provider";
+import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,6 @@ import {
   AGENT_SETUP_ADVANCED_ENABLED,
   ASSISTED_LAUNCH_BETA_ENABLED,
 } from "@/lib/features";
-import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
 import {
   MANAGED_REGION_OPTIONS,
   type ManagedRegionCode,
@@ -548,9 +548,7 @@ function OpenClawSettingsContent() {
     setServiceError(null);
     setServiceMessage(null);
     if (!managedProvisioningEnabled) {
-      setServiceMessage(
-        "This launch supports Public WSS + BYO OpenClaw.",
-      );
+      setServiceMessage("This launch supports Public WSS + BYO OpenClaw.");
       return;
     }
     try {
@@ -1336,101 +1334,99 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 : "For direct WebSocket flows, use token/password as required by your gateway."}
             </p>
             <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-text-primary font-medium">
-                      Auth token
-                    </p>
-                    <p className="text-xs text-text-dim">
-                      Status:{" "}
-                      <span
-                        className={
-                          hasToken ? "text-status-active" : "text-text-muted"
-                        }
-                      >
-                        {hasToken ? "Set" : "Not set"}
-                      </span>
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => {
-                      setTokenDraft("");
-                      setTokenClear(true);
-                    }}
-                    disabled={!hasToken}
-                  >
-                    Clear token
-                  </Button>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-text-primary font-medium">
+                    Auth token
+                  </p>
+                  <p className="text-xs text-text-dim">
+                    Status:{" "}
+                    <span
+                      className={
+                        hasToken ? "text-status-active" : "text-text-muted"
+                      }
+                    >
+                      {hasToken ? "Set" : "Not set"}
+                    </span>
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-text-secondary">Replace token</Label>
-                  <Input
-                    value={tokenDraft}
-                    onChange={(e) => {
-                      setTokenDraft(e.target.value);
-                      setTokenClear(false);
-                    }}
-                    placeholder="Paste a new token…"
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                  />
-                  {tokenClear && (
-                    <p className="text-[11px] text-status-blocked">
-                      Token will be cleared on Save.
-                    </p>
-                  )}
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    setTokenDraft("");
+                    setTokenClear(true);
+                  }}
+                  disabled={!hasToken}
+                >
+                  Clear token
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Replace token</Label>
+                <Input
+                  value={tokenDraft}
+                  onChange={(e) => {
+                    setTokenDraft(e.target.value);
+                    setTokenClear(false);
+                  }}
+                  placeholder="Paste a new token…"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                />
+                {tokenClear && (
+                  <p className="text-[11px] text-status-blocked">
+                    Token will be cleared on Save.
+                  </p>
+                )}
+              </div>
 
-                <div className="mt-6 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-text-primary font-medium">
-                      Password (optional)
-                    </p>
-                    <p className="text-xs text-text-dim">
-                      Status:{" "}
-                      <span
-                        className={
-                          hasPassword ? "text-status-active" : "text-text-muted"
-                        }
-                      >
-                        {hasPassword ? "Set" : "Not set"}
-                      </span>
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => {
-                      setPasswordDraft("");
-                      setPasswordClear(true);
-                    }}
-                    disabled={!hasPassword}
-                  >
-                    Clear password
-                  </Button>
+              <div className="mt-6 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-text-primary font-medium">
+                    Password (optional)
+                  </p>
+                  <p className="text-xs text-text-dim">
+                    Status:{" "}
+                    <span
+                      className={
+                        hasPassword ? "text-status-active" : "text-text-muted"
+                      }
+                    >
+                      {hasPassword ? "Set" : "Not set"}
+                    </span>
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-text-secondary">
-                    Replace password
-                  </Label>
-                  <Input
-                    value={passwordDraft}
-                    onChange={(e) => {
-                      setPasswordDraft(e.target.value);
-                      setPasswordClear(false);
-                    }}
-                    placeholder="Optional password mode…"
-                    className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
-                  />
-                  {passwordClear && (
-                    <p className="text-[11px] text-status-blocked">
-                      Password will be cleared on Save.
-                    </p>
-                  )}
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    setPasswordDraft("");
+                    setPasswordClear(true);
+                  }}
+                  disabled={!hasPassword}
+                >
+                  Clear password
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-text-secondary">Replace password</Label>
+                <Input
+                  value={passwordDraft}
+                  onChange={(e) => {
+                    setPasswordDraft(e.target.value);
+                    setPasswordClear(false);
+                  }}
+                  placeholder="Optional password mode…"
+                  className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim font-mono text-xs"
+                />
+                {passwordClear && (
+                  <p className="text-[11px] text-status-blocked">
+                    Password will be cleared on Save.
+                  </p>
+                )}
+              </div>
             </div>
           </>
         </div>

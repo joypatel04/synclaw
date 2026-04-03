@@ -370,7 +370,7 @@ function DocumentsContent() {
           {canEdit && (
             <Button
               size="sm"
-              className="h-8 bg-accent-orange px-3 text-xs text-white shadow-[0_10px_24px_rgba(79,70,229,0.35)] hover:bg-accent-orange/90 sm:h-9 sm:px-4"
+              className="h-8 bg-accent-orange px-3 text-xs text-white hover:bg-accent-orange/90 sm:h-9 sm:px-4"
               onClick={openCreate}
             >
               New document
@@ -418,7 +418,7 @@ function DocumentsContent() {
                 return (
                   <div
                     key={doc._id}
-                    className="rounded-2xl border border-border-default/80 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-3 shadow-[0_12px_28px_rgba(2,8,24,0.24)] transition-smooth hover:-translate-y-0.5 hover:border-border-hover sm:p-5"
+                    className="rounded-2xl border border-border-default/80 bg-bg-secondary/72 p-3 transition-smooth hover:border-border-hover sm:p-5"
                   >
                     <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="min-w-0 flex-1">

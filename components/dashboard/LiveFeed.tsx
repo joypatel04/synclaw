@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { Activity, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,17 +46,27 @@ const categories: {
   {
     id: "docs",
     label: "Docs",
-    predicate: (a) => a.type === "document_created" || a.type === "document_updated",
+    predicate: (a) =>
+      a.type === "document_created" || a.type === "document_updated",
   },
-  { id: "comments", label: "Comments", predicate: (a) => a.type === "message_sent" },
-  { id: "broadcasts", label: "Broadcasts", predicate: (a) => a.type === "broadcast_sent" },
+  {
+    id: "comments",
+    label: "Comments",
+    predicate: (a) => a.type === "message_sent",
+  },
+  {
+    id: "broadcasts",
+    label: "Broadcasts",
+    predicate: (a) => a.type === "broadcast_sent",
+  },
   { id: "mentions", label: "Mentions", predicate: (a) => isMentionActivity(a) },
 ];
 
 export function LiveFeed() {
   const { workspaceId } = useWorkspace();
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
-  const activities = useQuery(api.activities.recent, { workspaceId, limit: 250 }) ?? [];
+  const activities =
+    useQuery(api.activities.recent, { workspaceId, limit: 250 }) ?? [];
 
   const [category, setCategory] = useState<CategoryId>("all");
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | "all">(
@@ -78,8 +88,10 @@ export function LiveFeed() {
       mentions: 0,
     };
     for (const a of visibleActivities) {
-      if (a.type === "task_created" || a.type === "task_updated") result.tasks++;
-      if (a.type === "document_created" || a.type === "document_updated") result.docs++;
+      if (a.type === "task_created" || a.type === "task_updated")
+        result.tasks++;
+      if (a.type === "document_created" || a.type === "document_updated")
+        result.docs++;
       if (a.type === "message_sent") result.comments++;
       if (a.type === "broadcast_sent") result.broadcasts++;
       if (isMentionActivity(a)) result.mentions++;
@@ -88,7 +100,8 @@ export function LiveFeed() {
   }, [visibleActivities]);
 
   const countsByAgent = useMemo(() => {
-    const pred = categories.find((c) => c.id === category)?.predicate ?? (() => true);
+    const pred =
+      categories.find((c) => c.id === category)?.predicate ?? (() => true);
     const counts = new Map<string, number>();
     for (const a of visibleActivities) {
       if (!pred(a)) continue;
@@ -100,11 +113,13 @@ export function LiveFeed() {
   }, [visibleActivities, category]);
 
   const filtered = useMemo(() => {
-    const pred = categories.find((c) => c.id === category)?.predicate ?? (() => true);
+    const pred =
+      categories.find((c) => c.id === category)?.predicate ?? (() => true);
     const q = query.trim().toLowerCase();
     return visibleActivities.filter((a) => {
       if (!pred(a)) return false;
-      if (selectedAgentId !== "all" && a.agentId !== selectedAgentId) return false;
+      if (selectedAgentId !== "all" && a.agentId !== selectedAgentId)
+        return false;
       if (q && !a.message.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -118,7 +133,9 @@ export function LiveFeed() {
             <span className="inline-flex h-2 w-2 rounded-full bg-status-active" />
             LIVE FEED
           </h2>
-          <span className="text-[10px] text-text-muted font-mono">Last 7 days</span>
+          <span className="text-[10px] text-text-muted font-mono">
+            Last 7 days
+          </span>
         </div>
       </div>
 
@@ -171,9 +188,9 @@ export function LiveFeed() {
           <button
             type="button"
             onClick={() => setSelectedAgentId("all")}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
-                selectedAgentId === "all"
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
+              selectedAgentId === "all"
                 ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
                 : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
             )}

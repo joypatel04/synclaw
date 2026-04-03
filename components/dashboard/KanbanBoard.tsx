@@ -2,13 +2,13 @@
 
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import { KanbanColumn } from "./KanbanColumn";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useWorkspace } from "@/components/providers/workspace-provider";
 import { CreateTaskModal } from "@/components/task/CreateTaskModal";
+import { Button } from "@/components/ui/button";
+import { api } from "@/convex/_generated/api";
+import { KanbanColumn } from "./KanbanColumn";
 
 type TaskStatus =
   | "inbox"
@@ -46,7 +46,9 @@ export function KanbanBoard() {
     if (!canEdit) return;
     const { destination, draggableId } = result;
     if (!destination) return;
-    const destinationStatus = columns.find((col) => col.id === destination.droppableId);
+    const destinationStatus = columns.find(
+      (col) => col.id === destination.droppableId,
+    );
     if (!destinationStatus) return;
     void updateStatus({
       workspaceId,
@@ -91,7 +93,11 @@ export function KanbanBoard() {
         </div>
       </DragDropContext>
 
-      <CreateTaskModal open={showCreateModal} onOpenChange={setShowCreateModal} agents={agents} />
+      <CreateTaskModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        agents={agents}
+      />
     </div>
   );
 }

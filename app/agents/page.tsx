@@ -464,14 +464,14 @@ function AgentsContent() {
               </Link>
             </Button>
             {canAdmin ? (
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-            >
-              <Link href="/agents/new">Use recipe</Link>
-            </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+              >
+                <Link href="/agents/new">Use recipe</Link>
+              </Button>
             ) : null}
             <Button
               asChild
@@ -486,13 +486,13 @@ function AgentsContent() {
               </Link>
             </Button>
             {canAdmin ? (
-            <Button
-              size="sm"
-              className="w-full gap-1.5 bg-accent-orange text-white shadow-[0_10px_24px_rgba(79,70,229,0.35)] hover:bg-accent-orange/90 sm:w-auto"
-              onClick={openCreateModal}
-            >
-              Create & Configure Agent
-            </Button>
+              <Button
+                size="sm"
+                className="w-full gap-1.5 bg-accent-orange text-white hover:bg-accent-orange/90 sm:w-auto"
+                onClick={openCreateModal}
+              >
+                Create & Configure Agent
+              </Button>
             ) : null}
           </div>
         )}

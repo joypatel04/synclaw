@@ -1,12 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { AgentAvatar } from "@/components/shared/AgentAvatar";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { Timestamp } from "@/components/shared/Timestamp";
-
-import { cn } from "@/lib/utils";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface TaskCardProps {
   task: Doc<"tasks">;
@@ -48,7 +47,8 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
         className={cn(
           "group cursor-pointer rounded-xl border border-border-default/75 bg-bg-primary/55 p-3 transition-smooth",
           "hover:border-border-hover hover:bg-bg-primary/70",
-          isDragging && "opacity-60 border-dashed border-accent-orange rotate-1",
+          isDragging &&
+            "opacity-60 border-dashed border-accent-orange rotate-1",
         )}
       >
         <div className="flex items-start justify-between gap-2">
@@ -81,7 +81,6 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
                 />
               ))}
             </div>
-
           </div>
           <Timestamp time={task.updatedAt} />
         </div>

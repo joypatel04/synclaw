@@ -1,15 +1,13 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { AlertTriangle, Settings, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useWorkspace } from "@/components/providers/workspace-provider";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AlertTriangle, Settings, Trash2 } from "lucide-react";
-import { useState } from "react";
 import { WorkspaceSettingsTabs } from "@/components/settings/WorkspaceSettingsTabs";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { api } from "@/convex/_generated/api";
 
 function SettingsContent() {
   const { workspace, role, canAdmin, canManage } = useWorkspace();
@@ -202,10 +202,7 @@ function SettingsContent() {
       </div>
 
       {/* Delete Workspace Confirmation */}
-      <Dialog
-        open={showDeleteWorkspace}
-        onOpenChange={setShowDeleteWorkspace}
-      >
+      <Dialog open={showDeleteWorkspace} onOpenChange={setShowDeleteWorkspace}>
         <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle className="text-text-primary">

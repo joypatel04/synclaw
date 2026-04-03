@@ -1,15 +1,15 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { useWorkspace } from "@/components/providers/workspace-provider";
-import { BroadcastCard } from "@/components/broadcast/BroadcastCard";
-import { BroadcastModal } from "@/components/broadcast/BroadcastModal";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
 import { Plus, Radio } from "lucide-react";
 import { useState } from "react";
+import { BroadcastCard } from "@/components/broadcast/BroadcastCard";
+import { BroadcastModal } from "@/components/broadcast/BroadcastModal";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Button } from "@/components/ui/button";
+import { api } from "@/convex/_generated/api";
 
 function BroadcastsContent() {
   const { workspaceId, canEdit } = useWorkspace();
@@ -34,7 +34,7 @@ function BroadcastsContent() {
           <Button
             onClick={() => setShowModal(true)}
             size="sm"
-            className="w-full gap-1.5 bg-accent-orange text-white shadow-[0_10px_24px_rgba(79,70,229,0.35)] hover:bg-accent-orange/90 sm:w-auto"
+            className="w-full gap-1.5 bg-accent-orange text-white hover:bg-accent-orange/90 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             New Broadcast
@@ -42,7 +42,11 @@ function BroadcastsContent() {
         )}
       </div>
       {broadcasts.length === 0 ? (
-        <EmptyState icon={Radio} title="No broadcasts yet" description="Create a broadcast to send messages to your agents">
+        <EmptyState
+          icon={Radio}
+          title="No broadcasts yet"
+          description="Create a broadcast to send messages to your agents"
+        >
           {canEdit && (
             <Button
               onClick={() => setShowModal(true)}
@@ -67,5 +71,9 @@ function BroadcastsContent() {
 }
 
 export default function BroadcastsPage() {
-  return <AppLayout><BroadcastsContent /></AppLayout>;
+  return (
+    <AppLayout>
+      <BroadcastsContent />
+    </AppLayout>
+  );
 }

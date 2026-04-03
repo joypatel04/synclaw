@@ -37,7 +37,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm space-y-7 rounded-3xl border border-border-default/70 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-6 shadow-[0_28px_65px_rgba(2,6,20,0.45)]">
+      <div className="relative z-10 w-full max-w-sm space-y-7 rounded-3xl border border-border-default/70 bg-bg-secondary/85 p-6 shadow-[0_8px_20px_rgba(2,6,20,0.24)]">
         {/* Logo */}
         <div className="flex flex-col items-center space-y-4">
           <Image

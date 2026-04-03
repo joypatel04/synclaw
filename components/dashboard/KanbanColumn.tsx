@@ -1,9 +1,9 @@
 "use client";
 
-import { Droppable, Draggable } from "@hello-pangea/dnd";
-import { TaskCard } from "./TaskCard";
-import { cn } from "@/lib/utils";
+import { Draggable, Droppable } from "@hello-pangea/dnd";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
+import { TaskCard } from "./TaskCard";
 
 interface KanbanColumnProps {
   id: string;
@@ -24,8 +24,7 @@ export function KanbanColumn({
     <div
       className={cn(
         "flex min-w-[220px] flex-1 flex-col rounded-2xl border border-border-default/75 bg-bg-secondary/68",
-        isBlockedColumn &&
-          "border-status-blocked/35 bg-status-blocked/5",
+        isBlockedColumn && "border-status-blocked/35 bg-status-blocked/5",
       )}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border-default/60 px-3 py-2.5">
@@ -54,16 +53,11 @@ export function KanbanColumn({
             {...provided.droppableProps}
             className={cn(
               "scrollbar-none min-h-[80px] flex-1 space-y-2 overflow-y-auto px-2 pb-2 transition-smooth",
-              snapshot.isDraggingOver &&
-                "rounded-b-2xl bg-accent-orange/8",
+              snapshot.isDraggingOver && "rounded-b-2xl bg-accent-orange/8",
             )}
           >
             {tasks.map((task, index) => (
-              <Draggable
-                key={task._id}
-                draggableId={task._id}
-                index={index}
-              >
+              <Draggable key={task._id} draggableId={task._id} index={index}>
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}

@@ -118,7 +118,7 @@ export function ChatComposer({
         }}
         className="p-2.5 sm:p-4"
       >
-        <div className="relative flex items-end gap-2 rounded-2xl border border-border-default/80 bg-[linear-gradient(160deg,var(--cw-bg-primary),color-mix(in_oklab,var(--cw-bg-secondary)_65%,transparent))] px-3 py-2 shadow-[0_10px_26px_rgba(2,6,18,0.22)] focus-within:border-accent-orange/45 focus-within:ring-2 focus-within:ring-accent-orange/35 transition-shadow">
+        <div className="relative flex items-end gap-2 rounded-2xl border border-border-default/80 bg-bg-primary/70 px-3 py-2 focus-within:border-accent-orange/45 focus-within:ring-2 focus-within:ring-accent-orange/35 transition-shadow">
           <div className="flex-1 flex flex-col gap-1">
             <textarea
               ref={textareaRef}
@@ -166,7 +166,7 @@ export function ChatComposer({
             type="submit"
             size="icon"
             disabled={!content.trim() || disabled}
-            className="h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-xl bg-accent-orange text-white shadow-[0_10px_22px_rgba(79,70,229,0.42)] hover:bg-accent-orange/90 disabled:opacity-30"
+            className="h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-xl bg-accent-orange text-white hover:bg-accent-orange/90 disabled:opacity-30"
             aria-label="Send message"
           >
             <ArrowUp className="h-4 w-4" />
