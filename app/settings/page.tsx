@@ -93,7 +93,7 @@ function SettingsContent() {
                       !name.trim() || name === workspace.name || isSaving
                     }
                     size="sm"
-                    className="bg-accent-orange hover:bg-accent-orange/90 text-white shrink-0"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
                   >
                     {isSaving ? "Saving..." : "Save"}
                   </Button>

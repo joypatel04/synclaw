@@ -131,7 +131,7 @@ function WebhooksContent() {
               </p>
             </div>
             <Button
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => setShowCreate(true)}
               disabled={readOnly}
             >
@@ -310,7 +310,7 @@ function WebhooksContent() {
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         disabled={readOnly}
                         onClick={() =>
                           void reprocessPayload({
@@ -396,7 +396,7 @@ function WebhooksContent() {
                 Copy both
               </Button>
               <Button
-                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => setRevealSecret(null)}
               >
                 Done
@@ -461,7 +461,7 @@ function PayloadViewer({
         </div>
         <div className="mt-4 flex justify-end">
           <Button
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={onClose}
           >
             Close

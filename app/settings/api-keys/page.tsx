@@ -126,7 +126,7 @@ function ApiKeysContent() {
         <Button
           onClick={() => setShowCreate(true)}
           size="sm"
-          className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Create Key
@@ -287,7 +287,7 @@ function ApiKeysContent() {
                   <Button
                     type="submit"
                     disabled={!newKeyName.trim() || isCreating}
-                    className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {isCreating ? "Creating..." : "Create Key"}
                   </Button>
@@ -332,7 +332,7 @@ function ApiKeysContent() {
               <DialogFooter>
                 <Button
                   onClick={closeCreateDialog}
-                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   Done
                 </Button>

@@ -132,7 +132,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         >
           <Button
             asChild
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Link href="/settings/openclaw">Open Settings</Link>
           </Button>
@@ -151,7 +151,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         >
           <Button
             asChild
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Link href="/settings/openclaw">Fix OpenClaw setup</Link>
           </Button>
@@ -167,7 +167,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
         >
           <Button
             asChild
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Link href="/settings/openclaw">Open OpenClaw settings</Link>
           </Button>

@@ -159,7 +159,7 @@ export function FilesystemSetupPanel({
           <Button
             onClick={onSave}
             disabled={saving || !canAdmin}
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {saving ? "Saving..." : "Save"}
           </Button>

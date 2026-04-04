@@ -190,7 +190,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                 <Button
                   asChild
                   size="icon-sm"
-                  className="sm:hidden bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  className="sm:hidden bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <Link href="/onboarding" aria-label="Finish setup">
                     <Settings className="h-4 w-4" />
@@ -199,7 +199,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                 <Button
                   asChild
                   size="sm"
-                  className="hidden sm:inline-flex bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  className="hidden sm:inline-flex bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <Link href="/onboarding">Finish setup</Link>
                 </Button>
@@ -327,7 +327,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
             <Button
               onClick={handleCreateWorkspace}
               disabled={!newName.trim()}
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               Create
             </Button>

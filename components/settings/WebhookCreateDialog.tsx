@@ -223,7 +223,7 @@ export function WebhookCreateDialog({
             Cancel
           </Button>
           <Button
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
             disabled={isSaving || !name.trim()}
             onClick={() => void submit()}
           >

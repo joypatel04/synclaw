@@ -145,7 +145,7 @@ function MembersContent() {
             <Button
               onClick={() => setShowInvite(true)}
               size="sm"
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white gap-1.5 w-full sm:w-auto"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 w-full sm:w-auto"
             >
               <Plus className="h-3.5 w-3.5" />
               Invite
@@ -380,7 +380,7 @@ function MembersContent() {
               <Button
                 type="submit"
                 disabled={!inviteEmail.trim() || isInviting}
-                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {isInviting ? "Sending..." : "Send Invite"}
               </Button>

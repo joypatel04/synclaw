@@ -327,7 +327,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
                 type="button"
                 onClick={handleSaveDocument}
                 disabled={!docAgentId || isSaving}
-                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {isSaving ? "Saving..." : "Save document"}
               </Button>

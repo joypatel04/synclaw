@@ -191,7 +191,7 @@ export function LocalOpenClawConfigEditor() {
           </Button>
           <Button
             size="sm"
-            className="h-8 gap-2 bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="h-8 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => void saveFile()}
             disabled={busy || !fileHandle || !dirty}
             title={!fileHandle ? "Open a file first" : dirty ? "Save to disk" : "No changes"}

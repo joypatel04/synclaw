@@ -249,7 +249,7 @@ export function RemoteWorkspaceFiles({
             />
             <Button
               size="sm"
-              className="h-8 gap-1.5 bg-accent-orange hover:bg-accent-orange/90 text-white"
+              className="h-8 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => void saveFile()}
               disabled={!selectedPath || !dirty || busy}
             >

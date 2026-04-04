@@ -52,7 +52,7 @@ export function ChatAgentSelector() {
       >
         <Button
           asChild
-          className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <Link href="/settings/openclaw">Open Settings</Link>
         </Button>
@@ -69,7 +69,7 @@ export function ChatAgentSelector() {
       >
         {canAdmin ? (
           <Button
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
             asChild
           >
             <Link href="/agents/new">Create agent (recipe)</Link>

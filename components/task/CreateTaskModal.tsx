@@ -91,7 +91,7 @@ export function CreateTaskModal({ open, onOpenChange, agents }: CreateTaskModalP
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border-default text-text-secondary hover:bg-bg-hover">Cancel</Button>
-            <Button type="submit" disabled={!title.trim() || isSubmitting} className="bg-accent-orange hover:bg-accent-orange/90 text-white">{isSubmitting ? "Creating..." : "Create Task"}</Button>
+            <Button type="submit" disabled={!title.trim() || isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">{isSubmitting ? "Creating..." : "Create Task"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

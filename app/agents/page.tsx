@@ -516,7 +516,7 @@ function AgentsContent() {
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <Button
                   size="sm"
-                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={openCreateModal}
                 >
                   Create & Configure Agent
@@ -665,7 +665,7 @@ function AgentsContent() {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={creatingAgent && !editingId}
                 >
                   {editingId
@@ -795,7 +795,7 @@ function AgentsContent() {
               Keep Existing Folder
             </Button>
             <Button
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={async () => {
                 if (!editingId || !form.name.trim()) return;
                 await updateAgent({

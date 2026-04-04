@@ -319,7 +319,7 @@ export function CommentForm({ taskId }: CommentFormProps) {
           type="submit"
           size="icon"
           disabled={!content.trim() || isSubmitting || isSpawnSubmitting}
-          className="shrink-0 bg-accent-orange hover:bg-accent-orange/90 text-white h-auto"
+          className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground h-auto"
           title="Send comment"
         >
           <Send className="h-4 w-4" />

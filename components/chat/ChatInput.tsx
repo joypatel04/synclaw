@@ -159,7 +159,7 @@ export function ChatInput({
           type="submit"
           size="icon"
           disabled={!content.trim() || disabled}
-          className="shrink-0 bg-accent-orange hover:bg-accent-orange/90 text-white h-10 w-10"
+          className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground h-10 w-10"
         >
           <Send className="h-4 w-4" />
         </Button>

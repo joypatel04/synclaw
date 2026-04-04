@@ -51,7 +51,7 @@ export function BroadcastModal({ open, onOpenChange }: BroadcastModalProps) {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border-default text-text-secondary">Cancel</Button>
-            <Button type="submit" disabled={!title.trim() || !content.trim() || isSubmitting} className="bg-accent-orange hover:bg-accent-orange/90 text-white">{isSubmitting ? "Sending..." : "Send Broadcast"}</Button>
+            <Button type="submit" disabled={!title.trim() || !content.trim() || isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">{isSubmitting ? "Sending..." : "Send Broadcast"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

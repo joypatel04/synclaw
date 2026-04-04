@@ -452,7 +452,7 @@ export function OpenClawSessionsList({
           <Button
             asChild
             size="sm"
-            className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Link href="/settings/openclaw">Open Settings</Link>
           </Button>

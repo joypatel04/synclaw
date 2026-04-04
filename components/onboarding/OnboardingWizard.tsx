@@ -1185,7 +1185,7 @@ export function OnboardingWizard() {
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
-                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                     onClick={() => void onSaveProviderKey()}
                     disabled={
                       providerSaving ||
@@ -1232,7 +1232,7 @@ export function OnboardingWizard() {
                 {assistedLaunchEnabled && serviceTier === "assisted" ? (
                   <Button
                     size="sm"
-                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                     onClick={() => void onRequestAssisted()}
                   >
                     <LifeBuoy className="mr-1 h-3.5 w-3.5" />
@@ -1845,7 +1845,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                   <Button
                     onClick={() => void onTestAndSave()}
                     disabled={testing}
-                    className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {testing ? "Testing..." : "Test & Save"}
                   </Button>
@@ -1943,7 +1943,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
 
                   <div className="flex items-center gap-2">
                     <Button
-                      className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
                       onClick={() => void onSaveProviderKey()}
                       disabled={
                         providerSaving ||
@@ -2095,7 +2095,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
 
                 <Button
                   disabled={creatingAgent || !mainName.trim()}
-                  className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={() => {
                     if (creatingAgent) return;
                     setCreatingAgent(true);

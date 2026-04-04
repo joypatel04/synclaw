@@ -980,7 +980,7 @@ function OpenClawSettingsContent() {
                 {assistedLaunchEnabled && serviceTier === "assisted" ? (
                   <Button
                     type="button"
-                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                     onClick={() => void onRequestAssistedLaunch()}
                   >
                     <LifeBuoy className="mr-1 h-3.5 w-3.5" />
@@ -1436,7 +1436,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
             <Button
               onClick={onSave}
               disabled={saving}
-              className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {saving ? "Saving..." : "Save"}
             </Button>

@@ -120,6 +120,9 @@
   --app-accent-primary: #5b4dff;
   --app-accent-primary-soft: rgba(91, 77, 255, 0.14);
   --app-accent-primary-glow: rgba(91, 77, 255, 0.2);
+  --app-accent-info: #0ea5b7;
+  --app-accent-info-soft: rgba(14, 165, 183, 0.14);
+  --app-accent-info-glow: rgba(14, 165, 183, 0.2);
   --app-accent-success: #10c895;
   --app-accent-success-soft: rgba(16, 200, 149, 0.14);
   --cw-status-active: #16a34a;
@@ -144,9 +147,9 @@
   --cw-text-secondary: var(--app-text-secondary);
   --cw-text-muted: var(--app-text-muted);
   --cw-text-dim: var(--app-text-dim);
-  --cw-accent-orange: var(--app-accent-primary);
-  --cw-accent-orange-dim: var(--app-accent-primary-soft);
-  --cw-accent-orange-glow: var(--app-accent-primary-glow);
+  --cw-accent-orange: var(--app-accent-info);
+  --cw-accent-orange-dim: var(--app-accent-info-soft);
+  --cw-accent-orange-glow: var(--app-accent-info-glow);
   --cw-teal: var(--app-accent-success);
   --cw-teal-dim: var(--app-accent-success-soft);
   --cw-border-default: var(--app-border-default);
@@ -201,6 +204,9 @@
   --app-accent-primary: #5f63ff;
   --app-accent-primary-soft: rgba(95, 99, 255, 0.14);
   --app-accent-primary-glow: rgba(95, 99, 255, 0.18);
+  --app-accent-info: #22b8cf;
+  --app-accent-info-soft: rgba(34, 184, 207, 0.14);
+  --app-accent-info-glow: rgba(34, 184, 207, 0.18);
   --app-accent-success: #18b57f;
   --app-accent-success-soft: rgba(24, 181, 127, 0.14);
   --cw-status-active: #22c55e;
@@ -225,9 +231,9 @@
   --cw-text-secondary: var(--app-text-secondary);
   --cw-text-muted: var(--app-text-muted);
   --cw-text-dim: var(--app-text-dim);
-  --cw-accent-orange: var(--app-accent-primary);
-  --cw-accent-orange-dim: var(--app-accent-primary-soft);
-  --cw-accent-orange-glow: var(--app-accent-primary-glow);
+  --cw-accent-orange: var(--app-accent-info);
+  --cw-accent-orange-dim: var(--app-accent-info-soft);
+  --cw-accent-orange-glow: var(--app-accent-info-glow);
   --cw-teal: var(--app-accent-success);
   --cw-teal-dim: var(--app-accent-success-soft);
   --cw-border-default: var(--app-border-default);

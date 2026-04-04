@@ -297,7 +297,7 @@ export function AgentRecipeWizard() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Button
-                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => void onCreate()}
                 disabled={
                   creating ||

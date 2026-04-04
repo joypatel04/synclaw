@@ -269,7 +269,7 @@ export function AgentManifestPanel() {
               ) : null}
               <Button
                 size="sm"
-                className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={importing || importPlan.create.length === 0}
                 onClick={() => void onImport()}
                 title={importPlan.create.length === 0 ? "Nothing to import" : "Create missing agents"}

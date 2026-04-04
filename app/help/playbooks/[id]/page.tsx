@@ -112,7 +112,7 @@ function PlaybookPageInner() {
             {playbook.recipeId ? (
               <Button
                 asChild
-                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Link href={`/agents/new?recipe=${playbook.recipeId}`}>
                   Create & Configure Agent
@@ -121,7 +121,7 @@ function PlaybookPageInner() {
             ) : (
               <Button
                 asChild
-                className="bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Link href="/agents/new">Create & Configure Agent</Link>
               </Button>

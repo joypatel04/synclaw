@@ -107,7 +107,7 @@ function AgentHealthInner() {
               <Button
                 asChild
                 size="sm"
-                className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Link href="/agents/new">Create agent</Link>
               </Button>
@@ -122,7 +122,7 @@ function AgentHealthInner() {
             description="Create an agent first, then come back here to verify it is pulsing."
           >
             {canAdmin ? (
-              <Button asChild className="bg-accent-orange hover:bg-accent-orange/90 text-white">
+              <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Link href="/agents/new">Create agent</Link>
               </Button>
             ) : null}

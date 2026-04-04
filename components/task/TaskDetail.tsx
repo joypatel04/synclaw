@@ -147,7 +147,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
-                    className="h-8 bg-accent-orange hover:bg-accent-orange/90 text-white"
+                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                     onClick={() => void handleSaveDescription()}
                     disabled={savingDescription}
                   >
