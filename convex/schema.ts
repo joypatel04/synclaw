@@ -209,7 +209,11 @@ export default defineSchema({
       ),
     ),
     provisioningMode: v.optional(
-      v.union(v.literal("customer_vps"), v.literal("synclaw_managed")),
+      v.union(
+        v.literal("customer_vps"),
+        v.literal("synclaw_managed"),
+        v.literal("sutraha_managed"), // legacy compat — normalize on read
+      ),
     ),
     managedRegionRequested: v.optional(v.string()),
     managedRegionResolved: v.optional(v.string()),
@@ -296,6 +300,7 @@ export default defineSchema({
     targetHostType: v.union(
       v.literal("customer_vps"),
       v.literal("synclaw_managed"),
+      v.literal("sutraha_managed"), // legacy compat
     ),
     requestedRegion: v.optional(v.string()),
     requestedServerProfile: v.optional(

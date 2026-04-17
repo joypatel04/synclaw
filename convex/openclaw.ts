@@ -15,6 +15,7 @@ const deploymentModeValidator = v.union(
 const provisioningModeValidator = v.union(
   v.literal("customer_vps"),
   v.literal("synclaw_managed"),
+  v.literal("sutraha_managed"), // legacy compat — normalizeProvisioningMode() maps to synclaw_managed
 );
 const serviceTierValidator = v.union(
   v.literal("self_serve"),
@@ -41,7 +42,7 @@ const recommendedMethodValidator = v.union(
 
 type TransportMode = "direct_ws" | "connector" | "self_hosted_local";
 type DeploymentMode = "managed" | "manual";
-type ProvisioningMode = "customer_vps" | "synclaw_managed";
+type ProvisioningMode = "customer_vps" | "synclaw_managed" | "sutraha_managed";
 type ServiceTier = "self_serve" | "assisted";
 type RecommendedMethod =
   | "public_wss"
@@ -91,6 +92,8 @@ function normalizeDeploymentMode(input?: string): DeploymentMode {
 
 function normalizeProvisioningMode(input?: string): ProvisioningMode {
   if (input === "synclaw_managed") return input;
+  // Map legacy value to the canonical name.
+  if (input === "sutraha_managed") return "synclaw_managed";
   return "synclaw_managed";
 }
 

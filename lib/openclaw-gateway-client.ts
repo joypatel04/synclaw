@@ -104,7 +104,9 @@ function buildClientModeAttempts(clientMode: string, role: string): string[] {
 function isGatewayDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const flag = window.localStorage.getItem("synclaw:gatewayDebug");
+    const flag =
+      window.localStorage.getItem("synclaw:gatewayDebug") ??
+      window.localStorage.getItem("sutraha:gatewayDebug"); // legacy compat
     if (flag === "1" || flag === "true") return true;
   } catch {}
   return false;
@@ -171,7 +173,11 @@ export function clearOpenClawLocalAuthState(wsUrl?: string, role?: string) {
       const keys: string[] = [];
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
-        if (key && key.startsWith(OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX)) {
+        if (
+          key &&
+          (key.startsWith(OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX) ||
+            key.startsWith("sutraha:openclaw:deviceToken:")) // legacy compat cleanup
+        ) {
           keys.push(key);
         }
       }

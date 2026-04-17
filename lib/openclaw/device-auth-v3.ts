@@ -87,12 +87,23 @@ function parseStoredIdentity(raw: string | null): StoredDeviceIdentityV2 | null 
   }
 }
 
+// Legacy key prefix for migration from sutraha -> synclaw.
+const LEGACY_DEVICE_IDENTITY_KEY_V2 = "sutraha:openclaw:deviceIdentity:v2";
+
 export function readStoredDeviceIdentityV2(): StoredDeviceIdentityV2 | null {
   if (typeof window === "undefined") return null;
   try {
-    return parseStoredIdentity(
-      window.localStorage.getItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2),
-    );
+    // Try new key first, then fall back to legacy key and migrate.
+    let raw = window.localStorage.getItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2);
+    if (!raw) {
+      raw = window.localStorage.getItem(LEGACY_DEVICE_IDENTITY_KEY_V2);
+      if (raw) {
+        // Migrate: copy to new key, remove old.
+        window.localStorage.setItem(OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2, raw);
+        window.localStorage.removeItem(LEGACY_DEVICE_IDENTITY_KEY_V2);
+      }
+    }
+    return parseStoredIdentity(raw);
   } catch {
     return null;
   }
