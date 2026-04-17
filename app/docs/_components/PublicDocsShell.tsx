@@ -184,7 +184,7 @@ export function PublicDocsShell({
             </Link>
             <Link
               href="/"
-              className="rounded-lg bg-accent-orange px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-orange/90"
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90"
             >
               Home
             </Link>

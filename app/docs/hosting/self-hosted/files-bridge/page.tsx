@@ -34,7 +34,7 @@ export default function HostingSelfHostedFilesBridgePage() {
         <PublicDocsCodeBlock
           title="Build + run"
           code={`cd packages/fs-bridge
-docker build -t sutraha-fs-bridge .
+docker build -t synclaw-fs-bridge .
 
 docker run --rm -p 8787:8787 \\
   -e FS_BRIDGE_TOKEN="replace_me" \\
@@ -42,7 +42,7 @@ docker run --rm -p 8787:8787 \\
   -e FS_MAX_FILE_BYTES="1048576" \\
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \\
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \\
-  sutraha-fs-bridge`}
+  synclaw-fs-bridge`}
         />
         <PublicDocsCallout title="Per-user root path">
           Each customer can run their own bridge instance and set their own
@@ -54,8 +54,8 @@ docker run --rm -p 8787:8787 \\
       <PublicDocsCard title="2) Publish image (optional)">
         <PublicDocsCodeBlock
           title="GHCR example"
-          code={`docker tag sutraha-fs-bridge ghcr.io/sutraha/sutraha-fs-bridge:0.1.0
-docker push ghcr.io/sutraha/sutraha-fs-bridge:0.1.0`}
+          code={`docker tag synclaw-fs-bridge ghcr.io/synclaw/synclaw-fs-bridge:0.1.0
+docker push ghcr.io/synclaw/synclaw-fs-bridge:0.1.0`}
         />
       </PublicDocsCard>
 

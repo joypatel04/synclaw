@@ -67,7 +67,7 @@ Add: `Organization`, `WebSite`, `SoftwareApplication` schemas
 Machine-readable content guide for AI search crawlers (GPTBot, ClaudeBot, PerplexityBot)
 
 ### 10. Fix title inconsistency
-Deployed title is "Sutraha HQ" but brand/domain is "Synclaw". Standardize to one name everywhere.
+Ensure "Synclaw" is used consistently across all surfaces (title, meta, landing, docs).
 
 ### 11. Add per-page metadata to docs
 **Files:** All `app/docs/*/page.tsx`

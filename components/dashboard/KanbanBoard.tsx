@@ -70,7 +70,7 @@ export function KanbanBoard() {
           <Button
             onClick={() => setShowCreateModal(true)}
             size="sm"
-            className="gap-1.5 bg-accent-orange text-white hover:bg-accent-orange/90"
+            className="gap-1.5"
           >
             <Plus className="h-4 w-4" />
             New Task

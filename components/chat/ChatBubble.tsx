@@ -97,7 +97,7 @@ export function ChatBubble({
           command={message.content}
           output={outputText}
         >
-          <div className="cursor-pointer rounded-xl border border-border-default/75 bg-[linear-gradient(160deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-2.5 sm:p-3">
+          <div className="cursor-pointer rounded-xl border border-border-default/75 bg-bg-secondary/85 p-2.5 sm:p-3">
             <div className="flex items-start justify-between gap-2.5">
               <div className="min-w-0 flex items-center gap-2">
                 <span className="text-text-muted" aria-hidden>
@@ -145,10 +145,10 @@ export function ChatBubble({
   return (
     <div
       className={cn(
-        "group relative w-fit max-w-full overflow-hidden rounded-2xl border px-3.5 py-2.5 shadow-[0_10px_24px_rgba(2,8,24,0.16)] wrap-break-word sm:max-w-176 sm:px-4 sm:py-3",
+        "group relative w-fit max-w-full overflow-hidden rounded-2xl border px-3.5 py-2.5 shadow-[0_10px_24px_rgba(2,8,24,0.14)] wrap-break-word sm:max-w-176 sm:px-4 sm:py-3",
         isUser
-          ? "rounded-tr-sm border-accent-orange/30 bg-[linear-gradient(165deg,color-mix(in_oklab,var(--cw-accent-orange)_28%,var(--cw-bg-secondary)_72%),color-mix(in_oklab,var(--cw-accent-orange)_20%,var(--cw-bg-tertiary)_80%))]"
-          : "rounded-tl-sm border-border-default/75 bg-[linear-gradient(165deg,var(--cw-bg-primary),color-mix(in_oklab,var(--cw-bg-secondary)_72%,transparent))]",
+          ? "rounded-tr-sm border-status-review/35 bg-bg-secondary/92"
+          : "rounded-tl-sm border-border-default/75 bg-bg-primary/86",
       )}
     >
       {/* Copy button — hidden on mobile, hover-reveal on desktop */}

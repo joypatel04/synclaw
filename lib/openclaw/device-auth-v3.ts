@@ -18,9 +18,9 @@ type StoredDeviceIdentityV2 = {
 };
 
 export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V2 =
-  "sutraha:openclaw:deviceIdentity:v2";
+  "synclaw:openclaw:deviceIdentity:v2";
 export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V1 =
-  "sutraha:openclaw:deviceIdentity:v1";
+  "synclaw:openclaw:deviceIdentity:v1";
 
 function toUtf8Bytes(input: string): Uint8Array {
   return new TextEncoder().encode(input);

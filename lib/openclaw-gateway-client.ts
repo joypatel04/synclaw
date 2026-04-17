@@ -104,7 +104,7 @@ function buildClientModeAttempts(clientMode: string, role: string): string[] {
 function isGatewayDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const flag = window.localStorage.getItem("sutraha:gatewayDebug");
+    const flag = window.localStorage.getItem("synclaw:gatewayDebug");
     if (flag === "1" || flag === "true") return true;
   } catch {}
   return false;
@@ -152,9 +152,9 @@ export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY =
 export const OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_LEGACY =
   OPENCLAW_DEVICE_IDENTITY_STORAGE_KEY_V1;
 export const OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX =
-  "sutraha:openclaw:deviceToken:";
+  "synclaw:openclaw:deviceToken:";
 export const OPENCLAW_DEVICE_AUTH_ENABLED_KEY =
-  "sutraha:openclaw:deviceAuthEnabled";
+  "synclaw:openclaw:deviceAuthEnabled";
 
 export function openClawDeviceTokenStorageKey(wsUrl: string, role: string) {
   return `${OPENCLAW_DEVICE_TOKEN_STORAGE_PREFIX}${wsUrl}|${role}`;

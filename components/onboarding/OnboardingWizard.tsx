@@ -463,7 +463,7 @@ export function OnboardingWizard() {
       managedProvisioningEnabled &&
       requiresProviderKey &&
       deploymentMode === "managed" &&
-      (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed" &&
+      (summary?.provisioningMode ?? "customer_vps") === "synclaw_managed" &&
       Boolean(managedStatus?.upstreamHost?.trim()) &&
       managedStatus?.providerRuntimeStatus !== "ready" &&
       Boolean(firstValidManagedProvider) &&
@@ -592,7 +592,7 @@ export function OnboardingWizard() {
               ? "connector_advanced"
               : "self_hosted_local",
         deploymentMode,
-        provisioningMode: "sutraha_managed",
+        provisioningMode: "synclaw_managed",
         serviceTier,
         managedServerProfile: serverProfile,
         setupStatus,
@@ -822,7 +822,7 @@ export function OnboardingWizard() {
       if (
         requiresProviderKey &&
         deploymentMode === "managed" &&
-        (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed" &&
+        (summary?.provisioningMode ?? "customer_vps") === "synclaw_managed" &&
         hasManagedHost
       ) {
         if (!isManagedProviderId(providerId)) {
@@ -852,7 +852,7 @@ export function OnboardingWizard() {
         if (
           requiresProviderKey &&
           deploymentMode === "managed" &&
-          (summary?.provisioningMode ?? "customer_vps") === "sutraha_managed" &&
+          (summary?.provisioningMode ?? "customer_vps") === "synclaw_managed" &&
           !hasManagedHost
         ) {
           setProviderMessage(
@@ -1956,7 +1956,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                         : requiresProviderKey &&
                             deploymentMode === "managed" &&
                             (summary?.provisioningMode ?? "customer_vps") ===
-                              "sutraha_managed"
+                              "synclaw_managed"
                           ? "Save, Apply & Validate"
                           : "Save & Validate"}
                     </Button>

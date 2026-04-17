@@ -85,5 +85,5 @@ bunx convex env set --dev OPENCLAW_TOKEN_ENCRYPTION_KEY_HEX "<value>"
 If you previously deployed the old bridge app:
 
 ```bash
-fly apps destroy sutraha-openclaw-bridge
+fly apps destroy synclaw-openclaw-bridge
 ```

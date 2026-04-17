@@ -156,7 +156,7 @@ function parseCsvOrigins(input: string | null): string[] {
 
 function managedControlUiAllowedOrigins(): string[] {
   const siteUrl = optionalEnv("NEXT_PUBLIC_APP_URL");
-  const defaults = ["https://synclaw.in", "https://managed.synclaw.in", "https://sutraha-hq-git-develop-sutraha.vercel.app", "http://localhost:3000"];
+  const defaults = ["https://synclaw.in", "https://managed.synclaw.in", "https://synclaw-hq-git-develop.vercel.app", "http://localhost:3000"];
   const localhostOrigins =
     (process.env.NODE_ENV ?? "").trim() === "production"
       ? []
@@ -1381,7 +1381,7 @@ export const _finalizeManagedConnection = internalMutation({
       wsUrl: managedWsUrl,
       deploymentMode: "managed",
       transportMode: "direct_ws",
-      provisioningMode: "sutraha_managed",
+      provisioningMode: "synclaw_managed",
       managedStatus: "ready",
       managedRegionResolved: args.resolvedRegion,
       managedConnectedAt: now,
@@ -1865,8 +1865,8 @@ async function createManagedJobInternal(
 
   const jobId = await ctx.db.insert("openclawProvisioningJobs", {
     workspaceId,
-    provider: "sutraha-managed",
-    targetHostType: "sutraha_managed",
+    provider: "synclaw-managed",
+    targetHostType: "synclaw_managed",
     requestedRegion,
     requestedServerProfile: serverProfile,
     requestedServerType,
@@ -1899,7 +1899,7 @@ async function createManagedJobInternal(
   if (existing) {
     await ctx.db.patch(existing._id, {
       deploymentMode: "managed",
-      provisioningMode: "sutraha_managed",
+      provisioningMode: "synclaw_managed",
       serviceTier,
       setupStatus: "infra_ready",
       managedStatus: "queued",
@@ -1925,7 +1925,7 @@ async function createManagedJobInternal(
       wsUrl: "",
       deploymentMode: "managed",
       transportMode: "direct_ws",
-      provisioningMode: "sutraha_managed",
+      provisioningMode: "synclaw_managed",
       managedRegionRequested: requestedRegion,
       managedRegionResolved: resolvedRegion,
       managedServerProfile: serverProfile,
@@ -1997,8 +1997,8 @@ export const autoConnectWorkspace = mutation({
         workspaceId: args.workspaceId,
         jobId: (await ctx.db.insert("openclawProvisioningJobs", {
           workspaceId: args.workspaceId,
-          provider: "sutraha-managed",
-          targetHostType: "sutraha_managed",
+          provider: "synclaw-managed",
+          targetHostType: "synclaw_managed",
           requestedRegion: cfg.managedRegionRequested ?? DEFAULT_MANAGED_REGION(),
           resolvedRegion:
             cfg.managedRegionResolved ??
@@ -2289,7 +2289,7 @@ export const _getManagedProviderApplyContext = internalQuery({
     }
     if (
       (cfg.deploymentMode ?? "manual") !== "managed" ||
-      (cfg.provisioningMode ?? "customer_vps") !== "sutraha_managed"
+      (cfg.provisioningMode ?? "customer_vps") !== "synclaw_managed"
     ) {
       throw new Error("Provider autoconfig is only supported for managed workspaces.");
     }

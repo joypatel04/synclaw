@@ -93,7 +93,7 @@ If you prefer a file-based script:
 2. Set `MANAGED_BOOTSTRAP_SCRIPT_FILE=/opt/managed-gateway/bootstrap/openclaw-bootstrap.sh`.
 
 This repo includes a hardened template at:
-- `/Users/joypatel/sutraha-hq/packages/managed-gateway/bootstrap/openclaw-bootstrap.sh`
+- `packages/managed-gateway/bootstrap/openclaw-bootstrap.sh`
 
 ## Deployment
 

@@ -371,7 +371,7 @@ function OpenClawSettingsContent() {
             : recommendedMode === "connector"
               ? "connector_advanced"
               : "self_hosted_local",
-        provisioningMode: "sutraha_managed",
+        provisioningMode: "synclaw_managed",
         managedRegionRequested: requestedRegion,
         managedServerProfile: serverProfile,
         serviceTier,
@@ -809,7 +809,7 @@ function OpenClawSettingsContent() {
                 </h2>
               </div>
               <p className="mt-1 text-xs text-text-muted">
-                Managed cloud setup: choose region and launch mode, then Sutraha
+                Managed cloud setup: choose region and launch mode, then Synclaw
                 provisions and auto-connects OpenClaw.
               </p>
 
@@ -1089,7 +1089,7 @@ function OpenClawSettingsContent() {
                   Managed instance
                 </p>
                 <p className="mt-1 text-[11px] text-text-muted">
-                  This workspace uses Sutraha-managed OpenClaw. Connection is
+                  This workspace uses Synclaw-managed OpenClaw. Connection is
                   auto-configured.
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
@@ -1202,10 +1202,10 @@ function OpenClawSettingsContent() {
                         Connector startup template
                       </p>
                       <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-bg-primary p-2 font-mono text-[11px] text-text-primary">
-                        {`SUTRAHA_CONNECTOR_ID=${connectorId || "<connector-id>"}
-SUTRAHA_WORKSPACE_ID=${String(workspaceId)}
+                        {`SYNCLAW_CONNECTOR_ID=${connectorId || "<connector-id>"}
+SYNCLAW_WORKSPACE_ID=${String(workspaceId)}
 OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
-./sutraha-connector start`}
+./synclaw-connector start`}
                       </pre>
                       <p className="mt-2 text-[11px] text-text-dim">
                         Guide:{" "}
@@ -1248,7 +1248,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                     ) : null}
                     {transportMode === "self_hosted_local" ? (
                       <p className="text-[11px] text-text-dim">
-                        Local mode is recommended only when Sutraha is also
+                        Local mode is recommended only when Synclaw is also
                         hosted inside your private/local network.
                       </p>
                     ) : null}

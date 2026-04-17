@@ -29,14 +29,14 @@ export const getStatus = query({
     );
     const setupStatus = openclaw?.setupStatus ?? "not_started";
     const serviceTier = openclaw?.serviceTier ?? "self_serve";
-    const provisioningMode = openclaw?.provisioningMode ?? "sutraha_managed";
+    const provisioningMode = openclaw?.provisioningMode ?? "synclaw_managed";
     const deploymentMode = openclaw?.deploymentMode ?? "manual";
     const hasManagedRuntimeHost = Boolean(
       openclaw?.managedUpstreamHost?.trim(),
     );
     const requiresManagedRuntimeGate =
       deploymentMode === "managed" &&
-      provisioningMode === "sutraha_managed" &&
+      provisioningMode === "synclaw_managed" &&
       hasManagedRuntimeHost;
     const managedConnectionReady =
       !requiresManagedRuntimeGate || openclaw?.managedStatus === "ready";

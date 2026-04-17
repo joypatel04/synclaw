@@ -49,7 +49,7 @@ export default function HelpPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               asChild
-              className="bg-accent-orange text-white hover:bg-accent-orange/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Link href="/onboarding">Open onboarding</Link>
             </Button>

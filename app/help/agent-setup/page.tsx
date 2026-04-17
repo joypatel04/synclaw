@@ -21,7 +21,7 @@ function AgentSetupGuideContent() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               asChild
-              className="bg-accent-orange text-white hover:bg-accent-orange/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Link href="/agents/new">Create & Configure Agent</Link>
             </Button>
@@ -92,7 +92,7 @@ function AgentSetupGuideContent() {
       <div className="flex flex-wrap gap-2">
         <Button
           asChild
-          className="bg-accent-orange text-white hover:bg-accent-orange/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Link href="/agents">Open agents</Link>
         </Button>

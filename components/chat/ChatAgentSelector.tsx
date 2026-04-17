@@ -85,7 +85,7 @@ export function ChatAgentSelector() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(160deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-4 sm:p-5">
+      <div className="rounded-2xl border border-border-default/75 bg-bg-secondary/80 p-4 sm:p-5">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-dim">
           Agents
         </p>
@@ -113,7 +113,7 @@ export function ChatAgentSelector() {
                     </div>
                     <p className="text-xs text-text-muted">{agent.role}</p>
                   </div>
-                  <div className="text-text-muted group-hover:text-accent-orange transition-smooth">
+                  <div className="text-text-muted group-hover:text-text-secondary transition-smooth">
                     <MessageSquare className="h-5 w-5" />
                   </div>
                 </div>
@@ -123,7 +123,7 @@ export function ChatAgentSelector() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(170deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_82%,transparent))] p-3">
+      <div className="rounded-2xl border border-border-default/75 bg-bg-secondary/78 p-3">
         <OpenClawSessionsList agents={agents} />
       </div>
     </div>

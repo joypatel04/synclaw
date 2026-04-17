@@ -389,7 +389,7 @@ function WebhooksContent() {
                 variant="outline"
                 onClick={() =>
                   void copy(
-                    `${revealSecret.endpointUrl}\nX-Sutraha-Webhook-Secret: ${revealSecret.secret}`,
+                    `${revealSecret.endpointUrl}\nX-Synclaw-Webhook-Secret: ${revealSecret.secret}`,
                   )
                 }
               >

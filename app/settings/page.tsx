@@ -73,7 +73,7 @@ function SettingsContent() {
 
       <div className="space-y-8">
         {/* Workspace Name */}
-        <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-4 shadow-[0_14px_32px_rgba(2,8,24,0.28)] sm:p-6">
+        <div className="rounded-2xl border border-border-default/75 bg-bg-secondary/80 p-4 shadow-[0_12px_26px_rgba(2,8,24,0.16)] sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Workspace Details
           </h2>
@@ -112,7 +112,7 @@ function SettingsContent() {
             </div>
             <div className="space-y-2">
               <Label className="text-text-secondary">Your Role</Label>
-              <span className="inline-flex items-center rounded-md bg-accent-orange/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-accent-orange">
+              <span className="inline-flex items-center rounded-md bg-status-review/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-status-review">
                 {role}
               </span>
             </div>
@@ -120,7 +120,7 @@ function SettingsContent() {
         </div>
 
         {/* Permissions overview */}
-        <div className="rounded-2xl border border-border-default/75 bg-[linear-gradient(165deg,var(--cw-bg-secondary),color-mix(in_oklab,var(--cw-bg-tertiary)_80%,transparent))] p-4 shadow-[0_14px_32px_rgba(2,8,24,0.28)] sm:p-6">
+        <div className="rounded-2xl border border-border-default/75 bg-bg-secondary/80 p-4 shadow-[0_12px_26px_rgba(2,8,24,0.16)] sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-4">
             Role Permissions
           </h2>
@@ -179,7 +179,7 @@ function SettingsContent() {
 
         {/* Danger Zone — owner only */}
         {role === "owner" && (
-          <div className="rounded-2xl border border-status-blocked/35 bg-[linear-gradient(165deg,color-mix(in_oklab,var(--cw-bg-secondary)_90%,var(--cw-status-blocked)_10%),color-mix(in_oklab,var(--cw-bg-tertiary)_90%,var(--cw-status-blocked)_10%))] p-4 shadow-[0_14px_32px_rgba(80,12,12,0.2)] sm:p-6">
+          <div className="rounded-2xl border border-status-blocked/35 bg-status-blocked/6 p-4 shadow-[0_12px_24px_rgba(80,12,12,0.14)] sm:p-6">
             <h2 className="text-sm font-semibold text-status-blocked mb-1 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               Danger Zone

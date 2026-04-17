@@ -1,4 +1,4 @@
-# sutraha-fs-bridge
+# synclaw-fs-bridge
 
 Remote filesystem bridge for Synclaw OpenClaw workspaces.
 
@@ -23,7 +23,7 @@ Remote filesystem bridge for Synclaw OpenClaw workspaces.
 ## Run with Docker
 
 ```bash
-docker build -t sutraha-fs-bridge .
+docker build -t synclaw-fs-bridge .
 
 docker run --rm -p 8787:8787 \
   -e FS_BRIDGE_TOKEN="replace_me" \
@@ -32,12 +32,12 @@ docker run --rm -p 8787:8787 \
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
   -e FS_ALLOWED_BINARY_READ_EXTENSIONS=".pdf" \
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
-  sutraha-fs-bridge
+  synclaw-fs-bridge
 ```
 
 ## Publish image (example)
 
 ```bash
-docker tag sutraha-fs-bridge ghcr.io/sutraha/sutraha-fs-bridge:0.1.0
-docker push ghcr.io/sutraha/sutraha-fs-bridge:0.1.0
+docker tag synclaw-fs-bridge ghcr.io/synclaw/synclaw-fs-bridge:0.1.0
+docker push ghcr.io/synclaw/synclaw-fs-bridge:0.1.0
 ```

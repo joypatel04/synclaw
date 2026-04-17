@@ -20,7 +20,7 @@ export const createJob = mutation({
     provider: v.string(),
     targetHostType: v.union(
       v.literal("customer_vps"),
-      v.literal("sutraha_managed"),
+      v.literal("synclaw_managed"),
     ),
   },
   handler: async (ctx, args) => {

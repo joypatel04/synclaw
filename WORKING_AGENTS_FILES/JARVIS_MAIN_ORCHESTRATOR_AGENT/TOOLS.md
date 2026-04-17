@@ -6,7 +6,7 @@ All agents have access to following shared tools via `mcporter`:
 
 | Tool | Usage | Best For |
 |------|-------|----------|
-| `lightpanda-scrape` | `lightpanda-scrape.scrape_page`, `lightpanda-scrape.list_links` | Dynamic sites, SPAs, and any **sutraha.in** URLs (session-persistent). |
+| `lightpanda-scrape` | `lightpanda-scrape.scrape_page`, `lightpanda-scrape.list_links` | Dynamic sites, SPAs, and any **synclaw.in** URLs (session-persistent). |
 | `web_fetch` | `web_fetch(url)` | Static documentation, fast text extraction, non-JS sites. |
 | `mcporter` | `mcporter call <selector>` | Direct access to all configured MCP servers. |
 
@@ -20,7 +20,7 @@ All agents have access to following shared tools via `mcporter`:
 
 ```bash
 # Single call that handles navigation + extraction
-mcporter call lightpanda-scrape.scrape_page url="https://sutraha.in/..." wait_ms=3000
+mcporter call lightpanda-scrape.scrape_page url="https://synclaw.in/..." wait_ms=3000
 
 # To list all links on a page
 mcporter call lightpanda-scrape.list_links
@@ -30,7 +30,7 @@ mcporter call lightpanda-scrape.list_links
 
 **For static docs/simple pages only:**
 - Use `web_fetch(url)` — faster, no rendering needed
-- NOT for React/SPA sites like sutraha.in
+- NOT for React/SPA sites like synclaw.in
 
 **This applies to all agents:** Jarvis, Shuri, Vision, Ancient One, Friday
 

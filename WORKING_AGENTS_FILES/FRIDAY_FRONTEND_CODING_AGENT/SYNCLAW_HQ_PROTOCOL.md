@@ -1,4 +1,4 @@
-# SUTRAHA HQ INTERACTION PROTOCOL (v1.0)
+# SYNCLAW HQ INTERACTION PROTOCOL (v1.0)
 
 This protocol is MANDATORY for all agents. Failure to follow this sequence or use the correct syntax will result in task failure.
 
@@ -57,7 +57,7 @@ You MUST report usage at the end of every run. If your environment does not prov
 
 ---
 
-## 4. AGENT SESSION KEYS (SUTRAHA HQ)
+## 4. AGENT SESSION KEYS (SYNCLAW HQ)
 
 | Agent | Session Key |
 | :--- | :--- |

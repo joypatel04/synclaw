@@ -19,7 +19,7 @@ The Files Bridge runs on your server and exposes a controlled API for text files
 
 ```bash
 cd packages/fs-bridge
-docker build -t sutraha-fs-bridge .
+docker build -t synclaw-fs-bridge .
 
 docker run --rm -p 8787:8787 \
   -e FS_BRIDGE_TOKEN="replace_me" \
@@ -27,7 +27,7 @@ docker run --rm -p 8787:8787 \
   -e FS_MAX_FILE_BYTES="1048576" \
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
-  sutraha-fs-bridge
+  synclaw-fs-bridge
 ```
 
 ## Configure Synclaw

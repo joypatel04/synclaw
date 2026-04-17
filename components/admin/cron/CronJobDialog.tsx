@@ -346,7 +346,7 @@ export function CronJobDialog({ open, onOpenChange, job, onSave, isSaving }: Cro
                         variant="outline"
                         className={`cursor-pointer transition-colors ${
                           selectedPreset === preset.expr
-                            ? "bg-accent-orange text-white border-accent-orange"
+                            ? "bg-primary text-primary-foreground border-accent-orange"
                             : "hover:bg-bg-secondary"
                         }`}
                         onClick={() => {
@@ -391,7 +391,7 @@ export function CronJobDialog({ open, onOpenChange, job, onSave, isSaving }: Cro
                         variant="outline"
                         className={`cursor-pointer transition-colors ${
                           selectedIntervalPreset === preset.label
-                            ? "bg-accent-orange text-white border-accent-orange"
+                            ? "bg-primary text-primary-foreground border-accent-orange"
                             : "hover:bg-bg-secondary"
                         }`}
                         onClick={() => {

@@ -15,7 +15,7 @@
 **Auto-deploys on every push to `main`.** No manual steps needed.
 
 - Dashboard: https://vercel.com/dashboard
-- Production URL: https://hq.sutraha.in
+- Production URL: https://synclaw.in
 
 ### Environment Variables (Vercel)
 
@@ -27,7 +27,7 @@ NEXT_PUBLIC_MANAGED_BETA_ENABLED=false
 NEXT_PUBLIC_MANAGED_INTERNAL_CONTROLS_ENABLED=false
 NEXT_PUBLIC_ASSISTED_LAUNCH_BETA_ENABLED=false
 NEXT_PUBLIC_APP_NAME=Synclaw
-NEXT_PUBLIC_APP_URL=https://hq.sutraha.in
+NEXT_PUBLIC_APP_URL=https://synclaw.in
 ```
 
 ---
@@ -244,7 +244,7 @@ Deploy this when enabling remote OpenClaw workspace file browsing/editing.
 
 ```bash
 cd packages/fs-bridge
-docker build -t sutraha-fs-bridge .
+docker build -t synclaw-fs-bridge .
 
 docker run --rm -p 8787:8787 \
   -e FS_BRIDGE_TOKEN="replace_me" \
@@ -252,7 +252,7 @@ docker run --rm -p 8787:8787 \
   -e FS_MAX_FILE_BYTES="1048576" \
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
-  sutraha-fs-bridge
+  synclaw-fs-bridge
 ```
 
 ### Synclaw Setup
@@ -299,5 +299,5 @@ bunx convex dev
 | Convex | `descriptive-perch-695` | `confident-ram-83` |
 | Convex Cloud | `descriptive-perch-695.convex.cloud` | `confident-ram-83.convex.cloud` |
 | Convex Site | `descriptive-perch-695.convex.site` | `confident-ram-83.convex.site` |
-| Frontend | `localhost:3001` | `hq.sutraha.in` |
+| Frontend | `localhost:3001` | `synclaw.in` |
 | NEXT_PUBLIC_APP_URL | `http://localhost:3001` | `https://synclaw.in` |

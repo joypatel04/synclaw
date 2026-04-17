@@ -14,7 +14,7 @@ const deploymentModeValidator = v.union(
 );
 const provisioningModeValidator = v.union(
   v.literal("customer_vps"),
-  v.literal("sutraha_managed"),
+  v.literal("synclaw_managed"),
 );
 const serviceTierValidator = v.union(
   v.literal("self_serve"),
@@ -41,7 +41,7 @@ const recommendedMethodValidator = v.union(
 
 type TransportMode = "direct_ws" | "connector" | "self_hosted_local";
 type DeploymentMode = "managed" | "manual";
-type ProvisioningMode = "customer_vps" | "sutraha_managed";
+type ProvisioningMode = "customer_vps" | "synclaw_managed";
 type ServiceTier = "self_serve" | "assisted";
 type RecommendedMethod =
   | "public_wss"
@@ -90,8 +90,8 @@ function normalizeDeploymentMode(input?: string): DeploymentMode {
 }
 
 function normalizeProvisioningMode(input?: string): ProvisioningMode {
-  if (input === "sutraha_managed") return input;
-  return "sutraha_managed";
+  if (input === "synclaw_managed") return input;
+  return "synclaw_managed";
 }
 
 function normalizeServiceTier(input?: string): ServiceTier {

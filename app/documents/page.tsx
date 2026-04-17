@@ -60,7 +60,7 @@ const DOC_TYPES: Array<{ value: "all" | DocType; label: string }> = [
 const typeColors: Record<DocType, string> = {
   deliverable: "bg-status-active/20 text-status-active",
   research: "bg-status-review/20 text-status-review",
-  protocol: "bg-accent-orange/20 text-accent-orange",
+  protocol: "bg-teal/20 text-teal",
   note: "bg-teal/20 text-teal",
   journal: "bg-text-muted/20 text-text-muted",
 };
@@ -245,7 +245,7 @@ function DocumentsContent() {
             className={cn(
               "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
               selected
-                ? "bg-accent-orange/20 text-accent-orange"
+                ? "bg-bg-hover text-text-primary"
                 : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
             )}
             style={{ paddingLeft: `${8 + depth * 14}px` }}
@@ -282,7 +282,7 @@ function DocumentsContent() {
           className={cn(
             "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
             viewMode === "all"
-              ? "bg-accent-orange/20 text-accent-orange"
+              ? "bg-bg-hover text-text-primary"
               : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
           )}
         >
@@ -298,7 +298,7 @@ function DocumentsContent() {
           className={cn(
             "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
             viewMode === "global"
-              ? "bg-accent-orange/20 text-accent-orange"
+              ? "bg-bg-hover text-text-primary"
               : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
           )}
         >
@@ -314,7 +314,7 @@ function DocumentsContent() {
           className={cn(
             "w-full rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
             viewMode === "drafts"
-              ? "bg-accent-orange/20 text-accent-orange"
+              ? "bg-bg-hover text-text-primary"
               : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
           )}
         >
@@ -331,8 +331,8 @@ function DocumentsContent() {
     <div className="app-page-wide">
       <div className="app-page-header flex-col sm:flex-row sm:items-center">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent-orange/30 bg-accent-orange/20">
-            <FileText className="h-4 w-4 text-accent-orange" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-status-review/30 bg-status-review/15">
+            <FileText className="h-4 w-4 text-status-review" />
           </div>
           <div>
             <h1 className="app-page-title">Documents</h1>
@@ -370,7 +370,7 @@ function DocumentsContent() {
           {canEdit && (
             <Button
               size="sm"
-              className="h-8 bg-accent-orange px-3 text-xs text-white hover:bg-accent-orange/90 sm:h-9 sm:px-4"
+              className="h-8 px-3 text-xs sm:h-9 sm:px-4"
               onClick={openCreate}
             >
               New document
@@ -392,7 +392,7 @@ function DocumentsContent() {
                 className={cn(
                   "whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-medium transition-smooth",
                   docTypeFilter === t.value
-                    ? "border-accent-orange bg-accent-orange/20 text-accent-orange"
+                    ? "border-status-review/45 bg-status-review/12 text-status-review"
                     : "border-border-default bg-bg-secondary text-text-secondary hover:border-border-hover",
                 )}
               >
@@ -425,7 +425,7 @@ function DocumentsContent() {
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           <h3 className="truncate text-sm font-semibold text-text-primary">
                             {doc.isGlobalContext && (
-                              <Globe className="mr-1 inline h-3.5 w-3.5 text-accent-orange" />
+                              <Globe className="mr-1 inline h-3.5 w-3.5 text-teal" />
                             )}
                             {doc.title}
                           </h3>
@@ -498,7 +498,7 @@ function DocumentsContent() {
         <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
           <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
             <DialogTitle className="text-text-primary flex items-center gap-2">
-              <FileText className="h-4 w-4 text-accent-orange" />
+              <FileText className="h-4 w-4 text-status-review" />
               {editingDocumentId
                 ? canEdit
                   ? "Edit document"
@@ -577,7 +577,7 @@ function DocumentsContent() {
                       variant="ghost"
                       size="sm"
                       onClick={handleCreateFolder}
-                      className="h-6 px-2 text-[11px] text-accent-orange hover:bg-accent-orange/10 hover:text-accent-orange"
+                      className="h-6 px-2 text-[11px] text-status-review hover:bg-status-review/10 hover:text-status-review"
                       disabled={!canEdit || isCreatingFolder}
                     >
                       <FolderPlus className="mr-1 h-3 w-3" />
@@ -665,7 +665,7 @@ function DocumentsContent() {
                 type="button"
                 onClick={handleSave}
                 disabled={!title.trim() || !docAgentId || isSaving}
-                className="bg-accent-orange text-white hover:bg-accent-orange/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {isSaving
                   ? "Saving..."

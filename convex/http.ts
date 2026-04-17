@@ -169,10 +169,10 @@ http.route({
       });
     }
 
-    const providedSecret = request.headers.get("X-Sutraha-Webhook-Secret");
+    const providedSecret = request.headers.get("X-Synclaw-Webhook-Secret");
     if (!providedSecret) {
       return new Response(
-        JSON.stringify({ error: "Missing X-Sutraha-Webhook-Secret header" }),
+        JSON.stringify({ error: "Missing X-Synclaw-Webhook-Secret header" }),
         { status: 401, headers: jsonHeaders },
       );
     }
@@ -253,7 +253,7 @@ http.route({
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers":
-          "Content-Type, X-Sutraha-Webhook-Secret, X-Provider-Event-Id",
+          "Content-Type, X-Synclaw-Webhook-Secret, X-Provider-Event-Id",
         "Access-Control-Max-Age": "86400",
       },
     });

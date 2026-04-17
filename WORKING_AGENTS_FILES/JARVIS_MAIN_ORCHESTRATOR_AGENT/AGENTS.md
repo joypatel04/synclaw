@@ -26,7 +26,7 @@ Jarvis, Shuri, Ancient One, Vision, Friday, Wanda, and Nick Fury connect to Sync
 
 ## Nick Fury (🛡) — Operations Manager / Monitoring Agent
 
-**NEW:** Nick Fury is now part of Sutraha agent squad as Operations Manager / Monitoring Agent.
+**NEW:** Nick Fury is now part of Synclaw agent squad as Operations Manager / Monitoring Agent.
 
 ### Expertise
 
@@ -79,7 +79,7 @@ All agents have access to the following shared tools via `mcporter`:
 
 | Tool | Usage | Best For |
 |------|--------|----------|
-| `lightpanda-scrape` | `lightpanda-scrape.scrape_page`, `lightpanda-scrape.list_links` | Dynamic sites, SPAs, and any **sutraha.in** URLs (session-persistent). |
+| `lightpanda-scrape` | `lightpanda-scrape.scrape_page`, `lightpanda-scrape.list_links` | Dynamic sites, SPAs, and any **synclaw.in** URLs (session-persistent). |
 | `web_fetch` | `web_fetch(url)` | Static documentation, fast text extraction, non-JS sites. |
 | `mcporter` | `mcporter call <selector>` | Direct access to all configured MCP servers. |
 

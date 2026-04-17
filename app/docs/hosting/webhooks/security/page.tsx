@@ -37,7 +37,7 @@ export default function WebhookSecurityDocsPage() {
       <PublicDocsCard title="Header checklist">
         <PublicDocsCodeBlock
           code={`Required:
-  X-Sutraha-Webhook-Secret
+  X-Synclaw-Webhook-Secret
 
 Recommended:
   X-Provider-Event-Id

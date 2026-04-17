@@ -366,7 +366,7 @@ function CronJobsPageContent() {
             <Button
               size="sm"
               onClick={handleCreate}
-              className="h-8 gap-2 bg-accent-orange hover:bg-accent-orange/90"
+              className="h-8 gap-2 bg-primary hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Create Job</span>
@@ -493,7 +493,7 @@ function CronJobsPageContent() {
             <AlertDialogAction
               onClick={() => runConfirmJob && handleRunJob(runConfirmJob)}
               disabled={isRunning}
-              className="bg-accent-orange hover:bg-accent-orange/90"
+              className="bg-primary hover:bg-primary/90"
             >
               {isRunning ? (
                 <>

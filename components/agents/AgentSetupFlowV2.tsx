@@ -345,7 +345,7 @@ export function AgentSetupFlowV2({
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               size="sm"
-              className="bg-accent-orange text-white hover:bg-accent-orange/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 setChatDraft({
                   workspaceId: String(workspaceId),
@@ -436,7 +436,7 @@ export function AgentSetupFlowV2({
               key={item}
               size="sm"
               variant={mode === item ? "default" : "outline"}
-              className={mode === item ? "bg-accent-orange text-white" : ""}
+              className={mode === item ? "bg-primary text-primary-foreground" : ""}
               onClick={() => setMode(item)}
             >
               {item === "guided"

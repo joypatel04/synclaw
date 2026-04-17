@@ -31,7 +31,7 @@ If you want the fastest activation, use the Public WSS path.
 
 ```bash
 git clone <your-repo-url>
-cd sutraha-hq
+cd synclaw-hq
 bun install
 cp .env.local.example .env.local
 ```
@@ -126,14 +126,14 @@ Run `packages/fs-bridge` on the host that owns your agent workspace path:
 
 ```bash
 cd packages/fs-bridge
-docker build -t sutraha-fs-bridge .
+docker build -t synclaw-fs-bridge .
 docker run --rm -p 8787:8787 \
   -e FS_BRIDGE_TOKEN="replace_me" \
   -e WORKSPACE_ROOT_PATH="/srv/openclaw/workspaces/main" \
   -e FS_MAX_FILE_BYTES="1048576" \
   -e FS_ALLOWED_EXTENSIONS=".md,.txt,.json,.yaml,.yml,.toml,.config,.js,.jsx,.mjs,.ts,.tsx" \
   -v /srv/openclaw/workspaces/main:/srv/openclaw/workspaces/main \
-  sutraha-fs-bridge
+  synclaw-fs-bridge
 ```
 
 Then configure bridge settings in `/filesystem`.

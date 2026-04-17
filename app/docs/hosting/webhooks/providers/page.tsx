@@ -17,7 +17,7 @@ export default function WebhookProviderRecipesPage() {
 https://<convex-site>.convex.site/api/v1/workspaces/webhooks/ingest?workspaceId=<workspaceId>&webhookId=<webhookId>
 
 Secret:
-<same value as X-Sutraha-Webhook-Secret>
+<same value as X-Synclaw-Webhook-Secret>
 
 Content type:
 application/json
@@ -32,7 +32,7 @@ Issues, Issue comments (or desired subset)`}
           code={`Method: POST
 URL: https://<convex-site>.convex.site/api/v1/workspaces/webhooks/ingest?workspaceId=<workspaceId>&webhookId=<webhookId>
 Headers:
-  X-Sutraha-Webhook-Secret: <secret>
+  X-Synclaw-Webhook-Secret: <secret>
   X-Provider-Event-Id: {{zap_meta_human_now}}
 Body:
   {"event":{"type":"zap.trigger"},"payload":{...}}`}
@@ -42,7 +42,7 @@ Body:
       <PublicDocsCard title="Generic server-to-server sender">
         <PublicDocsCodeBlock
           code={`POST /api/v1/workspaces/webhooks/ingest?workspaceId=<workspaceId>&webhookId=<webhookId>
-X-Sutraha-Webhook-Secret: <secret>
+X-Synclaw-Webhook-Secret: <secret>
 X-Provider-Event-Id: <unique-event-id>
 Content-Type: application/json
 

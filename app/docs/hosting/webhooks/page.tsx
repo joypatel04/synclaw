@@ -18,7 +18,7 @@ export default function HostingWebhooksPage() {
         <PublicDocsCodeBlock
           code={`POST /api/v1/workspaces/webhooks/ingest?workspaceId=<workspaceId>&webhookId=<webhookId>
 Headers:
-  X-Sutraha-Webhook-Secret: <secret>  (required)
+  X-Synclaw-Webhook-Secret: <secret>  (required)
   X-Provider-Event-Id: <provider event id> (optional, for idempotency)
   Content-Type: application/json
 
@@ -66,7 +66,7 @@ Errors:
         <PublicDocsCodeBlock
           code={`curl -X POST "https://<convex-site>.convex.site/api/v1/workspaces/webhooks/ingest?workspaceId=<workspaceId>&webhookId=<webhookId>" \\
   -H "Content-Type: application/json" \\
-  -H "X-Sutraha-Webhook-Secret: <secret>" \\
+  -H "X-Synclaw-Webhook-Secret: <secret>" \\
   -H "X-Provider-Event-Id: evt-001" \\
   -d '{"event":{"type":"demo.webhook"},"payload":{"message":"hello"}}'`}
         />

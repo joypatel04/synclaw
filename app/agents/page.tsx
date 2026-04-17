@@ -488,7 +488,7 @@ function AgentsContent() {
             {canAdmin ? (
               <Button
                 size="sm"
-                className="w-full gap-1.5 bg-accent-orange text-white hover:bg-accent-orange/90 sm:w-auto"
+                className="w-full gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
                 onClick={openCreateModal}
               >
                 Create & Configure Agent
