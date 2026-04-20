@@ -64,7 +64,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           a: ({ children, ...props }) => (
             <a
               {...props}
-              className="text-accent-orange underline underline-offset-2"
+              className="text-text-secondary underline underline-offset-2"
               target={props.href?.startsWith("http") ? "_blank" : undefined}
               rel={
                 props.href?.startsWith("http")

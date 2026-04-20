@@ -23,7 +23,6 @@ function formatDuration(ms: number | undefined) {
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
-
 function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   const { workspaceId, canAdmin, role } = useWorkspace();
   const canEditFiles = role === "owner" || role === "admin";
@@ -50,7 +49,7 @@ function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
   if (detail === undefined) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
       </div>
     );
   }
@@ -99,7 +98,7 @@ function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
                     freshnessLabel === "Live"
                       ? "border-status-active/40 bg-status-active/10 text-status-active"
                       : freshnessLabel === "Stale"
-                        ? "border-status-review/40 bg-status-review/10 text-status-review"
+                        ? "border-border-hover bg-bg-hover text-text-secondary"
                         : "border-status-blocked/40 bg-status-blocked/10 text-status-blocked",
                   )}
                 >
@@ -170,7 +169,7 @@ function AgentDetailContent({ agentId }: { agentId: Id<"agents"> }) {
                 <Button
                   asChild
                   variant="link"
-                  className="mt-1 h-auto p-0 text-xs text-accent-orange"
+                  className="mt-1 h-auto p-0 text-xs text-text-secondary"
                 >
                   <Link href={`/tasks/${currentTask._id}`}>Open task</Link>
                 </Button>

@@ -211,7 +211,7 @@ export function AgentRecipeWizard() {
                   onClick={() => applyRecipe(r)}
                   className={`text-left rounded-xl border p-4 transition-smooth ${
                     active
-                      ? "border-accent-orange bg-bg-tertiary"
+                      ? "border-border-hover bg-bg-tertiary"
                       : "border-border-default bg-bg-tertiary hover:border-border-hover"
                   }`}
                 >

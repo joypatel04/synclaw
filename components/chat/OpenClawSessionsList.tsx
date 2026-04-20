@@ -428,7 +428,7 @@ export function OpenClawSessionsList({
           </p>
         </div>
         <div className="flex items-center justify-center py-10">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
         </div>
       </div>
     );
@@ -524,7 +524,7 @@ export function OpenClawSessionsList({
             className={cn(
               "inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[11px] transition-smooth",
               kindFilters[k]
-                ? "border-accent-orange bg-accent-orange/15 text-accent-orange"
+                ? "border-border-hover bg-bg-hover text-text-secondary"
                 : "border-border-default bg-bg-tertiary text-text-muted hover:text-text-secondary",
             )}
             aria-pressed={kindFilters[k]}

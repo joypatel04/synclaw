@@ -123,7 +123,7 @@ function WebhooksContent() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                <Webhook className="h-4 w-4 text-accent-orange" />
+                <Webhook className="h-4 w-4 text-text-secondary" />
                 Webhooks ({webhooks.length})
               </h2>
               <p className="mt-1 text-xs text-text-muted">
@@ -159,7 +159,7 @@ function WebhooksContent() {
                   key={webhook._id}
                   className={`rounded-lg border p-3 ${
                     selectedWebhook?._id === webhook._id
-                      ? "border-accent-orange/50 bg-accent-orange/5"
+                      ? "border-border-hover bg-bg-hover"
                       : "border-border-default bg-bg-primary"
                   }`}
                 >

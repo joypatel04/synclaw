@@ -929,7 +929,7 @@ export function OnboardingWizard() {
   if (status === undefined || summary === undefined) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
       </div>
     );
   }
@@ -937,8 +937,8 @@ export function OnboardingWizard() {
   return (
     <div className="mx-auto max-w-3xl p-3 sm:p-6">
       <div className="flex items-start gap-3 mb-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-orange/15 glow-orange">
-          <Zap className="h-5 w-5 text-accent-orange" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-hover glow-orange">
+          <Zap className="h-5 w-5 text-text-secondary" />
         </div>
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-text-primary">
@@ -953,7 +953,7 @@ export function OnboardingWizard() {
       <div className="space-y-6">
         <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <div className="flex items-center gap-2">
-            <Server className="h-4 w-4 text-accent-orange" />
+            <Server className="h-4 w-4 text-text-secondary" />
             <h2 className="text-sm font-semibold text-text-primary">
               Need OpenClaw setup?
             </h2>
@@ -972,7 +972,7 @@ export function OnboardingWizard() {
               }}
               className={`rounded-lg border p-3 text-left ${
                 !managedSetupUiEnabled
-                  ? "border-accent-orange/50 bg-accent-orange/10"
+                  ? "border-border-hover bg-bg-hover"
                   : "border-border-default bg-bg-primary"
               }`}
             >
@@ -1006,7 +1006,7 @@ export function OnboardingWizard() {
                 }}
                 className={`rounded-lg border p-3 text-left ${
                   managedSetupUiEnabled
-                    ? "border-accent-orange/50 bg-accent-orange/10"
+                    ? "border-border-hover bg-bg-hover"
                     : "border-border-default bg-bg-primary"
                 }`}
               >
@@ -1126,7 +1126,7 @@ export function OnboardingWizard() {
                         onClick={() => setServerProfile(profile.code)}
                         className={`rounded-md border p-2 text-left ${
                           selected
-                            ? "border-accent-orange/50 bg-accent-orange/10"
+                            ? "border-border-hover bg-bg-hover"
                             : "border-border-default bg-bg-secondary"
                         }`}
                       >
@@ -1504,7 +1504,7 @@ export function OnboardingWizard() {
                           onClick={() => setTransportMode(method.mode)}
                           className={`rounded-xl border p-3 text-left ${
                             selected
-                              ? "border-accent-orange/50 bg-accent-orange/10"
+                              ? "border-border-hover bg-bg-hover"
                               : "border-border-default bg-bg-primary"
                           }`}
                         >
@@ -1513,7 +1513,7 @@ export function OnboardingWizard() {
                               {method.title}
                             </p>
                             {method.badge ? (
-                              <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                              <span className="rounded-full bg-bg-hover px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
                                 {method.badge}
                               </span>
                             ) : recommended ? (
@@ -1553,7 +1553,7 @@ export function OnboardingWizard() {
                           onClick={() => setTransportMode(method.mode)}
                           className={`mt-3 w-full rounded-xl border p-3 text-left ${
                             selected
-                              ? "border-accent-orange/50 bg-accent-orange/10"
+                              ? "border-border-hover bg-bg-hover"
                               : "border-border-default bg-bg-secondary"
                           }`}
                         >
@@ -1863,8 +1863,8 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 </div>
 
                 {pairingHintVisible && transportMode !== "connector" ? (
-                  <div className="rounded-xl border border-accent-orange/30 bg-accent-orange/5 p-3">
-                    <p className="text-xs font-semibold text-accent-orange">
+                  <div className="rounded-xl border border-border-hover bg-bg-hover p-3">
+                    <p className="text-xs font-semibold text-text-secondary">
                       Pairing approval needed
                     </p>
                     <p className="mt-1 text-xs text-text-muted">

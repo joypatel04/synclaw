@@ -451,7 +451,7 @@ export function ScopedFilesystemPanel({
           Files bridge is not ready. Configure it in{" "}
           <Link
             href="/filesystem"
-            className="text-accent-orange hover:underline"
+            className="text-text-secondary hover:underline"
           >
             Filesystem settings
           </Link>
@@ -464,7 +464,7 @@ export function ScopedFilesystemPanel({
           Configure OpenClaw connection first in{" "}
           <Link
             href="/settings/openclaw"
-            className="text-accent-orange hover:underline"
+            className="text-text-secondary hover:underline"
           >
             Settings - OpenClaw
           </Link>
@@ -507,14 +507,14 @@ export function ScopedFilesystemPanel({
                 {AGENT_SETUP_ADVANCED_ENABLED ? (
                   <Link
                     href="/help/agent-setup"
-                    className="text-accent-orange hover:underline"
+                    className="text-text-secondary hover:underline"
                   >
                     Open Agent Setup Guide
                   </Link>
                 ) : null}
                 <button
                   type="button"
-                  className="text-accent-orange hover:underline"
+                  className="text-text-secondary hover:underline"
                   onClick={() => void openDirectory(".", true)}
                 >
                   Refresh Filesystem

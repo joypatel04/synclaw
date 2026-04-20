@@ -52,7 +52,7 @@ function TreeRow({
         className={cn(
           "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-smooth",
           isSelected
-            ? "bg-accent-orange/10 text-accent-orange"
+            ? "bg-bg-hover text-text-secondary"
             : "text-text-primary hover:bg-bg-tertiary",
         )}
         style={{ paddingLeft: `${8 + depth * 14}px` }}

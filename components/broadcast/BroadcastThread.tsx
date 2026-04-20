@@ -19,8 +19,8 @@ export function BroadcastThread({ broadcastId }: BroadcastThreadProps) {
   const agents = useQuery(api.agents.list, { workspaceId }) ?? [];
 
   
-  if (broadcast === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
-  if (broadcast === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Broadcast not found</p><Link href="/broadcasts" className="mt-2 text-sm text-accent-orange hover:underline">Back to broadcasts</Link></div>;
+  if (broadcast === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-border-hover border-t-transparent" /></div>;
+  if (broadcast === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Broadcast not found</p><Link href="/broadcasts" className="mt-2 text-sm text-text-secondary hover:underline">Back to broadcasts</Link></div>;
 
   const targetAgents = broadcast.targetAgentIds === "all" ? agents : agents.filter((a) => (broadcast.targetAgentIds as string[]).includes(a._id));
   const getAuthorLabel = (msg: any, agent: any) => {
@@ -47,7 +47,7 @@ export function BroadcastThread({ broadcastId }: BroadcastThreadProps) {
         <div className="mt-4 flex items-center gap-2"><Users className="h-4 w-4 text-text-muted" /><div className="flex flex-wrap gap-1.5">{targetAgents.map((a) => <span key={a._id} className="inline-flex items-center gap-1 rounded-md bg-bg-tertiary px-2 py-0.5 text-xs text-text-secondary">{a.emoji} {a.name}</span>)}</div></div>
       </div>
       <div className="mt-6">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary mb-4"><MessageSquare className="h-4 w-4 text-accent-orange" />Responses ({broadcast.responseMessages?.length ?? 0})</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary mb-4"><MessageSquare className="h-4 w-4 text-text-secondary" />Responses ({broadcast.responseMessages?.length ?? 0})</h2>
         {!broadcast.responseMessages || broadcast.responseMessages.length === 0 ? (
           <EmptyState icon={MessageSquare} title="No responses yet" description="Agents will respond on their next heartbeat" />
         ) : (

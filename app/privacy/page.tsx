@@ -38,7 +38,7 @@ export default function PrivacyPage() {
               registered email for privacy matters is{" "}
               <a
                 href="mailto:privacy@synclaw.in"
-                className="text-accent-orange underline"
+                className="text-text-secondary underline"
               >
                 privacy@synclaw.in
               </a>
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
                 machine-readable JSON format from{" "}
                 <Link
                   href="/settings/account"
-                  className="text-accent-orange underline"
+                  className="text-text-secondary underline"
                 >
                   Settings &rarr; Account
                 </Link>
@@ -138,7 +138,7 @@ export default function PrivacyPage() {
                 workspace data from{" "}
                 <Link
                   href="/settings/account"
-                  className="text-accent-orange underline"
+                  className="text-text-secondary underline"
                 >
                   Settings &rarr; Account
                 </Link>
@@ -152,7 +152,7 @@ export default function PrivacyPage() {
                 <strong>Object / Restrict (Art. 21-22):</strong> Contact us at{" "}
                 <a
                   href="mailto:privacy@synclaw.in"
-                  className="text-accent-orange underline"
+                  className="text-text-secondary underline"
                 >
                   privacy@synclaw.in
                 </a>
@@ -197,7 +197,7 @@ export default function PrivacyPage() {
               For privacy requests or questions, email{" "}
               <a
                 href="mailto:privacy@synclaw.in"
-                className="text-accent-orange underline"
+                className="text-text-secondary underline"
               >
                 privacy@synclaw.in
               </a>

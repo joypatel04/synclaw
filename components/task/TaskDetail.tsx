@@ -47,8 +47,8 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
     setBlockedReasonDraft(blockedReason);
   }, [task, task?._id, task?.status]);
 
-  if (task === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" /></div>;
-  if (task === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Task not found</p><Link href="/" className="mt-2 text-sm text-accent-orange hover:underline">Back to dashboard</Link></div>;
+  if (task === undefined) return <div className="flex items-center justify-center py-20"><div className="h-6 w-6 animate-spin rounded-full border-2 border-border-hover border-t-transparent" /></div>;
+  if (task === null) return <div className="flex flex-col items-center justify-center py-20 text-center"><p className="text-text-muted">Task not found</p><Link href="/" className="mt-2 text-sm text-text-secondary hover:underline">Back to dashboard</Link></div>;
 
   const assignees = agents.filter((a) => task.assigneeIds.includes(a._id as Id<"agents">));
 
@@ -275,7 +275,7 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
                       onClick={() => toggleAssignee(agent._id as Id<"agents">)}
                       className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-smooth ${
                         isAssigned
-                          ? "bg-accent-orange/20 border-accent-orange text-accent-orange"
+                          ? "bg-bg-hover border-border-hover text-text-secondary"
                           : "bg-bg-primary border-border-default text-text-secondary hover:border-border-hover"
                       }`}
                     >

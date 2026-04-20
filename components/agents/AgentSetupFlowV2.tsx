@@ -327,7 +327,7 @@ export function AgentSetupFlowV2({
   if (!detail || !setupPlan || !status) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
       </div>
     );
   }

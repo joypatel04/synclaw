@@ -125,7 +125,7 @@ export function ChatInput({
             placeholder={placeholder}
             rows={1}
             disabled={disabled}
-            className={`flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange overflow-y-auto text-sm ${
+            className={`flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-ring/35 overflow-y-auto text-sm ${
               isExpanded
                 ? "resize-y min-h-[160px] max-h-[50vh]"
                 : compact

@@ -48,7 +48,7 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
           "group cursor-pointer rounded-xl border border-border-default/75 bg-bg-primary/55 p-3 transition-smooth",
           "hover:border-border-hover hover:bg-bg-primary/70",
           isDragging &&
-            "opacity-60 border-dashed border-accent-orange rotate-1",
+            "opacity-60 border-dashed border-border-hover rotate-1",
         )}
       >
         <div className="flex items-start justify-between gap-2">

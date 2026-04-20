@@ -313,7 +313,7 @@ export function CommentForm({ taskId }: CommentFormProps) {
           onChange={handleChange}
           placeholder="Add a comment... (type @ to mention)"
           rows={2}
-          className="flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange resize-none text-sm"
+          className="flex-1 bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-ring/35 resize-none text-sm"
         />
         <Button
           type="submit"

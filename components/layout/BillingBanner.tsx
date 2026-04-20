@@ -22,12 +22,12 @@ export function BillingBanner() {
   if (!visible) return null;
 
   return (
-    <div className="flex items-center justify-between border-b border-accent-orange/30 bg-accent-orange/10 px-4 py-2 text-xs text-accent-orange">
+    <div className="flex items-center justify-between border-b border-border-hover bg-bg-hover px-4 py-2 text-xs text-text-secondary">
       <span>
         Want a guided setup?{" "}
         <Link
           href="#"
-          className="font-semibold underline underline-offset-2 hover:text-accent-orange/80"
+          className="font-semibold underline underline-offset-2 hover:text-text-secondary/80"
         >
           Book a setup call
         </Link>{" "}

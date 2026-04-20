@@ -24,8 +24,8 @@ export default function HelpPage() {
     <AppLayout>
       <div className="mx-auto max-w-4xl space-y-6 p-3 sm:p-6">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-orange/15 glow-orange">
-            <LifeBuoy className="h-5 w-5 text-accent-orange" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-hover glow-orange">
+            <LifeBuoy className="h-5 w-5 text-text-secondary" />
           </div>
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-text-primary sm:text-xl">
@@ -78,11 +78,11 @@ export default function HelpPage() {
                   <Link
                     key={doc.href}
                     href={doc.href}
-                    className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-accent-orange/40 hover:bg-bg-hover"
+                    className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-border-hover hover:bg-bg-hover"
                   >
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-primary">
-                        <Icon className="h-4 w-4 text-accent-orange" />
+                        <Icon className="h-4 w-4 text-text-secondary" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-text-primary">

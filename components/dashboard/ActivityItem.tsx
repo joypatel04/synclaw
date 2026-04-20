@@ -27,11 +27,11 @@ const typeIcons = {
 };
 
 const typeColors = {
-  task_created: "text-accent-orange",
+  task_created: "text-text-secondary",
   task_updated: "text-teal",
   message_sent: "text-text-secondary",
   agent_status: "text-status-active",
-  broadcast_sent: "text-status-review",
+  broadcast_sent: "text-text-secondary",
   mention_alert: "text-status-blocked",
   document_created: "text-text-secondary",
   document_updated: "text-text-secondary",
@@ -48,15 +48,17 @@ export function ActivityItem({ activity }: ActivityItemProps) {
 
   const meta = activity.metadata as any;
   const documentId =
-    meta && typeof meta === "object" ? (meta.documentId as string | undefined) : undefined;
+    meta && typeof meta === "object"
+      ? (meta.documentId as string | undefined)
+      : undefined;
 
-  const href =
-    activity.taskId
-      ? `/tasks/${activity.taskId}`
-      : (activity.type === "document_created" || activity.type === "document_updated") &&
-          documentId
-        ? `/documents?docId=${encodeURIComponent(documentId)}`
-        : null;
+  const href = activity.taskId
+    ? `/tasks/${activity.taskId}`
+    : (activity.type === "document_created" ||
+          activity.type === "document_updated") &&
+        documentId
+      ? `/documents?docId=${encodeURIComponent(documentId)}`
+      : null;
 
   const Wrapper: any = href ? Link : "div";
   const wrapperProps = href ? { href } : {};
@@ -82,7 +84,7 @@ export function ActivityItem({ activity }: ActivityItemProps) {
         <div className="mt-1 flex items-center gap-2">
           <Timestamp time={activity.createdAt} />
           {href && (
-            <span className="text-[10px] font-medium text-accent-orange/95">
+            <span className="text-[10px] font-medium text-text-secondary/95">
               View →
             </span>
           )}

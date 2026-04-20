@@ -60,11 +60,11 @@ export function CreateTaskModal({ open, onOpenChange, agents }: CreateTaskModalP
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label className="text-text-secondary">Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title..." className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange" required />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title..." className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-ring/35" required />
           </div>
           <div className="space-y-2">
             <Label className="text-text-secondary">Description</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the task..." rows={3} className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-accent-orange resize-none" />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the task..." rows={3} className="bg-bg-primary border-border-default text-text-primary placeholder:text-text-dim focus-visible:ring-ring/35 resize-none" />
           </div>
           <div className="space-y-2">
             <Label className="text-text-secondary">Priority</Label>
@@ -83,7 +83,7 @@ export function CreateTaskModal({ open, onOpenChange, agents }: CreateTaskModalP
             <div className="flex flex-wrap gap-2">
               {agents.map((agent) => (
                 <button key={agent._id} type="button" onClick={() => toggleAgent(agent._id)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth border ${selectedAgents.includes(agent._id) ? "bg-accent-orange/20 border-accent-orange text-accent-orange" : "bg-bg-primary border-border-default text-text-secondary hover:border-border-hover"}`}>
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth border ${selectedAgents.includes(agent._id) ? "bg-bg-hover border-border-hover text-text-secondary" : "bg-bg-primary border-border-default text-text-secondary hover:border-border-hover"}`}>
                   <span>{agent.emoji}</span>{agent.name}
                 </button>
               ))}

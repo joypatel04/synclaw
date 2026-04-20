@@ -138,7 +138,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border-default">
-        <MessageSquare className="h-4 w-4 text-accent-orange" />
+        <MessageSquare className="h-4 w-4 text-text-secondary" />
         <h3 className="text-sm font-semibold text-text-primary">
           Comments ({messages.length})
         </h3>
@@ -194,7 +194,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
                             type="button"
                             size="xs"
                             variant="ghost"
-                            className="h-6 px-2 text-[10px] text-text-muted hover:text-accent-orange gap-1"
+                            className="h-6 px-2 text-[10px] text-text-muted hover:text-text-secondary gap-1"
                             onClick={() =>
                               openDocModalFor(msg as Doc<"messages">)
                             }
@@ -244,7 +244,7 @@ export function CommentThread({ taskId }: CommentThreadProps) {
           <DialogContent className="bg-bg-secondary border-border-default sm:max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
             <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
               <DialogTitle className="text-text-primary flex items-center gap-2">
-                <FileText className="h-4 w-4 text-accent-orange" />
+                <FileText className="h-4 w-4 text-text-secondary" />
                 Save comment as document
               </DialogTitle>
             </DialogHeader>

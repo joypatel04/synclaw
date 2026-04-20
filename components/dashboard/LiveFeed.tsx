@@ -152,7 +152,7 @@ export function LiveFeed() {
                 className={cn(
                   "h-7 rounded-full border px-2.5 text-[10px] font-medium transition-smooth inline-flex items-center gap-2",
                   isActive
-                    ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
+                    ? "bg-bg-hover border-border-hover text-text-secondary"
                     : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
                 )}
               >
@@ -161,7 +161,7 @@ export function LiveFeed() {
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] leading-none",
                     isActive
-                      ? "bg-accent-orange/20 text-accent-orange"
+                      ? "bg-bg-hover text-text-secondary"
                       : "bg-bg-secondary text-text-muted",
                   )}
                 >
@@ -179,7 +179,7 @@ export function LiveFeed() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter…"
-              className="h-8 w-full rounded-lg border border-border-default bg-bg-primary/85 pl-7 pr-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-accent-orange/30"
+              className="h-8 w-full rounded-lg border border-border-default bg-bg-primary/85 pl-7 pr-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-ring/25"
             />
           </div>
         </div>
@@ -191,7 +191,7 @@ export function LiveFeed() {
             className={cn(
               "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
               selectedAgentId === "all"
-                ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
+                ? "bg-bg-hover border-border-hover text-text-secondary"
                 : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
             )}
           >
@@ -211,7 +211,7 @@ export function LiveFeed() {
                 className={cn(
                   "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
                   isActive
-                    ? "bg-accent-orange/14 border-accent-orange/45 text-accent-orange"
+                    ? "bg-bg-hover border-border-hover text-text-secondary"
                     : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
                 )}
               >
@@ -221,7 +221,7 @@ export function LiveFeed() {
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] leading-none",
                     isActive
-                      ? "bg-accent-orange/20 text-accent-orange"
+                      ? "bg-bg-hover text-text-secondary"
                       : "bg-bg-secondary text-text-muted",
                   )}
                 >

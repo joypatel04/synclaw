@@ -17,7 +17,7 @@ export function AgentPanel() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between border-b border-border-default/70 px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-          <Bot className="h-4 w-4 text-accent-orange" />
+          <Bot className="h-4 w-4 text-text-secondary" />
           Agents
         </h2>
         <span className="rounded-full border border-border-default bg-bg-primary/80 px-2 py-0.5 text-[10px] text-text-muted font-mono">

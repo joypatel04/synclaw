@@ -147,7 +147,7 @@ export function ChatBubble({
       className={cn(
         "group relative w-fit max-w-full overflow-hidden rounded-2xl border px-3.5 py-2.5 shadow-[0_10px_24px_rgba(2,8,24,0.14)] wrap-break-word sm:max-w-176 sm:px-4 sm:py-3",
         isUser
-          ? "rounded-tr-sm border-status-review/35 bg-bg-secondary/92"
+          ? "rounded-tr-sm border-border-hover bg-bg-secondary/92"
           : "rounded-tl-sm border-border-default/75 bg-bg-primary/86",
       )}
     >

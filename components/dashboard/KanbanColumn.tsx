@@ -53,7 +53,7 @@ export function KanbanColumn({
             {...provided.droppableProps}
             className={cn(
               "scrollbar-none min-h-[80px] flex-1 space-y-2 overflow-y-auto px-2 pb-2 transition-smooth",
-              snapshot.isDraggingOver && "rounded-b-2xl bg-accent-orange/8",
+              snapshot.isDraggingOver && "rounded-b-2xl bg-bg-hover",
             )}
           >
             {tasks.map((task, index) => (

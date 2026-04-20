@@ -163,6 +163,6 @@ export function FilesystemEditor({
 
 function cnTab(active: boolean): string {
   return active
-    ? "rounded px-2 py-1 text-[11px] font-medium text-accent-orange"
+    ? "rounded px-2 py-1 text-[11px] font-medium text-text-secondary"
     : "rounded px-2 py-1 text-[11px] text-text-muted hover:text-text-primary";
 }

@@ -53,7 +53,7 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
         <span
           className={cn(
             "ml-auto mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full",
-            isActive ? "bg-status-active" : "bg-status-review",
+            isActive ? "bg-status-active" : "bg-status-idle",
           )}
           title={isActive ? "Active" : "Idle"}
         />

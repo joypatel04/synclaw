@@ -51,8 +51,8 @@ const roleIcons: Record<string, React.ElementType> = {
 };
 
 const roleBadgeColors: Record<string, string> = {
-  owner: "bg-accent-orange/20 text-accent-orange",
-  admin: "bg-status-review/20 text-status-review",
+  owner: "bg-bg-hover text-text-secondary",
+  admin: "bg-bg-hover text-text-secondary",
   member: "bg-teal/20 text-teal",
   viewer: "bg-bg-tertiary text-text-muted",
 };
@@ -138,7 +138,7 @@ function MembersContent() {
       <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-            <Users className="h-4 w-4 text-accent-orange" />
+            <Users className="h-4 w-4 text-text-secondary" />
             Members ({members.length})
           </h2>
           {canManage && (
@@ -284,7 +284,7 @@ function MembersContent() {
       {canManage && pendingInvites.length > 0 && (
         <div className="mt-6 rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-4">
-            <Mail className="h-4 w-4 text-status-review" />
+            <Mail className="h-4 w-4 text-text-secondary" />
             Pending Invites ({pendingInvites.length})
           </h2>
           <div className="divide-y divide-border-default">

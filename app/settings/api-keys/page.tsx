@@ -105,14 +105,13 @@ function ApiKeysContent() {
     );
   }
 
-
   return (
     <div className="mx-auto max-w-2xl p-3 sm:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-orange/20">
-            <Key className="h-4 w-4 text-accent-orange" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-hover">
+            <Key className="h-4 w-4 text-text-secondary" />
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-text-primary">
@@ -159,7 +158,7 @@ function ApiKeysContent() {
                   <p className="text-sm font-semibold text-text-primary">
                     {key.name}
                   </p>
-                  <span className="inline-flex items-center rounded-md bg-accent-orange/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                  <span className="inline-flex items-center rounded-md bg-bg-hover px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
                     {key.role}
                   </span>
                 </div>
@@ -300,7 +299,7 @@ function ApiKeysContent() {
                 <DialogTitle className="text-text-primary">
                   API Key Created
                 </DialogTitle>
-                <DialogDescription className="text-status-review">
+                <DialogDescription className="text-text-secondary">
                   Copy this key now — it won't be shown again.
                 </DialogDescription>
               </DialogHeader>
@@ -322,8 +321,8 @@ function ApiKeysContent() {
                     )}
                   </Button>
                 </div>
-                <div className="rounded-lg bg-status-review/10 border border-status-review/20 p-3">
-                  <p className="text-xs text-status-review">
+                <div className="rounded-lg bg-bg-hover border border-border-hover p-3">
+                  <p className="text-xs text-text-secondary">
                     Store this key securely. You won't be able to see it again
                     after closing this dialog.
                   </p>

@@ -37,7 +37,7 @@ export function ChatMessageGroup({
             {userImage ? (
               <AvatarImage src={userImage} alt={userName ?? "You"} />
             ) : null}
-            <AvatarFallback className="bg-accent-orange/15 text-text-primary border border-accent-orange/25 text-xs">
+            <AvatarFallback className="bg-bg-hover text-text-primary border border-border-hover text-xs">
               {(userName?.trim()?.[0] ?? "U").toUpperCase()}
             </AvatarFallback>
           </Avatar>

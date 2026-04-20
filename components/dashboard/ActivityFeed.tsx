@@ -64,7 +64,7 @@ export function ActivityFeed() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-          <Activity className="h-4 w-4 text-accent-orange" />
+          <Activity className="h-4 w-4 text-text-secondary" />
           Activity
         </h2>
         <span className="text-[10px] text-text-muted font-mono">
@@ -108,7 +108,7 @@ export function ActivityFeed() {
                   onClick={() => setSelectedAgentId(agent._id as Id<"agents">)}
                   className={`rounded-md border px-2 py-1 text-[10px] whitespace-nowrap transition-smooth ${
                     selectedAgentId === agent._id
-                      ? "bg-accent-orange/20 border-accent-orange text-accent-orange"
+                      ? "bg-bg-hover border-border-hover text-text-secondary"
                       : "bg-bg-primary border-border-default text-text-muted hover:text-text-secondary"
                   }`}
                 >

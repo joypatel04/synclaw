@@ -112,7 +112,7 @@ function SettingsContent() {
             </div>
             <div className="space-y-2">
               <Label className="text-text-secondary">Your Role</Label>
-              <span className="inline-flex items-center rounded-md bg-status-review/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-status-review">
+              <span className="inline-flex items-center rounded-md bg-bg-hover px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-text-secondary">
                 {role}
               </span>
             </div>

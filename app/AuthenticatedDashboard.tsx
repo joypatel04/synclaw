@@ -65,7 +65,7 @@ function DashboardContent() {
                   className={cn(
                     "transition-smooth flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium",
                     isActive
-                      ? "text-accent-orange"
+                      ? "text-text-secondary"
                       : "text-text-muted hover:text-text-secondary",
                   )}
                 >
@@ -73,7 +73,7 @@ function DashboardContent() {
                     className={cn(
                       "h-5 w-5",
                       isActive &&
-                        "drop-shadow-[0_0_6px_var(--cw-accent-orange)]",
+                        "drop-shadow-[0_0_4px_rgba(148,163,184,0.35)]",
                     )}
                   />
                   {tab.label}
@@ -101,7 +101,7 @@ export function AuthenticatedDashboard({
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
       </div>
     );
   }

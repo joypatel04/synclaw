@@ -731,7 +731,7 @@ function OpenClawSettingsContent() {
                       }}
                       className={`rounded-xl border p-3 text-left ${
                         active
-                          ? "border-accent-orange/50 bg-accent-orange/10"
+                          ? "border-border-hover bg-bg-hover"
                           : "border-border-default bg-bg-primary"
                       } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
                     >
@@ -740,7 +740,7 @@ function OpenClawSettingsContent() {
                           {method.title}
                         </p>
                         {method.badge ? (
-                          <span className="rounded-full bg-accent-orange/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+                          <span className="rounded-full bg-bg-hover px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
                             {method.badge}
                           </span>
                         ) : suggested ? (
@@ -780,7 +780,7 @@ function OpenClawSettingsContent() {
                       }}
                       className={`mt-2 w-full rounded-xl border p-3 text-left ${
                         active
-                          ? "border-accent-orange/50 bg-accent-orange/10"
+                          ? "border-border-hover bg-bg-hover"
                           : "border-border-default bg-bg-secondary"
                       } ${managedModeActive ? "opacity-60 cursor-not-allowed" : ""}`}
                     >
@@ -803,7 +803,7 @@ function OpenClawSettingsContent() {
 
             <div className="rounded-xl border border-border-default bg-bg-secondary p-4 sm:p-6">
               <div className="flex items-center gap-2">
-                <Server className="h-4 w-4 text-accent-orange" />
+                <Server className="h-4 w-4 text-text-secondary" />
                 <h2 className="text-sm font-semibold text-text-primary">
                   Need OpenClaw setup?
                 </h2>
@@ -902,7 +902,7 @@ function OpenClawSettingsContent() {
                         onClick={() => setServerProfile(profile.code)}
                         className={`rounded-md border p-2 text-left ${
                           selected
-                            ? "border-accent-orange/50 bg-accent-orange/10"
+                            ? "border-border-hover bg-bg-hover"
                             : "border-border-default bg-bg-primary"
                         }`}
                       >
@@ -1163,7 +1163,7 @@ function OpenClawSettingsContent() {
               <>
                 {transportMode === "connector" ? (
                   <>
-                    <div className="rounded-lg border border-status-review/40 bg-status-review/10 px-3 py-2 text-[11px] text-status-review">
+                    <div className="rounded-lg border border-border-hover bg-bg-hover px-3 py-2 text-[11px] text-text-secondary">
                       Private Connector is an advanced path for private
                       networking operators. Use Public WSS unless you need
                       tailnet/private upstream routing.
@@ -1211,7 +1211,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                         Guide:{" "}
                         <Link
                           href="/docs/hosting/self-hosted/mcp"
-                          className="text-accent-orange hover:underline"
+                          className="text-text-secondary hover:underline"
                         >
                           Private-network setup documentation
                         </Link>
@@ -1238,7 +1238,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                       </span>
                     </p>
                     {showMixedContentWarning ? (
-                      <div className="rounded-md border border-status-review/40 bg-status-review/10 px-2.5 py-2 text-[11px] text-status-review">
+                      <div className="rounded-md border border-border-hover bg-bg-hover px-2.5 py-2 text-[11px] text-text-secondary">
                         This app is running on HTTPS. Browsers often block{" "}
                         <code className="font-mono">ws://</code> as mixed
                         content. Prefer{" "}
@@ -1282,7 +1282,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                 type="checkbox"
                 checked={includeCron}
                 onChange={(e) => setIncludeCron(e.target.checked)}
-                className="h-4 w-4 accent-accent-orange"
+                className="h-4 w-4 accent-primary"
               />
               Include cron/heartbeat sessions in chat
             </label>
@@ -1291,7 +1291,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
               <p className="text-xs text-text-muted">
                 <Link
                   href="/admin/cron"
-                  className="font-medium text-accent-orange hover:underline"
+                  className="font-medium text-text-secondary hover:underline"
                 >
                   Manage gateway cron jobs
                 </Link>{" "}
@@ -1569,7 +1569,7 @@ OPENCLAW_PRIVATE_WS_URL=ws://127.0.0.1:8788
                           [item.id]: e.target.checked,
                         }))
                       }
-                      className="mt-0.5 h-4 w-4 accent-accent-orange"
+                      className="mt-0.5 h-4 w-4 accent-primary"
                     />
                     {item.label}
                   </label>

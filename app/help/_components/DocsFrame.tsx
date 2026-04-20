@@ -18,8 +18,8 @@ export function DocsFrame({
       <div className="mx-auto max-w-4xl p-3 sm:p-6">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-orange/15 glow-orange">
-              <Icon className="h-5 w-5 text-accent-orange" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-hover glow-orange">
+              <Icon className="h-5 w-5 text-text-secondary" />
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-bold text-text-primary sm:text-xl">

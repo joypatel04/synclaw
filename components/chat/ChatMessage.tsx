@@ -187,7 +187,7 @@ export function ChatMessage({
           {userImage ? (
             <AvatarImage src={userImage} alt={userName ?? "You"} />
           ) : null}
-          <AvatarFallback className="bg-accent-orange/15 text-text-primary border border-accent-orange/25">
+          <AvatarFallback className="bg-bg-hover text-text-primary border border-border-hover">
             {(userName?.trim()?.[0] ?? "U").toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -205,7 +205,7 @@ export function ChatMessage({
         className={cn(
           bubbleClass,
           isUser
-            ? "bg-accent-orange-dim border-accent-orange/25 rounded-tr-sm"
+            ? "bg-bg-hover border-border-hover rounded-tr-sm"
             : "bg-bg-primary border-border-default rounded-tl-sm",
         )}
       >

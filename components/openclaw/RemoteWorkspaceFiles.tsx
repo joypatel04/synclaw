@@ -270,7 +270,7 @@ export function RemoteWorkspaceFiles({
           />
           <p className="mt-2 text-[11px] text-text-dim">
             Fallback local editor:{" "}
-            <Link href="/settings/openclaw" className="text-accent-orange hover:underline">
+            <Link href="/settings/openclaw" className="text-text-secondary hover:underline">
               Local OpenClaw config editor
             </Link>
           </p>

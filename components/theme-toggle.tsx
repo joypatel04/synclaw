@@ -63,7 +63,7 @@ export function ThemeToggle() {
             className={cn(
               "flex items-center gap-2 cursor-pointer",
               theme === value
-                ? "text-accent-orange"
+                ? "text-text-secondary"
                 : "text-text-secondary hover:text-text-primary",
             )}
           >

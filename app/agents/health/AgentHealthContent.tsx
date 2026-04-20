@@ -26,7 +26,7 @@ function HealthBadge({
     tone === "ok"
       ? "border-status-active/40 bg-status-active/10 text-status-active"
       : tone === "warn"
-        ? "border-status-review/40 bg-status-review/10 text-status-review"
+        ? "border-border-hover bg-bg-hover text-text-secondary"
         : "border-status-blocked/40 bg-status-blocked/10 text-status-blocked";
   return (
     <span
@@ -40,8 +40,10 @@ function HealthBadge({
 function AgentHealthInner() {
   const { workspaceId, canAdmin, canManage } = useWorkspace();
   const agents =
-    useQuery(api.agents.list, canManage ? { workspaceId, includeArchived: true } : "skip") ??
-    [];
+    useQuery(
+      api.agents.list,
+      canManage ? { workspaceId, includeArchived: true } : "skip",
+    ) ?? [];
 
   const rows = useMemo(() => {
     const now = Date.now();
@@ -53,8 +55,16 @@ function AgentHealthInner() {
         const pulseAt = a.lastPulseAt ?? 0;
         const never = !pulseAt || pulseAt <= 0;
         const stale = !never && now - pulseAt > OFFLINE_THRESHOLD_MS;
-        const tone: "ok" | "warn" | "bad" = never ? "bad" : stale ? "warn" : "ok";
-        const label = never ? "Never connected" : stale ? "Stale pulse" : "Online";
+        const tone: "ok" | "warn" | "bad" = never
+          ? "bad"
+          : stale
+            ? "warn"
+            : "ok";
+        const label = never
+          ? "Never connected"
+          : stale
+            ? "Stale pulse"
+            : "Online";
         return {
           agent: a,
           tone,
@@ -72,7 +82,6 @@ function AgentHealthInner() {
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
   };
 
-
   if (!canManage) {
     return (
       <EmptyState
@@ -84,126 +93,132 @@ function AgentHealthInner() {
   }
 
   return (
-      <div className="mx-auto max-w-4xl p-3 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-orange/15">
-              <HeartPulse className="h-4 w-4 text-accent-orange" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-text-primary">
-                Agent health
-              </h1>
-              <p className="text-xs text-text-muted hidden sm:block">
-                Connectivity, heartbeat freshness, and quick setup actions.
-              </p>
-            </div>
+    <div className="mx-auto max-w-4xl p-3 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-bg-hover">
+            <HeartPulse className="h-4 w-4 text-text-secondary" />
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild variant="outline" size="sm" className="h-8">
-              <Link href="/agents">Back to agents</Link>
-            </Button>
-            {canAdmin ? (
-              <Button
-                asChild
-                size="sm"
-                className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                <Link href="/agents/new">Create agent</Link>
-              </Button>
-            ) : null}
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">
+              Agent health
+            </h1>
+            <p className="text-xs text-text-muted hidden sm:block">
+              Connectivity, heartbeat freshness, and quick setup actions.
+            </p>
           </div>
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button asChild variant="outline" size="sm" className="h-8">
+            <Link href="/agents">Back to agents</Link>
+          </Button>
+          {canAdmin ? (
+            <Button
+              asChild
+              size="sm"
+              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Link href="/agents/new">Create agent</Link>
+            </Button>
+          ) : null}
+        </div>
+      </div>
 
-        {rows.length === 0 ? (
-          <EmptyState
-            icon={Activity}
-            title="No agents yet"
-            description="Create an agent first, then come back here to verify it is pulsing."
-          >
-            {canAdmin ? (
-              <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Link href="/agents/new">Create agent</Link>
-              </Button>
-            ) : null}
-          </EmptyState>
-        ) : (
-          <div className="space-y-3">
-            {rows.map(({ agent, tone, label, pulseAt }) => {
-              const model = agent.telemetry?.currentModel ?? "unknown";
-              const oc = agent.telemetry?.openclawVersion ?? "unknown";
-              const lastRun = formatDuration(agent.telemetry?.lastRunDurationMs);
-              return (
-                <div
-                  key={agent._id}
-                  className="rounded-xl border border-border-default bg-bg-secondary p-4"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <AgentAvatar
-                        emoji={agent.emoji}
-                        name={agent.name}
-                        size="md"
-                        status={agent.status}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-text-primary">
-                            {agent.name}
-                          </p>
-                          <HealthBadge label={label} tone={tone} />
-                        </div>
-                        <p className="text-xs text-text-muted">{agent.role}</p>
-                        <p className="mt-1 font-mono text-xs text-text-dim break-all">
-                          {agent.sessionKey}
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={Activity}
+          title="No agents yet"
+          description="Create an agent first, then come back here to verify it is pulsing."
+        >
+          {canAdmin ? (
+            <Button
+              asChild
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Link href="/agents/new">Create agent</Link>
+            </Button>
+          ) : null}
+        </EmptyState>
+      ) : (
+        <div className="space-y-3">
+          {rows.map(({ agent, tone, label, pulseAt }) => {
+            const model = agent.telemetry?.currentModel ?? "unknown";
+            const oc = agent.telemetry?.openclawVersion ?? "unknown";
+            const lastRun = formatDuration(agent.telemetry?.lastRunDurationMs);
+            return (
+              <div
+                key={agent._id}
+                className="rounded-xl border border-border-default bg-bg-secondary p-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <AgentAvatar
+                      emoji={agent.emoji}
+                      name={agent.name}
+                      size="md"
+                      status={agent.status}
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-text-primary">
+                          {agent.name}
                         </p>
-                        <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-text-muted">
-                          <span>
-                            Last pulse:{" "}
-                            {pulseAt && pulseAt > 0 ? (
-                              <>
-                                <Timestamp time={pulseAt} className="inline-flex" />{" "}
-                                <span className="text-text-dim">
-                                  ({formatRelativeTime(pulseAt)})
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-text-dim">Never</span>
-                            )}
+                        <HealthBadge label={label} tone={tone} />
+                      </div>
+                      <p className="text-xs text-text-muted">{agent.role}</p>
+                      <p className="mt-1 font-mono text-xs text-text-dim break-all">
+                        {agent.sessionKey}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-text-muted">
+                        <span>
+                          Last pulse:{" "}
+                          {pulseAt && pulseAt > 0 ? (
+                            <>
+                              <Timestamp
+                                time={pulseAt}
+                                className="inline-flex"
+                              />{" "}
+                              <span className="text-text-dim">
+                                ({formatRelativeTime(pulseAt)})
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-text-dim">Never</span>
+                          )}
+                        </span>
+                        <span>
+                          Model:{" "}
+                          <span className="font-mono text-text-dim">
+                            {model}
+                          </span>{" "}
+                          • OC{" "}
+                          <span className="font-mono text-text-dim">{oc}</span>
+                        </span>
+                        <span>
+                          Last run:{" "}
+                          <span className="font-mono text-text-dim">
+                            {lastRun}
                           </span>
-                          <span>
-                            Model:{" "}
-                            <span className="font-mono text-text-dim">
-                              {model}
-                            </span>{" "}
-                            • OC{" "}
-                            <span className="font-mono text-text-dim">
-                              {oc}
-                            </span>
-                          </span>
-                          <span>
-                            Last run:{" "}
-                            <span className="font-mono text-text-dim">
-                              {lastRun}
-                            </span>
-                          </span>
-                        </div>
+                        </span>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex flex-col gap-2 sm:items-end">
-                      <p className="text-[11px] text-text-dim">
-                        Tip: If this says "Never connected", the agent hasn't sent its first{" "}
-                        <span className="font-mono">synclaw_agent_pulse</span> yet.
-                      </p>
-                    </div>
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <p className="text-[11px] text-text-dim">
+                      Tip: If this says "Never connected", the agent hasn't sent
+                      its first{" "}
+                      <span className="font-mono">synclaw_agent_pulse</span>{" "}
+                      yet.
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

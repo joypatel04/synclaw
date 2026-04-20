@@ -20,7 +20,7 @@ export function WorkspaceSettingsTabs({
 }) {
   const base =
     "border-b-2 px-4 py-2.5 text-sm font-medium transition-smooth whitespace-nowrap";
-  const activeCls = "border-accent-orange text-accent-orange";
+  const activeCls = "border-border-hover text-text-secondary";
   const inactiveCls =
     "border-transparent text-text-muted hover:text-text-primary";
 

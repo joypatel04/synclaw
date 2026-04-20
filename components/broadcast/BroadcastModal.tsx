@@ -47,7 +47,7 @@ export function BroadcastModal({ open, onOpenChange }: BroadcastModalProps) {
           <div className="space-y-3">
             <Label className="text-text-secondary">Target</Label>
             <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={sendToAll} onChange={(e) => { setSendToAll(e.target.checked); if (e.target.checked) setSelectedAgents([]); }} className="rounded border-border-default accent-accent-orange" /><span className="text-sm text-text-primary">Send to All Agents</span></label>
-            {!sendToAll && <div className="flex flex-wrap gap-2">{agents.map((a) => (<button key={a._id} type="button" onClick={() => toggleAgent(a._id)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth border ${selectedAgents.includes(a._id) ? "bg-accent-orange/20 border-accent-orange text-accent-orange" : "bg-bg-primary border-border-default text-text-secondary hover:border-border-hover"}`}><span>{a.emoji}</span>{a.name}</button>))}</div>}
+            {!sendToAll && <div className="flex flex-wrap gap-2">{agents.map((a) => (<button key={a._id} type="button" onClick={() => toggleAgent(a._id)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-smooth border ${selectedAgents.includes(a._id) ? "bg-bg-hover border-border-hover text-text-secondary" : "bg-bg-primary border-border-default text-text-secondary hover:border-border-hover"}`}><span>{a.emoji}</span>{a.name}</button>))}</div>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border-default text-text-secondary">Cancel</Button>

@@ -201,7 +201,7 @@ export function PublicDocsShell({
               className={cn(
                 "rounded-lg border px-3 py-1.5 text-xs transition",
                 isActivePath(pathname, item.href)
-                  ? "border-accent-orange/40 bg-accent-orange/10 text-accent-orange"
+                  ? "border-border-hover bg-bg-hover text-text-secondary"
                   : "border-border-default bg-bg-secondary text-text-secondary hover:bg-bg-hover hover:text-text-primary",
               )}
             >
@@ -230,7 +230,7 @@ export function PublicDocsShell({
                             className={cn(
                               "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition",
                               active
-                                ? "border border-accent-orange/35 bg-accent-orange/10 text-accent-orange"
+                                ? "border border-border-hover bg-bg-hover text-text-secondary"
                                 : "text-text-secondary hover:bg-bg-hover hover:text-text-primary",
                             )}
                           >
@@ -259,8 +259,8 @@ export function PublicDocsShell({
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-orange/15">
-                  <Icon className="h-5 w-5 text-accent-orange" />
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-hover">
+                  <Icon className="h-5 w-5 text-text-secondary" />
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -363,8 +363,8 @@ export function PublicDocsCallout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-accent-orange/30 bg-accent-orange/10 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-accent-orange">
+    <div className="rounded-lg border border-border-hover bg-bg-hover p-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
         {title}
       </p>
       <div className="mt-1 text-sm leading-relaxed text-text-secondary">

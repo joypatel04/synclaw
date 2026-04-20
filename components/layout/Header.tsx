@@ -128,7 +128,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     className="flex items-center justify-between text-text-secondary cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded bg-bg-primary text-[10px] font-bold text-accent-orange">
+                      <div className="flex h-6 w-6 items-center justify-center rounded bg-bg-primary text-[10px] font-bold text-text-secondary">
                         {ws.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="text-sm truncate max-w-[160px]">
@@ -136,14 +136,14 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                       </span>
                     </div>
                     {ws._id === workspace._id && (
-                      <Check className="h-4 w-4 text-accent-orange" />
+                      <Check className="h-4 w-4 text-text-secondary" />
                     )}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator className="bg-border-default" />
                 <DropdownMenuItem
                   onClick={() => setShowCreate(true)}
-                  className="flex items-center gap-2 text-accent-orange cursor-pointer"
+                  className="flex items-center gap-2 text-text-secondary cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   Create Workspace
@@ -152,7 +152,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
             </DropdownMenu>
 
             {/* Role badge */}
-            <span className="hidden sm:inline-flex items-center rounded-full border border-accent-orange/25 bg-accent-orange/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent-orange">
+            <span className="hidden sm:inline-flex items-center rounded-full border border-border-hover bg-bg-hover px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
               {role}
             </span>
           </div>
@@ -171,7 +171,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     className={cn(
                       "flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition-smooth",
                       isActive
-                        ? "border-accent-orange/25 bg-accent-orange/12 text-accent-orange"
+                        ? "border-border-hover bg-bg-hover text-text-secondary"
                         : "border-transparent text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
                     )}
                   >
@@ -211,7 +211,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full border border-accent-orange/30 bg-accent-orange/15 text-accent-orange hover:bg-accent-orange/25"
+                  className="h-8 w-8 rounded-full border border-border-hover bg-bg-hover text-text-secondary hover:bg-bg-secondary"
                 >
                   <Users className="h-4 w-4" />
                 </Button>
@@ -285,7 +285,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                   className={cn(
                     "flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-1.5 text-xs font-medium transition-smooth",
                     isActive
-                      ? "border-accent-orange/25 bg-accent-orange/12 text-accent-orange"
+                      ? "border-border-hover bg-bg-hover text-text-secondary"
                       : "border-transparent text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
                   )}
                 >

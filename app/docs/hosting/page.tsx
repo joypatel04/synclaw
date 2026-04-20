@@ -93,11 +93,11 @@ export default function HostingOverviewPage() {
             <Link
               key={section.href}
               href={section.href}
-              className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-accent-orange/40 hover:bg-bg-hover"
+              className="rounded-xl border border-border-default bg-bg-tertiary p-4 transition hover:border-border-hover hover:bg-bg-hover"
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-bg-primary">
-                  <section.icon className="h-4 w-4 text-accent-orange" />
+                  <section.icon className="h-4 w-4 text-text-secondary" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-text-primary">
@@ -108,7 +108,7 @@ export default function HostingOverviewPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-orange">
+              <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-text-secondary">
                 Open <ArrowRight className="h-3.5 w-3.5" />
               </div>
             </Link>

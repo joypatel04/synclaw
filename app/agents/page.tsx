@@ -350,8 +350,8 @@ function AgentsContent() {
                 className={cn(
                   "h-8 w-8 p-0",
                   isArchived
-                    ? "text-teal hover:text-teal hover:bg-teal/10"
-                    : "text-text-muted hover:text-status-review hover:bg-status-review/10",
+                    ? "text-status-active hover:text-status-active hover:bg-status-active/10"
+                    : "text-text-muted hover:text-text-secondary hover:bg-bg-hover",
                 )}
                 title={isArchived ? "Unarchive agent" : "Archive agent"}
               >
@@ -725,8 +725,8 @@ function AgentsContent() {
               onClick={handleArchiveConfirm}
               className={
                 archivingAgent?.isArchived
-                  ? "bg-teal hover:bg-teal/90 text-white"
-                  : "bg-status-review hover:bg-status-review/90 text-white"
+                  ? "bg-status-active hover:bg-status-active/90 text-white"
+                  : "bg-bg-hover hover:bg-bg-secondary text-text-secondary border border-border-hover"
               }
             >
               {archivingAgent?.isArchived ? "Unarchive" : "Archive"}

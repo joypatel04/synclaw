@@ -80,8 +80,8 @@ function PlaybookPageInner() {
     <div className="mx-auto max-w-3xl p-3 sm:p-6">
       <div className="flex items-start justify-between gap-3 mb-6">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-orange/15 glow-orange">
-            <Sparkles className="h-5 w-5 text-accent-orange" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-hover glow-orange">
+            <Sparkles className="h-5 w-5 text-text-secondary" />
           </div>
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-text-primary">

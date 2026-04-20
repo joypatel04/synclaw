@@ -45,7 +45,7 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
         {blocking ? (
           <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
               <p className="text-sm text-text-muted">Redirecting to setup...</p>
             </div>
           </div>
@@ -74,7 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-primary">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
           <p className="text-sm text-text-muted">
             Loading {brand.product.name}...
           </p>
@@ -87,7 +87,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     // Show nothing briefly while the redirect fires
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-orange border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
       </div>
     );
   }
