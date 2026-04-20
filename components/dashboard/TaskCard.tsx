@@ -45,10 +45,9 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
     <Link href={`/tasks/${task._id}`}>
       <div
         className={cn(
-          "group cursor-pointer rounded-xl border border-border-default/75 bg-bg-primary/55 p-3 transition-smooth",
+          "group cursor-pointer rounded-lg border border-border-default/75 bg-bg-primary/52 p-3 transition-smooth",
           "hover:border-border-hover hover:bg-bg-primary/70",
-          isDragging &&
-            "opacity-60 border-dashed border-border-hover rotate-1",
+          isDragging && "opacity-60 border-dashed border-border-hover rotate-1",
         )}
       >
         <div className="flex items-start justify-between gap-2">
@@ -64,7 +63,7 @@ export function TaskCard({ task, agents, isDragging }: TaskCardProps) {
           </p>
         ) : null}
         {blockedReason ? (
-          <p className="mt-2 line-clamp-1 rounded-md border border-status-blocked/30 bg-status-blocked/10 px-2 py-1 text-[11px] text-status-blocked">
+          <p className="mt-2 line-clamp-1 rounded-sm border border-status-blocked/30 bg-status-blocked/10 px-2 py-1 text-[11px] text-status-blocked">
             Blocker: {blockedReason}
           </p>
         ) : null}

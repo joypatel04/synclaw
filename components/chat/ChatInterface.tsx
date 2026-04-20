@@ -191,7 +191,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-2xl border border-border-default/75 bg-bg-secondary/72",
+        "flex flex-col overflow-hidden rounded-xl border border-border-default/75 bg-bg-secondary/62",
         // On mobile: fill the dynamic viewport. On desktop: fill parent.
         "h-dvh sm:h-full",
         className,
@@ -215,7 +215,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
           the ScrollArea gets a bounded height even on mobile */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full bg-transparent" viewportRef={viewportRef}>
-          <div className="space-y-4 overflow-x-hidden p-2.5 sm:space-y-5 sm:p-6">
+          <div className="space-y-4 overflow-x-hidden p-2.5 sm:space-y-5 sm:p-5">
             {emptyState ??
               messageGroups.map((group) => (
                 <div key={group.id}>
@@ -258,7 +258,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
             type="button"
             size="icon"
             variant="secondary"
-            className="absolute bottom-4 right-3 z-10 h-9 w-9 rounded-full shadow-md sm:right-4"
+            className="absolute bottom-4 right-3 z-10 h-9 w-9 rounded-md border border-border-default/75 shadow-md sm:right-4"
             onClick={() => scrollToBottom("smooth")}
             aria-label="Scroll to bottom"
           >
@@ -286,7 +286,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
       <Drawer open={showMobileActions} onOpenChange={setShowMobileActions}>
         <DrawerContent className="sm:hidden">
           <DrawerHeader className="border-b border-border-default px-4 py-3">
-            <DrawerTitle className="text-sm text-text-primary">
+            <DrawerTitle className="text-[11px] uppercase tracking-[0.12em] text-text-secondary">
               Chat Actions
             </DrawerTitle>
           </DrawerHeader>
@@ -320,7 +320,7 @@ export function ChatInterface({ agent, className }: ChatInterfaceProps) {
               {gatewayFeatures.map((feature) => (
                 <span
                   key={feature}
-                  className="rounded-full border border-border-default bg-bg-tertiary px-2 py-0.5 text-[11px] text-text-secondary"
+                  className="rounded-md border border-border-default bg-bg-tertiary px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-text-secondary"
                 >
                   {feature}
                 </span>

@@ -23,14 +23,14 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex min-w-[220px] flex-1 flex-col rounded-2xl border border-border-default/75 bg-bg-secondary/68",
+        "flex min-w-[220px] flex-1 flex-col rounded-xl border border-border-default/75 bg-bg-secondary/62",
         isBlockedColumn && "border-status-blocked/35 bg-status-blocked/5",
       )}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border-default/60 px-3 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-border-default/60 px-3 py-2">
         <h3
           className={cn(
-            "text-[11px] font-semibold uppercase tracking-wider text-text-secondary",
+            "text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary",
             isBlockedColumn && "text-status-blocked",
           )}
         >
@@ -38,7 +38,7 @@ export function KanbanColumn({
         </h3>
         <span
           className={cn(
-            "flex h-5 min-w-[20px] items-center justify-center rounded-full bg-bg-tertiary px-1.5 text-[10px] font-mono font-medium text-text-muted",
+            "flex h-5 min-w-[20px] items-center justify-center rounded-sm bg-bg-tertiary px-1.5 text-[10px] font-mono font-medium text-text-muted",
             isBlockedColumn && "bg-status-blocked/15 text-status-blocked",
           )}
         >
@@ -53,7 +53,7 @@ export function KanbanColumn({
             {...provided.droppableProps}
             className={cn(
               "scrollbar-none min-h-[80px] flex-1 space-y-2 overflow-y-auto px-2 pb-2 transition-smooth",
-              snapshot.isDraggingOver && "rounded-b-2xl bg-bg-hover",
+              snapshot.isDraggingOver && "rounded-b-xl bg-bg-hover",
             )}
           >
             {tasks.map((task, index) => (

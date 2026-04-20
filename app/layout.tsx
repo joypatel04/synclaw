@@ -1,13 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist_Mono, Manrope, Sora } from "next/font/google";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { PwaRegistrar } from "@/components/pwa/PwaRegistrar";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { brand } from "@/lib/brand";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+});
+
+const sora = Sora({
+  variable: "--font-sora",
   subsets: ["latin"],
 });
 
@@ -104,7 +109,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${plusJakartaSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${sora.variable} ${geistMono.variable} font-sans antialiased`}
       >
         <PwaRegistrar />
         <ThemeProvider>

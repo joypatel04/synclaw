@@ -127,13 +127,13 @@ export function LiveFeed() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-border-default/70 px-4 py-3">
+      <div className="border-b border-border-default/70 px-4 py-2.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary flex items-center gap-2">
             <span className="inline-flex h-2 w-2 rounded-full bg-status-active" />
             LIVE FEED
           </h2>
-          <span className="text-[10px] text-text-muted font-mono">
+          <span className="text-[10px] text-text-dim font-mono uppercase tracking-[0.12em]">
             Last 7 days
           </span>
         </div>
@@ -150,7 +150,7 @@ export function LiveFeed() {
                 type="button"
                 onClick={() => setCategory(c.id)}
                 className={cn(
-                  "h-7 rounded-full border px-2.5 text-[10px] font-medium transition-smooth inline-flex items-center gap-2",
+                  "h-7 rounded-md border px-2.5 text-[10px] font-medium transition-smooth inline-flex items-center gap-2",
                   isActive
                     ? "bg-bg-hover border-border-hover text-text-secondary"
                     : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
@@ -159,7 +159,7 @@ export function LiveFeed() {
                 <span>{c.label}</span>
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] leading-none",
+                    "rounded-sm px-1.5 py-0.5 text-[10px] leading-none",
                     isActive
                       ? "bg-bg-hover text-text-secondary"
                       : "bg-bg-secondary text-text-muted",
@@ -179,7 +179,7 @@ export function LiveFeed() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter…"
-              className="h-8 w-full rounded-lg border border-border-default bg-bg-primary/85 pl-7 pr-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-ring/25"
+              className="h-8 w-full rounded-md border border-border-default bg-bg-primary/75 pl-7 pr-2 text-xs text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-ring/20"
             />
           </div>
         </div>
@@ -189,14 +189,14 @@ export function LiveFeed() {
             type="button"
             onClick={() => setSelectedAgentId("all")}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
+              "rounded-md border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
               selectedAgentId === "all"
                 ? "bg-bg-hover border-border-hover text-text-secondary"
                 : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
             )}
           >
             <span>All Agents</span>
-            <span className="rounded-full bg-bg-secondary px-1.5 py-0.5 text-[10px] leading-none text-text-muted">
+            <span className="rounded-sm bg-bg-secondary px-1.5 py-0.5 text-[10px] leading-none text-text-muted">
               {countsByCategory[category]}
             </span>
           </button>
@@ -209,7 +209,7 @@ export function LiveFeed() {
                 type="button"
                 onClick={() => setSelectedAgentId(agent._id as Id<"agents">)}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
+                  "rounded-md border px-2.5 py-1 text-[10px] whitespace-nowrap transition-smooth inline-flex items-center gap-2",
                   isActive
                     ? "bg-bg-hover border-border-hover text-text-secondary"
                     : "bg-bg-primary/75 border-border-default text-text-muted hover:border-border-hover hover:text-text-secondary",
@@ -219,7 +219,7 @@ export function LiveFeed() {
                 <span>{agent.name}</span>
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] leading-none",
+                    "rounded-sm px-1.5 py-0.5 text-[10px] leading-none",
                     isActive
                       ? "bg-bg-hover text-text-secondary"
                       : "bg-bg-secondary text-text-muted",

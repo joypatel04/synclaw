@@ -37,7 +37,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-border-default/70 bg-bg-secondary/75 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3">
+      <div className="flex items-center gap-3 border-b border-border-default/70 bg-bg-secondary/68 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3">
         <AgentAvatar
           emoji={agent.emoji}
           name={agent.name}
@@ -45,10 +45,10 @@ export function ChatHeader({
           status={agent.status}
         />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-text-primary">
+          <h2 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-text-primary">
             {agent.name}
           </h2>
-          <p className="hidden text-xs text-text-muted sm:block">
+          <p className="hidden text-[11px] uppercase tracking-[0.12em] text-text-dim sm:block">
             {agent.role}
           </p>
         </div>
@@ -59,7 +59,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 rounded-lg border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
+              className="h-8 rounded-md border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
               onClick={() => setShowGatewayPanel((v: boolean) => !v)}
             >
               OpenClaw
@@ -69,7 +69,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 rounded-lg border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
+              className="h-8 rounded-md border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
               onClick={handleAbort}
             >
               Stop
@@ -83,7 +83,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 rounded-lg border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
+              className="h-8 rounded-md border-border-default/80 bg-bg-primary/50 px-2.5 text-xs"
               onClick={handleAbort}
             >
               Stop
@@ -93,7 +93,7 @@ export function ChatHeader({
             <Button
               variant="outline"
               size="icon-sm"
-              className="h-8 w-8 rounded-lg border-border-default/80 bg-bg-primary/50"
+              className="h-8 w-8 rounded-md border-border-default/80 bg-bg-primary/50"
               aria-label="Open chat actions"
               onClick={onMobileActionsOpen}
             >
@@ -105,12 +105,12 @@ export function ChatHeader({
 
       {/* Gateway feature badges panel */}
       {showGatewayPanel && canChatBase && (
-        <div className="border-b border-border-default/70 bg-bg-secondary/65 px-4 py-2 backdrop-blur sm:px-6">
+        <div className="border-b border-border-default/70 bg-bg-secondary/60 px-4 py-2 backdrop-blur sm:px-6">
           <div className="flex flex-wrap gap-1.5">
             {gatewayFeatures.map((feature) => (
               <span
                 key={feature}
-                className="rounded-full border border-border-default/80 bg-bg-primary/55 px-2 py-0.5 text-[11px] text-text-secondary"
+                className="rounded-md border border-border-default/80 bg-bg-primary/55 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-text-secondary"
               >
                 {feature}
               </span>
