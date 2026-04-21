@@ -23,13 +23,13 @@ function DashboardContent() {
   return (
     <>
       <div className="hidden h-[calc(100dvh-4rem)] lg:flex">
-        <div className="w-[300px] overflow-hidden border-r border-border-default/80 bg-bg-secondary/60">
+        <div className="w-[300px] overflow-hidden border-r border-border-default/70 bg-bg-secondary/48">
           <AgentPanel />
         </div>
-        <div className="flex-1 overflow-auto p-5 lg:p-6">
+        <div className="flex-1 overflow-auto p-4 lg:p-5">
           <KanbanBoard />
         </div>
-        <div className="min-h-0 w-[330px] overflow-hidden border-l border-border-default/80 bg-bg-secondary/60">
+        <div className="min-h-0 w-[330px] overflow-hidden border-l border-border-default/70 bg-bg-secondary/48">
           <LiveFeed />
         </div>
       </div>
@@ -37,7 +37,7 @@ function DashboardContent() {
       <div className="flex h-[calc(100dvh-4rem)] flex-col lg:hidden">
         <div className="flex-1 overflow-hidden">
           {activeTab === "board" && (
-            <div className="h-full overflow-auto p-3">
+            <div className="h-full overflow-auto p-2.5">
               <KanbanBoard />
             </div>
           )}

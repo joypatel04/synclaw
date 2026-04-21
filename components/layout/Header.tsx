@@ -84,7 +84,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-border-default/80 bg-bg-secondary/65 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-border-default/70 bg-bg-secondary/58 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-4 sm:px-6">
           {/* Logo + Workspace Switcher */}
           <div className="flex items-center gap-3">
@@ -96,7 +96,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                 height={48}
                 className="h-[44px] w-[44px]"
               />
-              <span className="hidden text-base font-semibold tracking-tight text-text-primary sm:inline">
+              <span className="hidden text-base font-semibold tracking-[-0.015em] text-text-primary sm:inline">
                 SynClaw
               </span>
             </Link>
@@ -106,7 +106,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-semibold text-text-primary transition-smooth hover:border-border-default hover:bg-bg-hover"
+                  className="flex items-center gap-1.5 rounded-md border border-border-default/45 bg-bg-primary/45 px-2.5 py-1.5 text-sm font-semibold text-text-primary transition-smooth hover:border-border-default hover:bg-bg-hover"
                 >
                   {workspace.name}
                   <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
@@ -152,7 +152,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
             </DropdownMenu>
 
             {/* Role badge */}
-            <span className="hidden sm:inline-flex items-center rounded-full border border-border-hover bg-bg-hover px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+            <span className="hidden sm:inline-flex items-center rounded-md border border-border-default/70 bg-bg-primary/65 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
               {role}
             </span>
           </div>
@@ -169,10 +169,10 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium transition-smooth",
+                      "flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-smooth",
                       isActive
-                        ? "border-border-hover bg-bg-hover text-text-secondary"
-                        : "border-transparent text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
+                        ? "border-border-hover bg-bg-hover text-text-primary"
+                        : "border-border-default/20 text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -211,7 +211,7 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 rounded-full border border-border-hover bg-bg-hover text-text-secondary hover:bg-bg-secondary"
+                  className="h-8 w-8 rounded-md border border-border-default/70 bg-bg-primary/60 text-text-secondary hover:bg-bg-hover"
                 >
                   <Users className="h-4 w-4" />
                 </Button>
@@ -283,10 +283,10 @@ export function Header({ onboardingLocked }: { onboardingLocked?: boolean }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-1.5 text-xs font-medium transition-smooth",
+                    "flex items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-medium transition-smooth",
                     isActive
-                      ? "border-border-hover bg-bg-hover text-text-secondary"
-                      : "border-transparent text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
+                      ? "border-border-hover bg-bg-hover text-text-primary"
+                      : "border-border-default/20 text-text-secondary hover:border-border-default hover:bg-bg-hover hover:text-text-primary",
                   )}
                 >
                   <item.icon className="h-3.5 w-3.5" />

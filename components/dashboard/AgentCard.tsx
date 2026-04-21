@@ -23,8 +23,8 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
   const content = (
     <div
       className={cn(
-        "group min-w-0 overflow-hidden rounded-2xl border border-border-default/75 bg-bg-secondary/70 p-4 transition-smooth",
-        "hover:border-border-hover hover:bg-bg-secondary/90",
+        "group min-w-0 overflow-hidden rounded-xl border border-border-default/75 bg-bg-secondary/62 p-3.5 transition-smooth",
+        "hover:border-border-hover hover:bg-bg-secondary/78",
         agent.status === "active" && "border-l-2 border-l-status-active/90",
         agent.status === "error" && "border-l-2 border-l-status-blocked/90",
         href && "cursor-pointer",
@@ -39,7 +39,7 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
             status={agent.status}
           />
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-text-primary">
+            <h3 className="truncate text-sm font-semibold tracking-[-0.01em] text-text-primary">
               {agent.name}
             </h3>
             <p
@@ -60,8 +60,10 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
       </div>
 
       {currentTask && agent.status === "active" && (
-        <div className="mt-3 w-full min-w-0 rounded-xl border border-border-default/60 bg-bg-primary/55 px-3 py-2.5">
-          <p className="text-xs text-text-muted">Working on</p>
+        <div className="mt-3 w-full min-w-0 rounded-lg border border-border-default/60 bg-bg-primary/50 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-[0.12em] text-text-dim">
+            Working on
+          </p>
           <p className="mt-0.5 w-full break-words text-xs font-medium leading-relaxed text-text-primary">
             {currentTask.title}
           </p>
@@ -78,7 +80,9 @@ export function AgentCard({ agent, currentTask, href }: AgentCardProps) {
       )}
 
       <div className="mt-3 flex items-center justify-between border-t border-border-default/55 pt-2.5">
-        <span className="text-[10px] text-text-dim">Last heartbeat</span>
+        <span className="text-[10px] uppercase tracking-[0.12em] text-text-dim">
+          Last heartbeat
+        </span>
         <Timestamp time={agent.lastHeartbeat} />
       </div>
     </div>

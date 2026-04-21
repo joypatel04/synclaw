@@ -23,7 +23,7 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex min-w-[220px] flex-1 flex-col rounded-xl border border-border-default/75 bg-bg-secondary/62",
+        "flex min-w-[220px] flex-1 flex-col rounded-lg border border-border-default/75 bg-bg-secondary/56",
         isBlockedColumn && "border-status-blocked/35 bg-status-blocked/5",
       )}
     >
@@ -38,7 +38,7 @@ export function KanbanColumn({
         </h3>
         <span
           className={cn(
-            "flex h-5 min-w-[20px] items-center justify-center rounded-sm bg-bg-tertiary px-1.5 text-[10px] font-mono font-medium text-text-muted",
+            "flex h-5 min-w-[20px] items-center justify-center rounded-sm bg-bg-tertiary/75 px-1.5 text-[10px] font-mono font-medium text-text-muted",
             isBlockedColumn && "bg-status-blocked/15 text-status-blocked",
           )}
         >

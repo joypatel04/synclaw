@@ -37,11 +37,19 @@ function AuthedShell({ children }: { children: React.ReactNode }) {
     canAdmin && !allowed && (status === undefined || shouldRedirect);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg-primary">
+    <div className="relative flex min-h-screen flex-col bg-bg-primary">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-80"
+        style={{
+          background:
+            "radial-gradient(1200px 500px at 20% -10%, color-mix(in oklab, var(--cw-accent-orange) 12%, transparent), transparent 60%), radial-gradient(1000px 500px at 100% 0%, color-mix(in oklab, var(--cw-teal) 10%, transparent), transparent 62%)",
+        }}
+      />
       <OnboardingGate shouldRedirect={shouldRedirect} />
       <Header onboardingLocked={onboardingLocked} />
       <BillingBanner />
-      <main className="app-reveal flex-1">
+      <main className="app-reveal relative z-10 flex-1">
         {blocking ? (
           <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center">
             <div className="flex flex-col items-center gap-3">

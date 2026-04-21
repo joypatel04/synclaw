@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Manrope, Sora } from "next/font/google";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
-import { PwaRegistrar } from "@/components/pwa/PwaRegistrar";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { PwaRegistrar } from "@/components/pwa/PwaRegistrar";
 import { brand } from "@/lib/brand";
 import "./globals.css";
 
